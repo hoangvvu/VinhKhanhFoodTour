@@ -1,5 +1,7 @@
 ﻿using Microsoft.Extensions.Logging;
 using CommunityToolkit.Maui;
+using Microsoft.Maui.Controls.Hosting;
+
 namespace VinhKhanhFoodTour.MobileApp
 {
     public static class MauiProgram
@@ -9,7 +11,8 @@ namespace VinhKhanhFoodTour.MobileApp
             var builder = MauiApp.CreateBuilder();
             builder
                 .UseMauiApp<App>()
-                .UseMauiCommunityToolkitMediaElement(shouldEnableAndroidForegroundService: true)
+                .UseMauiCommunityToolkitMediaElement(isAndroidForegroundServiceEnabled: true)
+                .UseMauiMaps()
                 .ConfigureFonts(fonts =>
                 {
                     fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");

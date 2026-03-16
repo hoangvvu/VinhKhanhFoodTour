@@ -1,36 +1,69 @@
 ﻿<?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-             x:Class="VinhKhanhFoodTour.MobileApp.MainPage">
+             xmlns:maps="clr-namespace:Microsoft.Maui.Controls.Maps;assembly=Microsoft.Maui.Controls.Maps"
+             xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
+             x:Class="VinhKhanhFoodTour.MobileApp.MainPage"
+             Shell.NavBarIsVisible="False">
 
-    <ScrollView>
-        <VerticalStackLayout
-            Padding="30,0"
-            Spacing="25">
-            <Image
-                Source="dotnet_bot.png"
-                HeightRequest="185"
-                Aspect="AspectFit"
-                SemanticProperties.Description="dot net bot in a submarine number ten" />
+    <Grid>
+        <maps:Map x:Name="mainMap" 
+                  IsShowingUser="True" />
 
-            <Label
-                Text="Hello, World!"
-                Style="{StaticResource Headline}"
-                SemanticProperties.HeadingLevel="Level1" />
-
-            <Label
-                Text="Welcome to &#10;.NET Multi-platform App UI"
-                Style="{StaticResource SubHeadline}"
-                SemanticProperties.HeadingLevel="Level2"
-                SemanticProperties.Description="Welcome to dot net Multi platform App U I" />
-
-            <Button
-                x:Name="CounterBtn"
-                Text="Click me" 
-                SemanticProperties.Hint="Counts the number of times you click"
-                Clicked="OnCounterClicked"
-                HorizontalOptions="Fill" />
+        <VerticalStackLayout VerticalOptions="Start" Padding="20">
+            <Frame BackgroundColor="#EEFFFFFF" CornerRadius="20" Padding="15,10" HasShadow="True">
+                <HorizontalStackLayout Spacing="10" HorizontalOptions="Center">
+                    <Label Text="📍 Phố Ẩm Thực Vĩnh Khánh" 
+                           TextColor="#D32F2F" 
+                           FontAttributes="Bold" 
+                           FontSize="16" 
+                           VerticalOptions="Center"/>
+                </HorizontalStackLayout>
+            </Frame>
         </VerticalStackLayout>
-    </ScrollView>
 
+        <Frame VerticalOptions="End" 
+               BackgroundColor="White" 
+               CornerRadius="25" 
+               HasShadow="True" 
+               Padding="20"
+               Margin="0">
+            <VerticalStackLayout Spacing="10">
+                <BoxView WidthRequest="40" HeightRequest="4" Color="LightGray" HorizontalOptions="Center" CornerRadius="2" Margin="0,0,0,10"/>
+
+                <Label x:Name="lblShopName" 
+                       Text="Đang xác định vị trí..." 
+                       FontSize="22" 
+                       FontAttributes="Bold" 
+                       TextColor="Black"/>
+
+                <Label x:Name="lblDescription" 
+                       Text="Hãy di chuyển đến gần các quán ăn để nghe thuyết minh tự động." 
+                       FontSize="14" 
+                       TextColor="Gray"/>
+
+                <toolkit:MediaElement x:Name="audioPlayer" ShouldShowPlaybackControls="False" />
+
+                <Grid ColumnDefinitions="*, Auto" Margin="0,10,0,0">
+                    <Button Grid.Column="0" 
+                            x:Name="btnPlay"
+                            Text="▶ PHÁT THUYẾT MINH" 
+                            BackgroundColor="#D32F2F" 
+                            TextColor="White"
+                            FontAttributes="Bold"
+                            HeightRequest="50"
+                            CornerRadius="10"
+                            Clicked="OnPlayClicked"/>
+
+                    <Button Grid.Column="1" 
+                            Text="ℹ" 
+                            WidthRequest="50" 
+                            Margin="10,0,0,0"
+                            BackgroundColor="#F5F5F5"
+                            TextColor="Black"
+                            CornerRadius="10"/>
+                </Grid>
+            </VerticalStackLayout>
+        </Frame>
+    </Grid>
 </ContentPage>

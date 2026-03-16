@@ -65,10 +65,16 @@
 		<MauiAsset Include="Resources\Raw\**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
 	</ItemGroup>
 
+ <!-- Ensure platform-specific Android resources under Platforms/Android/Resources are included.
+		 The explicit Remove was preventing the strings.xml (google_maps_key) from being packaged,
+		 which caused AAPT to fail with resource not found. -->
+
 	<ItemGroup>
+		<PackageReference Include="CommunityToolkit.Maui.Core" Version="14.0.1" />
 		<PackageReference Include="CommunityToolkit.Maui.MediaElement" Version="8.0.1" />
 		<PackageReference Include="Microsoft.Maui.Controls" Version="10.0.50" />
 		<PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.0" />
+		<PackageReference Include="Microsoft.Maui.Controls.Maps" Version="10.0.50" />
 	</ItemGroup>
 
 </Project>
