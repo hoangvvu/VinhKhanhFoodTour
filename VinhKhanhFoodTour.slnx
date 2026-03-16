@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="VinhKhanhFoodTour.API/VinhKhanhFoodTour.API.csproj" />
+  <Project Path="VinhKhanhFoodTour.MobileApp/VinhKhanhFoodTour.MobileApp.csproj" Id="024abf32-b54a-4f1b-ae64-f1c316492404" />
+</Solution>
