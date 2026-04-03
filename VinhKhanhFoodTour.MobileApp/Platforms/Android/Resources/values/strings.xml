@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
   <!-- Placeholder for Google Maps API key; replace at build time or insert actual key here -->
-  <string name="google_maps_key">AIzaSyBiBveMDzgHwoU2PFXtsmllwujFGbDLigo</string>
+  <string name="google_maps_key">YOUR_API_KEY</string>
 </resources>
