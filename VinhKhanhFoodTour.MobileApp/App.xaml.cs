@@ -4,6 +4,14 @@ namespace VinhKhanhFoodTour.MobileApp
 {
     public partial class App : Application
     {
+        private static bool _isLoggedIn = false;
+
+        public static bool IsLoggedIn
+        {
+            get => _isLoggedIn;
+            set => _isLoggedIn = value;
+        }
+
         public App()
         {
             InitializeComponent();
@@ -11,7 +19,19 @@ namespace VinhKhanhFoodTour.MobileApp
 
         protected override Window CreateWindow(IActivationState? activationState)
         {
-            return new Window(new AppShell());
+            // Show splash page first, then navigate based on login state
+            return new Window(new SplashPage());
+        }
+
+        public static void ShowLoginPage()
+        {
+            Current.MainPage = new LoginShell();
+        }
+
+        public static void ShowMainApp()
+        {
+            _isLoggedIn = true;
+            Current.MainPage = new AppShell();
         }
     }
 }

@@ -4,66 +4,116 @@
              xmlns:maps="clr-namespace:Microsoft.Maui.Controls.Maps;assembly=Microsoft.Maui.Controls.Maps"
              xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
              x:Class="VinhKhanhFoodTour.MobileApp.MainPage"
-             Shell.NavBarIsVisible="False">
+             Shell.NavBarIsVisible="False"
+             BackgroundColor="#F5F5F5">
 
     <Grid>
         <maps:Map x:Name="mainMap" 
-                  IsShowingUser="True" />
+                  IsShowingUser="True" 
+                  MapType="Street" />
 
-        <VerticalStackLayout VerticalOptions="Start" Padding="20">
-            <Frame BackgroundColor="#EEFFFFFF" CornerRadius="20" Padding="15,10" HasShadow="True">
-                <HorizontalStackLayout Spacing="10" HorizontalOptions="Center">
-                    <Label Text="📍 Phố Ẩm Thực Vĩnh Khánh" 
+        <VerticalStackLayout VerticalOptions="Start" Padding="20,40,20,0" InputTransparent="True">
+            <Border BackgroundColor="#EEFFFFFF" 
+                    StrokeThickness="0"
+                    Padding="15,10" 
+                    HorizontalOptions="Center">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="20" />
+                </Border.StrokeShape>
+                <HorizontalStackLayout Spacing="8" VerticalOptions="Center">
+                    <Label Text="📍" FontSize="16"/>
+                    <Label Text="Phố Ẩm Thực Vĩnh Khánh" 
                            TextColor="#D32F2F" 
                            FontAttributes="Bold" 
-                           FontSize="16" 
-                           VerticalOptions="Center"/>
+                           FontSize="16" />
                 </HorizontalStackLayout>
-            </Frame>
+            </Border>
         </VerticalStackLayout>
 
-        <Frame VerticalOptions="End" 
-               BackgroundColor="White" 
-               CornerRadius="25" 
-               HasShadow="True" 
-               Padding="20"
-               Margin="0">
-            <VerticalStackLayout Spacing="10">
-                <BoxView WidthRequest="40" HeightRequest="4" Color="LightGray" HorizontalOptions="Center" CornerRadius="2" Margin="0,0,0,10"/>
+        <Border VerticalOptions="End" 
+                BackgroundColor="White" 
+                StrokeThickness="0"
+                Margin="10,0,10,20"
+                Padding="0">
+            <Border.StrokeShape>
+                <RoundRectangle CornerRadius="25" />
+            </Border.StrokeShape>
+            <Border.Shadow>
+                <Shadow Brush="Black" Offset="0,10" Radius="15" Opacity="0.2" />
+            </Border.Shadow>
 
-                <Label x:Name="lblShopName" 
-                       Text="Đang xác định vị trí..." 
-                       FontSize="22" 
-                       FontAttributes="Bold" 
-                       TextColor="Black"/>
+            <VerticalStackLayout Spacing="0">
 
-                <Label x:Name="lblDescription" 
-                       Text="Hãy di chuyển đến gần các quán ăn để nghe thuyết minh tự động." 
-                       FontSize="14" 
-                       TextColor="Gray"/>
+                <Image x:Name="imgShop"
+                       Source="dotnet_bot.png" 
+                       HeightRequest="180" 
+                       Aspect="AspectFill" />
 
-                <toolkit:MediaElement x:Name="audioPlayer" ShouldShowPlaybackControls="False" />
+                <VerticalStackLayout Padding="20" Spacing="10">
 
-                <Grid ColumnDefinitions="*, Auto" Margin="0,10,0,0">
-                    <Button Grid.Column="0" 
-                            x:Name="btnPlay"
-                            Text="▶ PHÁT THUYẾT MINH" 
-                            BackgroundColor="#D32F2F" 
-                            TextColor="White"
-                            FontAttributes="Bold"
-                            HeightRequest="50"
-                            CornerRadius="10"
-                            Clicked="OnPlayClicked"/>
+                    <Grid ColumnDefinitions="*, Auto">
+                        <Label Grid.Column="0"
+                               x:Name="lblShopName" 
+                               Text="Đang tìm kiếm khu vực..." 
+                               FontSize="22" 
+                               FontAttributes="Bold" 
+                               TextColor="#333333"/>
 
-                    <Button Grid.Column="1" 
-                            Text="ℹ" 
-                            WidthRequest="50" 
-                            Margin="10,0,0,0"
-                            BackgroundColor="#F5F5F5"
-                            TextColor="Black"
-                            CornerRadius="10"/>
-                </Grid>
+                        <Border Grid.Column="1" 
+                                BackgroundColor="#E8F5E9" 
+                                StrokeThickness="0" 
+                                Padding="8,4">
+                            <Border.StrokeShape>
+                                <RoundRectangle CornerRadius="8"/>
+                            </Border.StrokeShape>
+                            <Label x:Name="lblDistance" 
+                                   Text="-- m" 
+                                   TextColor="#2E7D32" 
+                                   FontAttributes="Bold" 
+                                   FontSize="12"/>
+                        </Border>
+                    </Grid>
+
+                    <Label x:Name="lblDescription" 
+                           Text="Hãy di chuyển trên phố Vĩnh Khánh. Hệ thống sẽ tự động phát âm thanh khi bạn đến gần các gian hàng." 
+                           FontSize="14" 
+                           TextColor="#666666"
+                           LineBreakMode="TailTruncation"
+                           MaxLines="3"/>
+
+                    <BoxView HeightRequest="1" Color="#E0E0E0" Margin="0,5" />
+
+                    <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="15" VerticalOptions="End">
+
+                        <VerticalStackLayout Grid.Column="0" VerticalOptions="Center">
+                            <Label Text="Ngôn ngữ" FontSize="11" TextColor="Gray" Margin="5,0,0,0"/>
+                            <Picker x:Name="pickerLanguage" 
+                                    Title="Chọn..." 
+                                    WidthRequest="100"
+                                    TextColor="Black"
+                                    SelectedIndex="0">
+                                <Picker.ItemsSource>
+                                    <x:Array Type="{x:Type x:String}">
+                                        <x:String>Tiếng Việt</x:String>
+                                        <x:String>English</x:String>
+                                    </x:Array>
+                                </Picker.ItemsSource>
+                            </Picker>
+                        </VerticalStackLayout>
+
+                        <Button Grid.Column="2" 
+                                x:Name="btnPlay"
+                                Text="▶ PHÁT" 
+                                BackgroundColor="#D32F2F" 
+                                TextColor="White"
+                                FontAttributes="Bold"
+                                HeightRequest="50"
+                                WidthRequest="140"
+                                CornerRadius="12"
+                                Clicked="OnPlayClicked"/>
+                    </Grid>
+                </VerticalStackLayout>
             </VerticalStackLayout>
-        </Frame>
+        </Border>
     </Grid>
 </ContentPage>

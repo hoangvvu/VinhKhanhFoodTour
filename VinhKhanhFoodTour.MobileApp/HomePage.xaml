@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="VinhKhanhFoodTour.MobileApp.HomePage"
+             Title="Trang chủ"
+             Shell.NavBarIsVisible="False">
+    <VerticalStackLayout Padding="15" Spacing="10">
+        <Label Text="Phố Ẩm Thực Vĩnh Khánh" FontSize="24" FontAttributes="Bold" TextColor="#D32F2F" />
+
+        <SearchBar x:Name="SearchBar" Placeholder="Tìm quán ăn..." />
+
+        <CollectionView x:Name="PoiCollectionView" ItemsSource="{Binding}" SelectionMode="Single" SelectionChangedCommand="{Binding SelectionCommand}">
+            <CollectionView.ItemTemplate>
+                <DataTemplate>
+                    <Frame Padding="10" Margin="0,5" CornerRadius="10" HasShadow="True" BorderColor="#E0E0E0">
+                        <VerticalStackLayout Spacing="5">
+                            <Label Text="{Binding Name}" FontSize="16" FontAttributes="Bold" />
+                            <Label Text="{Binding Address}" FontSize="12" TextColor="Gray" LineBreakMode="TailTruncation" />
+                            <Label Text="{Binding Description}" FontSize="12" TextColor="#666666" LineBreakMode="TailTruncation" MaxLines="2" />
+                            <HorizontalStackLayout Spacing="5">
+                                <Label Text="📍" FontSize="14" />
+                                <Label Text="{Binding Latitude, StringFormat='{0:F4}'}, {Binding Longitude, StringFormat='{0:F4}'}" FontSize="10" TextColor="#999999" />
+                            </HorizontalStackLayout>
+                        </VerticalStackLayout>
+                    </Frame>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+    </VerticalStackLayout>
+</ContentPage>

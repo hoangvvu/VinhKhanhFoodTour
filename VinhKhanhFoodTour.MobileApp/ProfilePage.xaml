@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="VinhKhanhFoodTour.MobileApp.ProfilePage"
+             Title="Hồ sơ"
+             Shell.NavBarIsVisible="False">
+    <ScrollView>
+        <VerticalStackLayout Padding="20" Spacing="15">
+            <Frame Padding="15" CornerRadius="15" HasShadow="True" BorderColor="#E0E0E0" HorizontalOptions="Center">
+                <VerticalStackLayout Spacing="10" HorizontalOptions="Center">
+                    <BoxView Color="#D32F2F" WidthRequest="80" HeightRequest="80" CornerRadius="40" />
+                    <Label Text="Người dùng" FontSize="18" FontAttributes="Bold" HorizontalTextAlignment="Center" />
+                    <Label Text="user@example.com" FontSize="12" TextColor="Gray" HorizontalTextAlignment="Center" />
+                </VerticalStackLayout>
+            </Frame>
+
+            <VerticalStackLayout Spacing="10">
+                <Label Text="Thông tin cá nhân" FontSize="16" FontAttributes="Bold" />
+                <Frame Padding="12" CornerRadius="8" HasShadow="True" BorderColor="#E0E0E0">
+                    <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="Auto,*" RowSpacing="10" ColumnSpacing="10">
+                        <Label Grid.Row="0" Grid.Column="0" Text="Tên:" FontAttributes="Bold" />
+                        <Label Grid.Row="0" Grid.Column="1" Text="Khách du lịch" />
+                        <Label Grid.Row="1" Grid.Column="0" Text="Email:" FontAttributes="Bold" />
+                        <Label Grid.Row="1" Grid.Column="1" Text="user@example.com" />
+                        <Label Grid.Row="2" Grid.Column="0" Text="Điện thoại:" FontAttributes="Bold" />
+                        <Label Grid.Row="2" Grid.Column="1" Text="0123456789" />
+                    </Grid>
+                </Frame>
+            </VerticalStackLayout>
+
+            <VerticalStackLayout Spacing="10">
+                <Label Text="Cài đặt" FontSize="16" FontAttributes="Bold" />
+                <Button Text="Chỉnh sửa hồ sơ" BackgroundColor="#1976D2" TextColor="White" FontAttributes="Bold" />
+                <Button Text="Thay đổi mật khẩu" BackgroundColor="#388E3C" TextColor="White" FontAttributes="Bold" />
+                <Button Text="Đăng xuất" BackgroundColor="#D32F2F" TextColor="White" FontAttributes="Bold" Clicked="OnLogoutClicked" />
+            </VerticalStackLayout>
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

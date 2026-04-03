@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="VinhKhanhFoodTour.MobileApp.LoginPage"
+             Title="Đăng nhập"
+             Shell.NavBarIsVisible="False"
+             BackgroundColor="White">
+    <ScrollView>
+        <VerticalStackLayout Padding="20" Spacing="20" VerticalOptions="Center">
+            <!-- Header with logo -->
+            <VerticalStackLayout Spacing="15" HorizontalOptions="Center" Margin="0,30,0,0">
+                <BoxView WidthRequest="80" HeightRequest="80" Color="#D32F2F" CornerRadius="20" HorizontalOptions="Center" />
+                <Label Text="PHỐ ẨM THỰC&#10;VĨNH KHÁNH" 
+                       FontSize="24" 
+                       FontAttributes="Bold" 
+                       TextColor="#D32F2F" 
+                       HorizontalTextAlignment="Center" />
+                <Label Text="Khám phá ẩm thực địa phương" 
+                       FontSize="14" 
+                       TextColor="Gray" 
+                       HorizontalTextAlignment="Center" />
+            </VerticalStackLayout>
+
+            <!-- Divider -->
+            <BoxView HeightRequest="1" Color="#E0E0E0" Margin="0,10" />
+
+            <!-- Login form -->
+            <VerticalStackLayout Spacing="15" Margin="0,20">
+                <Label Text="Đăng nhập tài khoản" FontSize="18" FontAttributes="Bold" />
+
+                <!-- Email field -->
+                <VerticalStackLayout Spacing="5">
+                    <Label Text="Email" FontAttributes="Bold" FontSize="12" />
+                    <Frame Padding="15" CornerRadius="10" BorderColor="#E0E0E0" HasShadow="False">
+                        <Entry x:Name="EntryEmail" 
+                               Placeholder="Nhập email của bạn" 
+                               Keyboard="Email" />
+                    </Frame>
+                </VerticalStackLayout>
+
+                <!-- Password field -->
+                <VerticalStackLayout Spacing="5">
+                    <Label Text="Mật khẩu" FontAttributes="Bold" FontSize="12" />
+                    <Frame Padding="15" CornerRadius="10" BorderColor="#E0E0E0" HasShadow="False">
+                        <Entry x:Name="EntryPassword" 
+                               Placeholder="Nhập mật khẩu" 
+                               IsPassword="True" />
+                    </Frame>
+                </VerticalStackLayout>
+
+                <!-- Remember me and forgot password -->
+                <HorizontalStackLayout Spacing="0">
+                    <CheckBox />
+                    <Label Text="Nhớ tôi" VerticalOptions="Center" Margin="5,0,0,0" />
+                    <Label Text="Quên mật khẩu?" 
+                           TextDecorations="Underline" 
+                           TextColor="#1976D2"
+                           HorizontalOptions="EndAndExpand" 
+                           VerticalOptions="Center" />
+                </HorizontalStackLayout>
+            </VerticalStackLayout>
+
+            <!-- Login button -->
+            <Button Text="ĐĂNG NHẬP" 
+                    BackgroundColor="#D32F2F" 
+                    TextColor="White" 
+                    FontAttributes="Bold"
+                    FontSize="16"
+                    Padding="0,15"
+                    CornerRadius="10"
+                    Clicked="OnLoginClicked" />
+
+            <!-- Divider -->
+            <Grid ColumnDefinitions="*,Auto,*" Margin="0,10">
+                <BoxView Grid.Column="0" Color="#E0E0E0" HeightRequest="1" VerticalOptions="Center" />
+                <Label Grid.Column="1" Text="hoặc" TextColor="Gray" Margin="10,0" />
+                <BoxView Grid.Column="2" Color="#E0E0E0" HeightRequest="1" VerticalOptions="Center" />
+            </Grid>
+
+            <!-- Social login buttons -->
+            <HorizontalStackLayout Spacing="10">
+                <Frame Padding="0" CornerRadius="10" BorderColor="#E0E0E0" HasShadow="False" HorizontalOptions="FillAndExpand">
+                    <Button Text="👤 Google" BackgroundColor="Transparent" TextColor="Black" Padding="0" />
+                </Frame>
+                <Frame Padding="0" CornerRadius="10" BorderColor="#E0E0E0" HasShadow="False" HorizontalOptions="FillAndExpand">
+                    <Button Text="f Facebook" BackgroundColor="Transparent" TextColor="Black" Padding="0" />
+                </Frame>
+            </HorizontalStackLayout>
+
+            <!-- Sign up link -->
+            <HorizontalStackLayout HorizontalOptions="Center" Margin="0,20">
+                <Label Text="Chưa có tài khoản? " />
+                <Label Text="Đăng ký" TextDecorations="Underline" TextColor="#D32F2F" FontAttributes="Bold" />
+            </HorizontalStackLayout>
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

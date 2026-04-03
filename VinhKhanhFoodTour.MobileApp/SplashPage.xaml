@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="VinhKhanhFoodTour.MobileApp.SplashPage"
+             Shell.NavBarIsVisible="False"
+             BackgroundColor="White">
+    <Grid RowDefinitions="*,Auto,*" Padding="20">
+        <!-- Top spacer -->
+        <BoxView Grid.Row="0" />
+
+        <!-- Logo and text -->
+        <VerticalStackLayout Grid.Row="1" Spacing="20" HorizontalOptions="Center" VerticalOptions="Center">
+            <!-- Animated Logo Box -->
+            <BoxView x:Name="LogoBox" 
+                     WidthRequest="100" 
+                     HeightRequest="100" 
+                     Color="#D32F2F" 
+                     CornerRadius="20"
+                     HorizontalOptions="Center" />
+
+            <!-- App Title -->
+            <Label x:Name="TitleLabel"
+                   Text="PHỐ ẨM THỰC VĨNH KHÁNH" 
+                   FontSize="28" 
+                   FontAttributes="Bold" 
+                   TextColor="#D32F2F"
+                   HorizontalTextAlignment="Center"
+                   Opacity="0" />
+
+            <!-- Subtitle -->
+            <Label x:Name="SubtitleLabel"
+                   Text="Khám phá ẩm thực địa phương" 
+                   FontSize="14" 
+                   TextColor="Gray"
+                   HorizontalTextAlignment="Center"
+                   Opacity="0" />
+
+            <!-- Loading dots -->
+            <HorizontalStackLayout x:Name="LoadingDots" 
+                                   Spacing="5" 
+                                   HorizontalOptions="Center"
+                                   Opacity="0">
+                <BoxView x:Name="Dot1" WidthRequest="8" HeightRequest="8" Color="#D32F2F" CornerRadius="4" />
+                <BoxView x:Name="Dot2" WidthRequest="8" HeightRequest="8" Color="#D32F2F" CornerRadius="4" Opacity="0.5" />
+                <BoxView x:Name="Dot3" WidthRequest="8" HeightRequest="8" Color="#D32F2F" CornerRadius="4" Opacity="0.3" />
+            </HorizontalStackLayout>
+        </VerticalStackLayout>
+
+        <!-- Bottom spacer -->
+        <BoxView Grid.Row="2" />
+    </Grid>
+</ContentPage>

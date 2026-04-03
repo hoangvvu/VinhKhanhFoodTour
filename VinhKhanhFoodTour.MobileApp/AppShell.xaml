@@ -4,11 +4,33 @@
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     xmlns:local="clr-namespace:VinhKhanhFoodTour.MobileApp"
-    Title="VinhKhanhFoodTour.MobileApp">
+    Title="Phố Ẩm Thực Vĩnh Khánh"
+    Shell.TabBarBackgroundColor="White"
+    Shell.TabBarForegroundColor="#D32F2F"
+    Shell.TabBarUnselectedColor="#CCCCCC">
 
-    <ShellContent
-        Title="Home"
-        ContentTemplate="{DataTemplate local:MainPage}"
-        Route="MainPage" />
+    <TabBar>
+
+        <Tab Title="Trang chủ" Icon="home_icon.png">
+            <ShellContent Route="HomePage" ContentTemplate="{DataTemplate local:HomePage}" />
+        </Tab>
+
+        <Tab Title="Gian hàng" Icon="shop_icon.png">
+            <ShellContent Route="ShopPage" ContentTemplate="{DataTemplate local:ShopPage}" />
+        </Tab>
+
+        <Tab Title="Bản đồ" Icon="map_icon.png">
+            <ShellContent Route="MainPage" ContentTemplate="{DataTemplate local:MainPage}" />
+        </Tab>
+
+        <Tab Title="Hồ sơ" Icon="profile_icon.png">
+            <ShellContent Route="ProfilePage" ContentTemplate="{DataTemplate local:ProfilePage}" />
+        </Tab>
+
+        <Tab Title="Tài khoản" Icon="login_icon.png">
+            <ShellContent Route="LoginPage" ContentTemplate="{DataTemplate local:LoginPage}" />
+        </Tab>
+
+    </TabBar>
 
 </Shell>
