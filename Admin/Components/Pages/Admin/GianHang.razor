@@ -1,0 +1,43 @@
+@page "/gian-hang"
+@rendermode InteractiveServer
+
+<div class="container-fluid p-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="text-white fw-bold">QUẢN LÝ GIAN HÀNG</h3>
+        <button class="btn btn-danger rounded-pill px-4 shadow">+ Thêm gian hàng</button>
+    </div>
+
+    <div class="card bg-dark-card border-0 shadow">
+        <div class="card-body p-0">
+            <table class="table table-dark table-hover mb-0 align-middle">
+                <thead class="bg-black text-muted small">
+                    <tr>
+                        <th class="ps-4 py-3">GIAN HÀNG</th>
+                        <th>ĐỊA CHỈ</th>
+                        <th>TỌA ĐỘ (LAT/LONG)</th>
+                        <th>NGÔN NGỮ</th>
+                        <th class="text-end pe-4">THAO TÁC</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="ps-4">
+                            <span class="fw-bold">Ốc Oanh</span><br />
+                            <span class="badge bg-danger-subtle text-danger small">Ưu tiên 1</span>
+                        </td>
+                        <td>534 Vĩnh Khánh, Q.4</td>
+                        <td class="text-muted small">10.7601 / 106.7029</td>
+                        <td>
+                            <span class="badge-lang badge-vi">VI</span>
+                            <span class="badge-lang badge-en">EN</span>
+                        </td>
+                        <td class="text-end pe-4">
+                            <button class="btn btn-sm btn-outline-light me-2">Sửa</button>
+                            <button class="btn btn-sm btn-outline-danger">Xóa</button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

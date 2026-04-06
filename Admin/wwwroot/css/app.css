@@ -128,3 +128,113 @@ h1:focus {
     background-color: var(--admin-bg);
     min-height: 100vh;
 }
+
+/* --- SITE-WIDE UPDATES --- */
+body {
+    background-color: #262121;
+    color: #F0EBE3;
+    font-family: 'DMSans-Regular', sans-serif; /* Bạn có thể thêm font DMSans */
+}
+
+a {
+    text-decoration: none;
+    color: inherit;
+}
+
+/* --- SIDECAR (NAV MENU) STYLE --- */
+.nav-card {
+    display: flex;
+    align-items: center;
+    padding: 12px 20px;
+    border-radius: 12px;
+    margin-bottom: 2px;
+    transition: all 0.3s ease;
+    background-color: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    color: #8A8078;
+}
+
+    .nav-card span.bi {
+        margin-right: 15px;
+        font-size: 1.1rem;
+    }
+
+    .nav-card:hover {
+        background-color: #1A1818;
+        color: #F0EBE3;
+    }
+
+    .active-nav, .nav-card.active {
+        background-color: #1A1818;
+        color: #F0EBE3 !important;
+        border-left: 3px solid #E8A020;
+    }
+
+/* --- STATISTICS CARDS & CONTENT CARDS STYLE --- */
+.stats-card, .content-card {
+    background-color: #1A1818;
+    border-radius: 16px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    border: none;
+}
+
+.bg-light-danger {
+    background-color: rgba(200, 55, 45, 0.1);
+    color: #C8372D;
+}
+
+.bg-light-amber {
+    background-color: rgba(232, 160, 32, 0.1);
+    color: #E8A020;
+}
+
+.bg-light-secondary {
+    background-color: rgba(138, 128, 120, 0.1);
+    color: #8A8078;
+}
+
+.content-card h5 {
+    color: #F0EBE3;
+    font-weight: 600;
+}
+
+.map-placeholder {
+    border-radius: 12px;
+    background-color: rgba(255,255,255,0.02);
+}
+
+.badge-round-lg {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+}
+
+.text-success {
+    color: #198754 !important;
+}
+
+.text-info {
+    color: #0dcaf0 !important;
+}
+
+.text-muted {
+    color: #8A8078 !important;
+}
+
+/* Các badge ngôn ngữ rounded pill xịn hơn */
+.badge.bg-danger-subtle.text-danger {
+    background-color: rgba(200, 55, 45, 0.15);
+    color: #C8372D;
+    border: 1px solid rgba(200, 55, 45, 0.3);
+}
+
+.badge.bg-light.text-muted {
+    background-color: #f1f1f1;
+    color: #8a8078;
+    border: 1px solid #ddd;
+}

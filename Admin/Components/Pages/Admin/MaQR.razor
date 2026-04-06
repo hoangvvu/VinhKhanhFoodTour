@@ -1,0 +1,16 @@
+@page "/ma-qr"
+@rendermode InteractiveServer
+
+<div class="container-fluid p-4">
+    <h3 class="text-white fw-bold mb-4">QUẢN LÝ MÃ QR</h3>
+    
+    <div class="row row-cols-2 row-cols-md-4 g-4">
+        <div class="col text-center">
+            <div class="p-3 bg-white rounded-4 shadow-lg mb-2">
+                <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=oc-oanh" class="img-fluid" alt="QR" />
+            </div>
+            <p class="text-white mb-0 fw-bold">Ốc Oanh</p>
+            <button class="btn btn-link btn-sm text-danger text-decoration-none">Tải về (.PNG)</button>
+        </div>
+    </div>
+</div>
