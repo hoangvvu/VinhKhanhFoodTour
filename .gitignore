@@ -1,0 +1,29 @@
+# Visual Studio
+.vs/
+.vscode/
+*.user
+*.suo
+*.sln.docstates
+
+# Build results
+bin/
+obj/
+*.dll
+*.exe
+*.pdb
+
+# NuGet
+.nuget/
+*.nupkg
+*.snupkg
+
+# Local user-specific files
+*.local.json
+
+# Backup files
+*.bak
+*~
+
+# OS
+.DS_Store
+Thumbs.db

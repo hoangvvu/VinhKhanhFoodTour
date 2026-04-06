@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage x:Class="VKFoodTour.Mobile.Views.HomePage"
+             xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:VKFoodTour.Mobile.ViewModels"
+             x:DataType="vm:HomeViewModel"
+             BackgroundColor="#0F0E0E"
+             Shell.NavBarIsVisible="False">
+
+    <Grid RowDefinitions="Auto, *, Auto">
+        <HorizontalStackLayout Grid.Row="0" Padding="20,20,20,10" Spacing="10">
+            <Label Text="📍" FontSize="24" VerticalOptions="Center"/>
+            <VerticalStackLayout VerticalOptions="Center">
+                <Label Text="PHỐ ẨM THỰC" FontSize="12" TextColor="#8A8078" FontFamily="DMSansMedium" />
+                <Label Text="VĨNH KHÁNH" FontSize="28" TextColor="#F0EBE3" FontFamily="BebasNeue" />
+            </VerticalStackLayout>
+        </HorizontalStackLayout>
+
+        <VerticalStackLayout Grid.Row="1" Padding="20" Spacing="15" VerticalOptions="Center">
+            
+            <Frame BackgroundColor="#1A1818" BorderColor="#2E2A2A" CornerRadius="12" Padding="20">
+                <VerticalStackLayout Spacing="10" HorizontalOptions="Center">
+                    <Label Text="{Binding IsTracking, StringFormat='Đang định vị: {0}'}" 
+                           TextColor="#8A8078" HorizontalOptions="Center"/>
+                    
+                    <VerticalStackLayout IsVisible="{Binding NearestPoi, Converter={x:Static ObjectToBoolConverter}}" Spacing="5">
+                        <Label Text="Đang ở gần:" FontSize="14" TextColor="#8A8078" HorizontalOptions="Center"/>
+                        <Label Text="{Binding NearestPoi.Name}" FontSize="24" TextColor="#E8A020" FontFamily="BebasNeue" HorizontalOptions="Center"/>
+                        <Label Text="{Binding NearestPoi.Address}" FontSize="12" TextColor="#F0EBE3" HorizontalOptions="Center"/>
+                    </VerticalStackLayout>
+
+                    <Label Text="Hãy di chuyển để khám phá các gian hàng..." 
+                           IsVisible="{Binding NearestPoi, Converter={x:Static InvertedObjectToBoolConverter}}"
+                           TextColor="#F0EBE3" FontAttributes="Italic" HorizontalOptions="Center"/>
+                </VerticalStackLayout>
+            </Frame>
+        </VerticalStackLayout>
+
+        <Frame Grid.Row="2" Margin="14,0,14,20" Padding="15" CornerRadius="15" 
+               BackgroundColor="#C8372D" BorderColor="Transparent"
+               IsVisible="{Binding NowPlayingText, Converter={x:Static StringToBoolConverter}}">
+            <Grid ColumnDefinitions="*, Auto">
+                <VerticalStackLayout Grid.Column="0" VerticalOptions="Center">
+                    <Label Text="ĐANG THUYẾT MINH..." FontSize="11" TextColor="#F0EBE3" Opacity="0.8" FontFamily="DMSansMedium"/>
+                    <Label Text="{Binding NowPlayingText}" FontSize="14" TextColor="White" LineBreakMode="TailTruncation" MaxLines="1"/>
+                </VerticalStackLayout>
+                
+                <ImageButton Grid.Column="1" Source="icon_stop.png" WidthRequest="32" HeightRequest="32" 
+                             Command="{Binding StopCommand}" BackgroundColor="Transparent"/>
+            </Grid>
+        </Frame>
+    </Grid>
+</ContentPage>

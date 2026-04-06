@@ -1,0 +1,15 @@
+<Shell x:Class="VKFoodTour.Mobile.AppShell"
+       xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+       xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+       xmlns:pages="clr-namespace:VKFoodTour.Mobile.Views"
+       Shell.NavBarIsVisible="False">
+
+    <TabBar>
+        <Tab Title="Khám phá" Icon="icon_map.png">
+            <ShellContent ContentTemplate="{DataTemplate pages:HomePage}" Route="home" />
+        </Tab>
+        <Tab Title="Gian hàng" Icon="icon_stall.png">
+            <ShellContent ContentTemplate="{DataTemplate pages:StallListPage}" Route="stalls" />
+        </Tab>
+    </TabBar>
+</Shell>
