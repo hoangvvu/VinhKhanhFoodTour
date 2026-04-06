@@ -35,9 +35,13 @@ builder.Services.AddAuthorization();
 // Quan trọng: Giúp Blazor nhận diện trạng thái Đăng nhập trên toàn App
 builder.Services.AddCascadingAuthenticationState();
 
+// Đăng ký HttpClient cho các Services
+builder.Services.AddHttpClient();
+
 // Đăng ký các Service nghiệp vụ
 builder.Services.AddScoped<PoiService>();
 builder.Services.AddScoped<AuthService>();  // ★ MỚI: Service đăng nhập
+builder.Services.AddScoped<TtsService>();   // ★ MỚI: Service Text-to-Speech
 
 var app = builder.Build();
 

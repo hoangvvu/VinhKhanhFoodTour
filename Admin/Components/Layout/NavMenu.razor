@@ -11,28 +11,42 @@
             <span class="bi bi-speedometer2 me-2 fs-5"></span> Dashboard
         </NavLink>
 
-        <NavLink class="nav-card" href="admin/pois">
-            <span class="bi bi-shop me-2 fs-5"></span> Gian hàng
-        </NavLink>
-
-        <NavLink class="nav-card" href="thuyet-minh">
-            <span class="bi bi-headset me-2 fs-5"></span> Thuyết minh
-        </NavLink>
-
-        <NavLink class="nav-card" href="ma-qr">
-            <span class="bi bi-qr-code me-2 fs-5"></span> Mã QR
-        </NavLink>
-
-        @* ── Chỉ Admin mới thấy mục Người dùng ── *@
+        @* ── MENU DÀNH RIÊNG CHO ADMIN ── *@
         <AuthorizeView Roles="Admin">
-            <NavLink class="nav-card" href="nguoi-dung">
-                <span class="bi bi-people me-2 fs-5"></span> Người dùng
-            </NavLink>
+            <Authorized>
+                <div class="text-muted small fw-bold ms-3 mt-3 mb-1" style="font-size: 10px; letter-spacing: 1px;">QUẢN TRỊ HỆ THỐNG</div>
+                
+                <NavLink class="nav-card" href="admin/pois">
+                    <span class="bi bi-shop me-2 fs-5"></span> Duyệt gian hàng
+                </NavLink>
+                <NavLink class="nav-card" href="ma-qr">
+                    <span class="bi bi-qr-code me-2 fs-5"></span> Quản lý mã QR
+                </NavLink>
+                <NavLink class="nav-card" href="nguoi-dung">
+                    <span class="bi bi-people me-2 fs-5"></span> Nhân sự & Vendor
+                </NavLink>
+            </Authorized>
         </AuthorizeView>
 
-        <NavLink class="nav-card" href="analytics">
-            <span class="bi bi-graph-up me-2 fs-5"></span> Analytics
-        </NavLink>
+        @* ── MENU DÀNH RIÊNG CHO VENDOR (CHỦ QUÁN) ── *@
+        <AuthorizeView Roles="Vendor">
+            <Authorized>
+                <div class="text-muted small fw-bold ms-3 mt-3 mb-1" style="font-size: 10px; letter-spacing: 1px;">QUẢN LÝ QUÁN ĂN</div>
+                
+                <NavLink class="nav-card" href="vendor/thong-tin">
+                    <span class="bi bi-info-square me-2 fs-5"></span> Mô tả & Hình ảnh
+                </NavLink>
+                <NavLink class="nav-card" href="vendor/thuc-don">
+                    <span class="bi bi-card-list me-2 fs-5"></span> Thực đơn (Menu)
+                </NavLink>
+                <NavLink class="nav-card" href="vendor/thu-nhap">
+                    <span class="bi bi-wallet2 me-2 fs-5"></span> Doanh thu
+                </NavLink>
+                <NavLink class="nav-card" href="thuyet-minh">
+                    <span class="bi bi-headset me-2 fs-5"></span> Nhập kịch bản Audio
+                </NavLink>
+            </Authorized>
+        </AuthorizeView>
     </nav>
 
     @* ── Khu vực user info + Logout ở cuối sidebar ── *@

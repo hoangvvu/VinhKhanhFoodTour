@@ -1,0 +1,57 @@
+﻿@page "/vendor/thong-tin"
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = "Vendor")]
+@rendermode InteractiveServer
+
+<div class="container-fluid p-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="text-white fw-bold mb-0">THÔNG TIN QUÁN & HÌNH ẢNH</h3>
+        <button class="btn btn-danger rounded-pill px-4 shadow">
+            <i class="bi bi-floppy me-2"></i>Lưu thay đổi
+        </button>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-lg-6">
+            <div class="card bg-dark-card border-0 p-4 shadow-sm" style="border-radius: 16px;">
+                <h6 class="text-warning fw-bold mb-4 border-bottom border-secondary pb-2">THÔNG TIN CƠ BẢN</h6>
+                
+                <div class="mb-3">
+                    <label class="text-muted small fw-bold">Tên quán ăn</label>
+                    <input type="text" class="form-control bg-black border-secondary text-white" value="Ốc Oanh" />
+                </div>
+                <div class="mb-3">
+                    <label class="text-muted small fw-bold">Địa chỉ chi tiết</label>
+                    <input type="text" class="form-control bg-black border-secondary text-white" value="534 Vĩnh Khánh, Quận 4, TP.HCM" />
+                </div>
+                <div class="mb-3">
+                    <label class="text-muted small fw-bold">Giới thiệu ngắn (Sẽ hiển thị trên App)</label>
+                    <textarea class="form-control bg-black border-secondary text-white" rows="4">Quán ốc lâu đời và nổi tiếng nhất khu vực Vĩnh Khánh với đặc sản ốc hương rang muối ớt...</textarea>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="card bg-dark-card border-0 p-4 shadow-sm h-100" style="border-radius: 16px;">
+                <div class="d-flex justify-content-between align-items-center mb-4 border-bottom border-secondary pb-2">
+                    <h6 class="text-info fw-bold mb-0">THƯ VIỆN HÌNH ẢNH</h6>
+                    <button class="btn btn-sm btn-outline-light rounded-pill"><i class="bi bi-cloud-upload me-1"></i> Tải ảnh lên</button>
+                </div>
+                
+                <div class="row g-2">
+                    <div class="col-4">
+                        <div class="bg-black rounded-3 d-flex align-items-center justify-content-center position-relative" style="height: 120px; border: 1px dashed #6c757d;">
+                            <span class="text-muted">Ảnh bìa 1</span>
+                            <button class="btn btn-sm btn-danger position-absolute top-0 end-0 m-1" style="padding: 0.1rem 0.3rem;"><i class="bi bi-x"></i></button>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="bg-black rounded-3 d-flex align-items-center justify-content-center position-relative" style="height: 120px; border: 1px dashed #6c757d;">
+                            <span class="text-muted">Ảnh món ăn</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

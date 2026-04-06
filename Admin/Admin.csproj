@@ -21,9 +21,8 @@
 	<ItemGroup>
 		<ProjectReference Include="..\VKFoodTour.Infrastructure\VKFoodTour.Infrastructure.csproj" />
 	</ItemGroup>
-
 	<ItemGroup>
-		<Folder Include="Components\Layout\Admin\" />
+	  <Folder Include="Components\Layout\Admin\" />
 	</ItemGroup>
 
 </Project>

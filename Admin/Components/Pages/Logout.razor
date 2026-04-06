@@ -1,5 +1,7 @@
 @page "/logout"
 @using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
 @using Microsoft.AspNetCore.Authentication.Cookies
 @inject IHttpContextAccessor HttpContextAccessor
 @inject NavigationManager Navigation

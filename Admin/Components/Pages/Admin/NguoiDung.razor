@@ -2,20 +2,187 @@
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize]
 @rendermode InteractiveServer
+@inject AuthService AuthService
 
 <div class="container-fluid p-4">
-    <h3 class="text-white fw-bold mb-4">NHÂN SỰ QUẢN TRỊ</h3>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="text-white fw-bold mb-0">NHÂN SỰ QUẢN TRỊ</h3>
+        <button class="btn btn-danger rounded-pill px-4 shadow" @onclick="ShowModal">
+            <i class="bi bi-person-plus me-2"></i>Thêm người dùng
+        </button>
+    </div>
     
-    <div class="card bg-dark-card border-0">
-        <div class="card-body">
-            <div class="d-flex align-items-center p-3 border-bottom border-secondary">
-                <div class="bg-danger rounded-circle p-3 me-3">VH</div>
-                <div>
-                    <h6 class="text-white mb-0">Việt Hoàng</h6>
-                    <small class="text-muted">Administrator (Toàn quyền)</small>
+    @if (users == null)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-danger" role="status"></div>
+            <p class="text-muted mt-2">Đang tải dữ liệu...</p>
+        </div>
+    }
+    else
+    {
+        <div class="row g-4">
+            @foreach (var user in users)
+            {
+                <div class="col-md-6 col-lg-4">
+                    <div class="card bg-dark-card border-0 shadow-sm h-100" style="border-radius: 12px;">
+                        <div class="card-body p-4">
+                            <div class="d-flex align-items-center">
+                                @* Tự động lấy chữ cái đầu của tên làm Avatar *@
+                                <div class="bg-danger rounded-circle d-flex justify-content-center align-items-center me-3 text-white fw-bold shadow" style="width: 50px; height: 50px; font-size: 1.2rem;">
+                                    @(string.IsNullOrWhiteSpace(user.Name) ? "U" : user.Name.Substring(0, 1).ToUpper())
+                                </div>
+                                <div>
+                                    <h6 class="text-white mb-1 fw-bold">@user.Name</h6>
+                                    <small class="text-muted d-block mb-2">@user.Email</small>
+                                    <div>
+                                        <span class="badge @(user.Role == "Admin" ? "bg-warning text-dark" : "bg-info text-dark")">@user.Role</span>
+                                        @if (user.IsActive)
+                                        {
+                                            <span class="badge bg-success ms-1">Hoạt động</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary ms-1">Đã khóa</span>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <span class="ms-auto badge bg-success">Online</span>
+            }
+        </div>
+    }
+</div>
+
+@* ── MODAL THÊM NGƯỜI DÙNG ── *@
+@if (isShowModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.8); backdrop-filter: blur(4px);">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-dark border-secondary text-white" style="border-radius: 16px;">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title fw-bold">Thêm Nhân Sự Mới</h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="HideModal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    @if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <div class="alert alert-danger p-3 small rounded-3"><i class="bi bi-exclamation-triangle me-2"></i>@errorMessage</div>
+                    }
+
+                    <div class="mb-3">
+                        <label class="form-label text-muted small fw-bold">Họ và Tên</label>
+                        <input type="text" class="form-control bg-black border-secondary text-white rounded-3" @bind="newName" placeholder="VD: Nguyễn Văn A" />
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label text-muted small fw-bold">Email đăng nhập</label>
+                        <input type="email" class="form-control bg-black border-secondary text-white rounded-3" @bind="newEmail" placeholder="VD: vendor1@vinhkhanh.vn" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label text-muted small fw-bold">Mật khẩu</label>
+                        <input type="password" class="form-control bg-black border-secondary text-white rounded-3" @bind="newPassword" placeholder="Tạo mật khẩu cho tài khoản..." />
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label text-muted small fw-bold">Phân quyền (Role)</label>
+                        <select class="form-select bg-black border-secondary text-white rounded-3" @bind="newRole">
+                            <option value="Vendor">Vendor (Chủ quán ăn)</option>
+                            <option value="Admin">Admin (Quản trị viên hệ thống)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-outline-light rounded-pill px-4" @onclick="HideModal">Hủy</button>
+                    <button type="button" class="btn btn-danger rounded-pill px-4 fw-bold shadow-sm" @onclick="SaveUser" disabled="@isSaving">
+                        @if (isSaving) {
+                            <span class="spinner-border spinner-border-sm me-2"></span> <span>Đang lưu...</span>
+                        } else {
+                            <i class="bi bi-check2-circle me-2"></i><span>Tạo tài khoản</span>
+                        }
+                    </button>
+                </div>
             </div>
         </div>
     </div>
-</div>
+}
+
+@code {
+    private List<User>? users;
+    
+    // Các biến trạng thái Modal
+    private bool isShowModal = false;
+    private bool isSaving = false;
+    private string errorMessage = "";
+
+    // Các biến lưu dữ liệu Form
+    private string newName = "";
+    private string newEmail = "";
+    private string newPassword = "";
+    private string newRole = "Vendor";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUsers();
+    }
+
+    private async Task LoadUsers()
+    {
+        users = await AuthService.GetAllUsersAsync();
+    }
+
+    private void ShowModal()
+    {
+        // Xóa sạch dữ liệu cũ khi mở Modal lên
+        newName = "";
+        newEmail = "";
+        newPassword = "";
+        newRole = "Vendor";
+        errorMessage = "";
+        
+        isShowModal = true;
+    }
+
+    private void HideModal()
+    {
+        isShowModal = false;
+    }
+
+    private async Task SaveUser()
+    {
+        // 1. Kiểm tra đầu vào cơ bản
+        if (string.IsNullOrWhiteSpace(newName) || string.IsNullOrWhiteSpace(newEmail) || string.IsNullOrWhiteSpace(newPassword))
+        {
+            errorMessage = "Vui lòng nhập đầy đủ Họ Tên, Email và Mật khẩu.";
+            return;
+        }
+
+        isSaving = true;
+        errorMessage = "";
+        StateHasChanged();
+
+        try
+        {
+            // 2. Gọi API để mã hóa mật khẩu và lưu xuống Database
+            await AuthService.CreateUserAsync(newName, newEmail, newPassword, newRole);
+            
+            // 3. Ẩn modal và load lại danh sách sau khi lưu thành công
+            HideModal();
+            await LoadUsers(); 
+        }
+        catch (Exception ex)
+        {
+            // Nếu có lỗi (ví dụ Email bị trùng trong SQL)
+            errorMessage = $"Lỗi khi tạo: Email này có thể đã tồn tại trong hệ thống!";
+            Console.WriteLine(ex.Message);
+        }
+        finally
+        {
+            isSaving = false;
+            StateHasChanged();
+        }
+    }
+}
