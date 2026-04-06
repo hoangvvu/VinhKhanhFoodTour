@@ -1,10 +1,23 @@
-namespace VKFoodTour.Mobile.Views; // Namespace phải khớp 100% với x:Class ở trên
+using VKFoodTour.Mobile.ViewModels;
+
+namespace VKFoodTour.Mobile.Views;
 
 public partial class HomePage : ContentPage
 {
-    public HomePage(VKFoodTour.Mobile.ViewModels.HomeViewModel viewModel)
+    public HomePage(HomeViewModel viewModel)
     {
-        InitializeComponent(); // Dòng này sẽ hết lỗi khi Namespace ở đây khớp với XAML
+        InitializeComponent();
         BindingContext = viewModel;
+    }
+
+    protected override async void OnAppearing()
+    {
+        base.OnAppearing();
+
+        // Load dữ liệu từ ViewModel
+        if (BindingContext is HomeViewModel vm)
+        {
+            await vm.LoadDataCommand.ExecuteAsync(null);
+        }
     }
 }

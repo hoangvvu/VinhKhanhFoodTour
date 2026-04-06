@@ -4,7 +4,7 @@ using VKFoodTour.Mobile.Services;     // Sửa lại namespace này
 using VKFoodTour.Mobile.ViewModels;   // Sửa lại namespace này
 using VKFoodTour.Mobile.Views;        // Sửa lại namespace này
 
-namespace VinhKhanhStreet.Mobile;
+namespace VKFoodTour.Mobile;
 
 public static class MauiProgram
 {
@@ -14,6 +14,7 @@ public static class MauiProgram
         builder
             .UseMauiApp<App>()
             .UseMauiCommunityToolkit()
+            .UseMauiMaps() // <-- Thêm dòng này
             .ConfigureFonts(fonts =>
             {
                 fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");

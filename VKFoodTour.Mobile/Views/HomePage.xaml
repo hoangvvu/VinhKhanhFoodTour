@@ -3,51 +3,95 @@
              xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:vm="clr-namespace:VKFoodTour.Mobile.ViewModels"
+             xmlns:maps="clr-namespace:Microsoft.Maui.Controls.Maps;assembly=Microsoft.Maui.Controls.Maps"
+             xmlns:models="clr-namespace:VKFoodTour.Mobile.Models"
              x:DataType="vm:HomeViewModel"
              BackgroundColor="#0F0E0E"
              Shell.NavBarIsVisible="False">
 
-    <Grid RowDefinitions="Auto, *, Auto">
-        <HorizontalStackLayout Grid.Row="0" Padding="20,20,20,10" Spacing="10">
-            <Label Text="📍" FontSize="24" VerticalOptions="Center"/>
-            <VerticalStackLayout VerticalOptions="Center">
-                <Label Text="PHỐ ẨM THỰC" FontSize="12" TextColor="#8A8078" FontFamily="DMSansMedium" />
-                <Label Text="VĨNH KHÁNH" FontSize="28" TextColor="#F0EBE3" FontFamily="BebasNeue" />
-            </VerticalStackLayout>
-        </HorizontalStackLayout>
+    <ScrollView>
+        <VerticalStackLayout Padding="20" Spacing="20">
 
-        <VerticalStackLayout Grid.Row="1" Padding="20" Spacing="15" VerticalOptions="Center">
-            
-            <Frame BackgroundColor="#1A1818" BorderColor="#2E2A2A" CornerRadius="12" Padding="20">
-                <VerticalStackLayout Spacing="10" HorizontalOptions="Center">
-                    <Label Text="{Binding IsTracking, StringFormat='Đang định vị: {0}'}" 
-                           TextColor="#8A8078" HorizontalOptions="Center"/>
-                    
-                    <VerticalStackLayout IsVisible="{Binding NearestPoi, Converter={x:Static ObjectToBoolConverter}}" Spacing="5">
-                        <Label Text="Đang ở gần:" FontSize="14" TextColor="#8A8078" HorizontalOptions="Center"/>
-                        <Label Text="{Binding NearestPoi.Name}" FontSize="24" TextColor="#E8A020" FontFamily="BebasNeue" HorizontalOptions="Center"/>
-                        <Label Text="{Binding NearestPoi.Address}" FontSize="12" TextColor="#F0EBE3" HorizontalOptions="Center"/>
-                    </VerticalStackLayout>
-
-                    <Label Text="Hãy di chuyển để khám phá các gian hàng..." 
-                           IsVisible="{Binding NearestPoi, Converter={x:Static InvertedObjectToBoolConverter}}"
-                           TextColor="#F0EBE3" FontAttributes="Italic" HorizontalOptions="Center"/>
-                </VerticalStackLayout>
-            </Frame>
-        </VerticalStackLayout>
-
-        <Frame Grid.Row="2" Margin="14,0,14,20" Padding="15" CornerRadius="15" 
-               BackgroundColor="#C8372D" BorderColor="Transparent"
-               IsVisible="{Binding NowPlayingText, Converter={x:Static StringToBoolConverter}}">
             <Grid ColumnDefinitions="*, Auto">
-                <VerticalStackLayout Grid.Column="0" VerticalOptions="Center">
-                    <Label Text="ĐANG THUYẾT MINH..." FontSize="11" TextColor="#F0EBE3" Opacity="0.8" FontFamily="DMSansMedium"/>
-                    <Label Text="{Binding NowPlayingText}" FontSize="14" TextColor="White" LineBreakMode="TailTruncation" MaxLines="1"/>
+                <VerticalStackLayout Grid.Column="0" Spacing="2">
+                    <Label Text="XIN CHÀO! 👋" FontSize="14" TextColor="#8A8078" FontFamily="DMSansMedium"/>
+                    <Label Text="KHÁM PHÁ VĨNH KHÁNH" FontSize="26" TextColor="#F0EBE3" FontFamily="BebasNeue"/>
                 </VerticalStackLayout>
-                
-                <ImageButton Grid.Column="1" Source="icon_stop.png" WidthRequest="32" HeightRequest="32" 
-                             Command="{Binding StopCommand}" BackgroundColor="Transparent"/>
+
+                <Border Grid.Column="1" BackgroundColor="#1A1818" Stroke="#2E2A2A" HeightRequest="45" WidthRequest="45">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="22.5"/>
+                    </Border.StrokeShape>
+                    <Label Text="{Binding CurrentLang, Converter={StaticResource LangToFlagConverter}}" 
+                           HorizontalOptions="Center" VerticalOptions="Center" FontSize="20"/>
+                </Border>
             </Grid>
-        </Frame>
-    </Grid>
+
+            <Border HeightRequest="200" StrokeThickness="0" BackgroundColor="#1A1818">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="20"/>
+                </Border.StrokeShape>
+                <Grid>
+                    <maps:Map x:Name="miniMap" IsScrollEnabled="False" IsZoomEnabled="False" />
+                    <BoxView Color="Transparent">
+                        <BoxView.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding OpenFullMapCommand}"/>
+                        </BoxView.GestureRecognizers>
+                    </BoxView>
+                    <Border VerticalOptions="End" 
+                        HorizontalOptions="End" 
+                        Margin="10" 
+                        BackgroundColor="#CC000000" 
+                        Padding="8,4">
+                        <Border.StrokeShape>
+                            <RoundRectangle CornerRadius="10"/>
+                        </Border.StrokeShape>
+                        <Label Text="Phóng to bản đồ ↗️" FontSize="10" TextColor="White"/>
+                    </Border>
+                </Grid>
+            </Border>
+
+            <Border BackgroundColor="#C8372D" Padding="15">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="15"/>
+                </Border.StrokeShape>
+                <Grid ColumnDefinitions="Auto, *">
+                    <Label Grid.Column="0" Text="🎙️" FontSize="24" VerticalOptions="Center"/>
+                    <VerticalStackLayout Grid.Column="1" Margin="15,0,0,0">
+                        <Label Text="THUYẾT MINH TỰ ĐỘNG" FontSize="12" TextColor="White" FontFamily="DMSansMedium" Opacity="0.9"/>
+                        <Label Text="{Binding NowPlayingText, FallbackValue='Sẵn sàng phát khi bạn đến gần quán ăn...'}" 
+                               TextColor="White" FontSize="13" MaxLines="2"/>
+                    </VerticalStackLayout>
+                </Grid>
+            </Border>
+
+            <VerticalStackLayout Spacing="10">
+                <Grid ColumnDefinitions="*, Auto">
+                    <Label Grid.Column="0" Text="GIAN HÀNG NỔI BẬT" FontSize="18" TextColor="#F0EBE3" FontFamily="BebasNeue"/>
+                    <Label Grid.Column="1" Text="Xem tất cả" TextColor="#E8A020" FontSize="12" VerticalOptions="Center"/>
+                </Grid>
+
+                <CollectionView ItemsSource="{Binding Pois}" HeightRequest="180">
+                    <CollectionView.ItemsLayout>
+                        <LinearItemsLayout Orientation="Horizontal" ItemSpacing="15"/>
+                    </CollectionView.ItemsLayout>
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate x:DataType="models:Poi">
+                            <Border WidthRequest="150" BackgroundColor="#1A1818" Stroke="#2E2A2A">
+                                <Border.StrokeShape>
+                                    <RoundRectangle CornerRadius="15"/>
+                                </Border.StrokeShape>
+                                <VerticalStackLayout Padding="10" Spacing="5">
+                                    <Label Text="{Binding CoverEmoji}" FontSize="40" HorizontalOptions="Center" Margin="0,10"/>
+                                    <Label Text="{Binding Name}" TextColor="#F0EBE3" FontFamily="BebasNeue" HorizontalOptions="Center"/>
+                                    <Label Text="{Binding Priority, StringFormat='⭐ {0} điểm'}" TextColor="#E8A020" FontSize="11" HorizontalOptions="Center"/>
+                                </VerticalStackLayout>
+                            </Border>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+            </VerticalStackLayout>
+
+        </VerticalStackLayout>
+    </ScrollView>
 </ContentPage>
