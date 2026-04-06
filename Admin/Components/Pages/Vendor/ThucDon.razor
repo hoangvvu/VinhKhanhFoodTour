@@ -1,14 +1,19 @@
 ﻿@page "/vendor/thuc-don"
 @using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Hosting
 @attribute [Authorize(Roles = "Vendor")]
 @rendermode InteractiveServer
-@* Nhớ tiêm TtsService vào để dùng AI tạo giọng đọc cho món ăn *@
-@inject TtsService TtsService
+@inject MenuService MenuService
+@inject IJSRuntime JS
+
+@* Tiêm thêm Environment để lấy đường dẫn lưu file vật lý *@
+@inject IWebHostEnvironment env 
+@inject TtsService ttsService
 
 <div class="container-fluid p-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h3 class="text-white fw-bold mb-0">QUẢN LÝ THỰC ĐƠN (MENU)</h3>
-        <button class="btn btn-danger rounded-pill px-4 shadow" @onclick="ShowModal">
+        <button class="btn btn-danger rounded-pill px-4 shadow" @onclick="ShowAddModal">
             <i class="bi bi-plus-lg me-2"></i>Thêm món mới
         </button>
     </div>
@@ -26,26 +31,64 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <tr>
-                        <td class="ps-4">
-                            <div class="d-flex align-items-center">
-                                <img src="https://images.unsplash.com/photo-1544928147-79a2dbc1f389?w=150" class="rounded-3 me-3" style="width: 60px; height: 60px; object-fit: cover;" />
-                                <div>
-                                    <span class="fw-bold text-white">Ốc hương xào bơ tỏi</span><br/>
-                                    <span class="text-muted small">Các món ốc</span>
+                    @foreach (var item in menuList)
+                    {
+                        <tr style="@(item.Status == "HIDDEN" ? "opacity: 0.5;" : "")">
+                            <td class="ps-4">
+                                <div class="d-flex align-items-center">
+                                    <img src="@item.ImageUrl" class="rounded-3 me-3 bg-secondary" style="width: 60px; height: 60px; object-fit: cover;" />
+                                    <div>
+                                        <span class="fw-bold text-white @(item.Status == "HIDDEN" ? "text-decoration-line-through" : "")">@item.Name</span><br/>
+                                        <span class="text-muted small">@item.Category</span>
+                                    </div>
                                 </div>
-                            </div>
-                        </td>
-                        <td class="text-warning fw-bold">120,000 ₫</td>
-                        <td>
-                            <button class="btn btn-sm btn-outline-info rounded-pill"><i class="bi bi-play-fill"></i> Nghe thử</button>
-                        </td>
-                        <td><span class="badge bg-success">Đang bán</span></td>
-                        <td class="text-end pe-4">
-                            <button class="btn btn-sm btn-outline-light me-2"><i class="bi bi-pencil"></i></button>
-                            <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
-                        </td>
-                    </tr>
+                            </td>
+                            <td class="text-warning fw-bold">@item.Price.ToString("N0") ₫</td>
+                            <td>
+                                @if(!string.IsNullOrEmpty(item.AudioUrl))
+                                {
+                                    <button class="btn btn-sm btn-outline-info rounded-pill" @onclick="() => PlayAudio(item.AudioUrl)">
+                                        <i class="bi bi-play-fill"></i> Nghe
+                                    </button>
+                                }
+                                else
+                                {
+                                    <span class="text-muted small">Chưa có</span>
+                                }
+                            </td>
+                            <td>
+                                @if (item.Status == "AVAILABLE")
+                                {
+                                    <span class="badge bg-success">Đang bán</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">Tạm ẩn</span>
+                                }
+                            </td>
+                            <td class="text-end pe-4">
+                                @* ĐÃ BỎ NÚT XÓA - CHỈ GIỮ LẠI NÚT ẨN VÀ SỬA *@
+                                
+                                @* Nút Ẩn/Hiện món *@
+                                <button class="btn btn-sm @(item.Status == "AVAILABLE" ? "btn-outline-warning" : "btn-warning text-dark") me-2" 
+                                        @onclick="() => ToggleStatus(item)" title="Ẩn/Hiện món">
+                                    <i class="bi @(item.Status == "AVAILABLE" ? "bi-eye-slash" : "bi-eye")"></i>
+                                </button>
+                                
+                                @* Nút Sửa món *@
+                                <button class="btn btn-sm btn-outline-light" @onclick="() => ShowEditModal(item)" title="Sửa món">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                    
+                    @if (!menuList.Any())
+                    {
+                        <tr>
+                            <td colspan="5" class="text-center text-muted py-4">Chưa có món ăn nào trong thực đơn.</td>
+                        </tr>
+                    }
                 </tbody>
             </table>
         </div>
@@ -59,7 +102,7 @@
         <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content bg-dark border-secondary text-white" style="border-radius: 16px;">
                 <div class="modal-header border-secondary">
-                    <h5 class="modal-title fw-bold">Thêm Món Ăn Mới</h5>
+                    <h5 class="modal-title fw-bold">@(formData.ItemId == 0 ? "Thêm Món Ăn Mới" : "Cập Nhật Món Ăn")</h5>
                     <button type="button" class="btn-close btn-close-white" @onclick="HideModal"></button>
                 </div>
                 <div class="modal-body p-4">
@@ -67,28 +110,42 @@
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label class="form-label text-muted small fw-bold">Tên món ăn</label>
-                                <input type="text" class="form-control bg-black border-secondary text-white" placeholder="VD: Sò huyết nướng mọi" />
+                                <input type="text" class="form-control bg-black border-secondary text-white" @bind="formData.Name" placeholder="VD: Sò huyết nướng mọi" />
                             </div>
                             <div class="row mb-3">
                                 <div class="col-6">
                                     <label class="form-label text-muted small fw-bold">Giá tiền (VNĐ)</label>
-                                    <input type="number" class="form-control bg-black border-secondary text-white" placeholder="VD: 80000" />
+                                    <input type="number" class="form-control bg-black border-secondary text-white" @bind="formData.Price" />
                                 </div>
                                 <div class="col-6">
                                     <label class="form-label text-muted small fw-bold">Danh mục</label>
-                                    <select class="form-select bg-black border-secondary text-white">
-                                        <option>Món nướng</option>
-                                        <option>Món xào</option>
-                                        <option>Đồ uống</option>
+                                    <select class="form-select bg-black border-secondary text-white" @bind="formData.Category">
+                                        <option value="Món nướng">Món nướng</option>
+                                        <option value="Món xào">Món xào</option>
+                                        <option value="Đồ uống">Đồ uống</option>
                                     </select>
                                 </div>
                             </div>
+                            
+                            @* ── KHU VỰC TẢI ẢNH LÊN BẰNG INPUT FILE ── *@
                             <div class="mb-3">
                                 <label class="form-label text-muted small fw-bold">Hình ảnh món ăn</label>
-                                <div class="bg-black rounded-3 d-flex flex-column align-items-center justify-content-center p-3" style="border: 1px dashed #6c757d; cursor: pointer;">
-                                    <i class="bi bi-cloud-arrow-up fs-3 text-muted"></i>
-                                    <span class="text-muted small">Nhấn để tải ảnh lên</span>
-                                </div>
+                                @if (isUploadingImage)
+                                {
+                                    <div class="d-flex align-items-center mb-2">
+                                        <span class="spinner-border spinner-border-sm text-info me-2"></span>
+                                        <span class="text-info small">Đang tải ảnh lên...</span>
+                                    </div>
+                                }
+                                <InputFile OnChange="HandleImageUpload" class="form-control bg-black border-secondary text-white" accept="image/*" />
+                                
+                                @* Hiện Preview Ảnh nếu đã có link *@
+                                @if (!string.IsNullOrEmpty(formData.ImageUrl))
+                                {
+                                    <div class="mt-3 text-center bg-black rounded-3 p-2 border border-secondary">
+                                        <img src="@formData.ImageUrl" style="max-height: 120px; border-radius: 8px; object-fit: cover;" />
+                                    </div>
+                                }
                             </div>
                         </div>
 
@@ -96,22 +153,22 @@
                             <h6 class="text-info fw-bold mb-3"><i class="bi bi-magic me-2"></i>Tạo Audio Giới Thiệu (AI TTS)</h6>
                             <div class="mb-3">
                                 <label class="form-label text-muted small fw-bold">Nội dung / Câu chuyện món ăn</label>
-                                <textarea @bind="ttsInput" class="form-control bg-black border-secondary text-white" rows="4" placeholder="VD: Sò huyết nướng mọi giữ nguyên vị ngọt tự nhiên, chấm cùng muối tiêu chanh..."></textarea>
+                                <textarea @bind="formData.Description" class="form-control bg-black border-secondary text-white" rows="4" placeholder="VD: Sò huyết nướng mọi giữ nguyên vị ngọt..."></textarea>
                             </div>
                             
                             <button class="btn btn-outline-info w-100 rounded-pill mb-3" @onclick="GenerateMenuAudio" disabled="@isGeneratingAudio">
                                 @if (isGeneratingAudio) {
                                     <span class="spinner-border spinner-border-sm me-2"></span> <span>Đang tạo Audio...</span>
                                 } else {
-                                    <i class="bi bi-soundwave me-2"></i> <span>Tạo giọng đọc mẫu</span>
+                                    <i class="bi bi-soundwave me-2"></i> <span>Tạo giọng đọc AI</span>
                                 }
                             </button>
 
-                            @if (!string.IsNullOrEmpty(generatedAudioUrl))
+                            @if (!string.IsNullOrEmpty(formData.AudioUrl))
                             {
                                 <div class="bg-black p-3 rounded-3 text-center border border-success">
-                                    <div class="text-success small mb-2"><i class="bi bi-check-circle me-1"></i> Đã tạo thành công</div>
-                                    <audio controls class="w-100" style="height: 35px;" src="@generatedAudioUrl"></audio>
+                                    <div class="text-success small mb-2"><i class="bi bi-check-circle me-1"></i> Audio đã sẵn sàng</div>
+                                    <audio controls class="w-100" style="height: 35px;" src="@formData.AudioUrl"></audio>
                                 </div>
                             }
                         </div>
@@ -119,7 +176,9 @@
                 </div>
                 <div class="modal-footer border-secondary">
                     <button type="button" class="btn btn-outline-light rounded-pill px-4" @onclick="HideModal">Hủy</button>
-                    <button type="button" class="btn btn-danger rounded-pill px-4 fw-bold shadow-sm">Lưu món ăn</button>
+                    <button type="button" class="btn btn-danger rounded-pill px-4 fw-bold shadow-sm" @onclick="SaveItem">
+                        <i class="bi bi-floppy me-2"></i> Lưu món ăn
+                    </button>
                 </div>
             </div>
         </div>
@@ -127,39 +186,135 @@
 }
 
 @code {
+    private List<MenuItem> menuList = new();
+    private MenuItem formData = new();
     private bool isShowModal = false;
-    
-    // Biến cho phần TTS
-    private string ttsInput = "";
-    private string? generatedAudioUrl;
     private bool isGeneratingAudio = false;
+    private int currentPoiId = 1; // Tạm thời để ID quán là 1 (Ốc Oanh)
 
-    private void ShowModal()
+    protected override async Task OnInitializedAsync()
     {
-        isShowModal = true;
-        ttsInput = "";
-        generatedAudioUrl = null;
+        await LoadData();
     }
 
-    private void HideModal()
+    private async Task LoadData()
     {
-        isShowModal = false;
+        menuList = await MenuService.GetByPoiIdAsync(currentPoiId);
+    }
+
+    private void ShowAddModal()
+    {
+        formData = new MenuItem { PoiId = currentPoiId, Status = "AVAILABLE" };
+        isShowModal = true;
+    }
+
+    private void ShowEditModal(MenuItem item)
+    {
+        // Tạo bản sao để tránh sửa trực tiếp vào list khi chưa bấm Lưu
+        formData = new MenuItem {
+            ItemId = item.ItemId,
+            PoiId = item.PoiId,
+            Name = item.Name,
+            Price = item.Price,
+            Category = item.Category,
+            ImageUrl = item.ImageUrl,
+            Description = item.Description,
+            AudioUrl = item.AudioUrl,
+            Status = item.Status
+        };
+        isShowModal = true;
+    }
+
+    private async Task SaveItem()
+    {
+        if (string.IsNullOrWhiteSpace(formData.Name)) return;
+
+        await MenuService.SaveItemAsync(formData);
+        await LoadData(); // Tải lại danh sách từ DB
+        HideModal();
+    }
+
+    private async Task ToggleStatus(MenuItem item)
+    {
+        await MenuService.ToggleStatusAsync(item.ItemId);
+        await LoadData();
     }
 
     private async Task GenerateMenuAudio()
     {
-        if (string.IsNullOrWhiteSpace(ttsInput)) return;
+        if (string.IsNullOrWhiteSpace(formData.Description)) return;
 
         isGeneratingAudio = true;
-        generatedAudioUrl = null;
         StateHasChanged();
 
-        // Mặc định gọi giọng đọc Tiếng Việt (Lan Nhi) cho món ăn
-        var result = await TtsService.GenerateAudioAsync(ttsInput, "lannhi");
+        // Gọi API FPT.AI
+        var result = await ttsService.GenerateAudioAsync(formData.Description, "lannhi");
         
-        generatedAudioUrl = result.Url;
-        
+        // QUAN TRỌNG: Gán link Audio vào formData
+        formData.AudioUrl = result.Url; 
+
         isGeneratingAudio = false;
         StateHasChanged();
     }
+
+    // 1. Thêm biến trạng thái tải ảnh (Khai báo cùng chỗ với isGeneratingAudio)
+    private bool isUploadingImage = false;
+
+    // 2. Bổ sung hàm xử lý Upload Ảnh xuống Local Storage
+    private async Task HandleImageUpload(InputFileChangeEventArgs e)
+    {
+        isUploadingImage = true;
+        StateHasChanged();
+
+        try
+        {
+            var file = e.File;
+            if (file != null)
+            {
+                // Giới hạn file tối đa 5MB
+                long maxFileSize = 5 * 1024 * 1024; 
+
+                // Tạo tên file ngẫu nhiên (chống trùng lặp)
+                var trustedFileName = $"{Guid.NewGuid()}_{file.Name}";
+
+                // Đường dẫn thư mục: wwwroot/uploads/menu
+                var uploadsFolder = Path.Combine(env.WebRootPath, "uploads", "menu");
+
+                if (!Directory.Exists(uploadsFolder))
+                {
+                    Directory.CreateDirectory(uploadsFolder);
+                }
+
+                var filePath = Path.Combine(uploadsFolder, trustedFileName);
+
+                // Copy file từ luồng web xuống ổ cứng vật lý
+                using (var fileStream = new FileStream(filePath, FileMode.Create))
+                {
+                    await file.OpenReadStream(maxFileSize).CopyToAsync(fileStream);
+                }
+
+                // Gán đường dẫn vào form để LƯU XUỐNG DATABASE
+                formData.ImageUrl = $"/uploads/menu/{trustedFileName}";
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Lỗi tải ảnh: {ex.Message}");
+        }
+        finally
+        {
+            isUploadingImage = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task PlayAudio(string url)
+    {
+        if (!string.IsNullOrEmpty(url))
+        {
+            await JS.InvokeVoidAsync("playAudioFromUrl", url);
+        }
+    }
+
+    private void HideModal() => isShowModal = false;
 }

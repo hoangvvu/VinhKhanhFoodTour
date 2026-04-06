@@ -23,6 +23,7 @@
 	</ItemGroup>
 	<ItemGroup>
 	  <Folder Include="Components\Layout\Admin\" />
+	  <Folder Include="wwwroot\uploads\menu\" />
 	</ItemGroup>
 
 </Project>

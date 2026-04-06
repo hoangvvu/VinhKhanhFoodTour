@@ -20,6 +20,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<QrCode> QrCodes { get; set; }
     public DbSet<Review> Reviews { get; set; }
     public DbSet<TrackingLog> TrackingLogs { get; set; }
+    public DbSet<MenuItem> MenuItems { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -32,6 +32,8 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
 // Kích hoạt Phân quyền (Authorization)
 builder.Services.AddAuthorization();
 
+builder.Services.AddScoped<MenuService>();
+
 // Quan trọng: Giúp Blazor nhận diện trạng thái Đăng nhập trên toàn App
 builder.Services.AddCascadingAuthenticationState();
 
@@ -54,6 +56,7 @@ using (var scope = app.Services.CreateScope())
 }
 
 // --- 3. CẤU HÌNH HTTP PIPELINE (MIDDLEWARE) ---
+app.UseStaticFiles();
 
 if (!app.Environment.IsDevelopment())
 {
@@ -63,7 +66,6 @@ if (!app.Environment.IsDevelopment())
 
 app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
 app.UseHttpsRedirection();
-
 // QUAN TRỌNG: Thứ tự các dòng dưới đây không được thay đổi
 app.MapStaticAssets();
 

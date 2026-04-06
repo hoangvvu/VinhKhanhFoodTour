@@ -21,6 +21,16 @@
     
     <ReconnectModal />
     <script src="@Assets["_framework/blazor.web.js"]"></script>
+    <script>
+        // Hàm JavaScript để phát nhạc từ đường dẫn URL
+        window.playAudioFromUrl = (url) => {
+        var audio = new Audio(url);
+        audio.play().catch(error => {
+        console.error("Trình duyệt chặn tự động phát:", error);
+        alert("Vui lòng nhấn vào trang web một lần để cho phép phát âm thanh.");
+        });
+        };
+    </script>
 </body>
 
 </html>
