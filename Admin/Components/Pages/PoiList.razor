@@ -1,5 +1,12 @@
 @page "/admin/pois"
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
 @rendermode InteractiveServer
+@inject PoiService PoiService
+
+@* ══════════════════════════════════════════════════════════════
+   PHẦN 1: HEADER — Giữ nguyên giao diện gốc của bạn
+   ══════════════════════════════════════════════════════════════ *@
 
 <div class="container-fluid p-4" style="margin-left: 250px; background-color: #f8f9fa; min-height: 100vh;">
     <div class="d-flex justify-content-between align-items-center mb-4">
@@ -23,61 +30,139 @@
         </div>
     </div>
 
+    @* ══════════════════════════════════════════════════════════
+       PHẦN 2: THANH LỌC + NÚT THÊM
+       Thay đổi: Thêm @bind cho ô tìm kiếm và dropdown lọc
+       ══════════════════════════════════════════════════════════ *@
+
     <div class="card card-admin mb-4 border-0 shadow-sm" style="border-radius: 15px;">
         <div class="card-body d-flex gap-3">
-            <input type="text" class="form-control rounded-pill bg-light border-0 ps-4 w-50" placeholder="Tìm gian hàng...">
-            <select class="form-select rounded-pill bg-light border-0 w-25">
-                <option>Tất cả trạng thái</option>
+            <input type="text" class="form-control rounded-pill bg-light border-0 ps-4 w-50"
+                   placeholder="Tìm gian hàng..."
+                   @bind="searchText"
+                   @bind:event="oninput" />
+
+            <select class="form-select rounded-pill bg-light border-0 w-25"
+                    @bind="filterStatus">
+                <option value="all">Tất cả trạng thái</option>
+                <option value="active">Đang hoạt động</option>
+                <option value="inactive">Đã tắt</option>
             </select>
+
             <button class="btn btn-dark rounded-pill px-4 ms-auto" @onclick="ShowAddModal">
                 + Thêm gian hàng
             </button>
         </div>
     </div>
 
-    <div class="card card-admin border-0 shadow-sm" style="border-radius: 15px;">
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table mb-0 table-admin table-hover align-middle">
-                    <thead>
-                        <tr>
-                            <th class="ps-4">GIAN HÀNG</th>
-                            <th>ĐỊA CHỈ</th>
-                            <th>TỌA ĐỘ</th>
-                            <th>BÁN KÍNH</th>
-                            <th>NGÔN NGỮ</th>
-                            <th class="text-end pe-4">TRẠNG THÁI</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var item in Pois)
-                        {
+    @* ══════════════════════════════════════════════════════════
+       PHẦN 3: BẢNG DANH SÁCH — Đọc từ DB thay vì data giả
+       Thay đổi: 
+       - Dùng FilteredPois (có lọc) thay vì list tĩnh
+       - Trạng thái đọc từ IsActive
+       - Thêm cột Hành động (Sửa/Xóa)
+       ══════════════════════════════════════════════════════════ *@
+
+    @if (isLoading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="mt-2 text-muted">Đang tải dữ liệu...</p>
+        </div>
+    }
+    else if (!FilteredPois.Any())
+    {
+        <div class="card card-admin border-0 shadow-sm text-center py-5" style="border-radius: 15px;">
+            <p class="text-muted fs-5">Không tìm thấy gian hàng nào.</p>
+        </div>
+    }
+    else
+    {
+        <div class="card card-admin border-0 shadow-sm" style="border-radius: 15px;">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table mb-0 table-admin table-hover align-middle">
+                        <thead>
                             <tr>
-                                <td class="ps-4">
-                                    <strong>@item.Name</strong><br />
-                                    <small class="text-muted">@item.Address</small>
-                                </td>
-                                <td>@item.Address</td>
-                                <td><small class="text-muted">@item.Latitude<br />@item.Longitude</small></td>
-                                <td><span class="badge bg-primary-subtle text-primary rounded-pill">@item.Radius m</span></td>
-                                <td>
-                                    <span class="badge-lang badge-vi">VI</span>
-                                    <span class="badge-lang badge-en">EN</span>
-                                    <span class="badge-lang badge-vi">ZH</span>
-                                    <span class="badge-lang badge-other">KO</span>
-                                    <span class="badge-lang badge-vi">JA</span>
-                                </td>
-                                <td class="text-end pe-4">
-                                    <span class="badge bg-success-subtle text-success">Đã bật</span>
-                                </td>
+                                <th class="ps-4">GIAN HÀNG</th>
+                                <th>ĐỊA CHỈ</th>
+                                <th>TỌA ĐỘ</th>
+                                <th>BÁN KÍNH</th>
+                                <th>ƯU TIÊN</th>
+                                <th>TRẠNG THÁI</th>
+                                <th class="text-end pe-4">HÀNH ĐỘNG</th>
                             </tr>
-                        }
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in FilteredPois)
+                            {
+                                <tr>
+                                    <td class="ps-4">
+                                        <strong>@item.Name</strong><br />
+                                        <small class="text-muted">@item.Phone</small>
+                                    </td>
+                                    <td>@item.Address</td>
+                                    <td>
+                                        <small class="text-muted">
+                                            @item.Latitude.ToString("F8")<br />
+                                            @item.Longitude.ToString("F8")
+                                        </small>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-primary-subtle text-primary rounded-pill">
+                                            @item.Radius m
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-warning-subtle text-warning rounded-pill">
+                                            @item.Priority
+                                        </span>
+                                    </td>
+                                    <td>
+                                        @if (item.IsActive)
+                                        {
+                                            <span class="badge bg-success-subtle text-success rounded-pill"
+                                                  style="cursor: pointer;"
+                                                  @onclick="() => ToggleActive(item.PoiId)">
+                                                Đã bật
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary-subtle text-secondary rounded-pill"
+                                                  style="cursor: pointer;"
+                                                  @onclick="() => ToggleActive(item.PoiId)">
+                                                Đã tắt
+                                            </span>
+                                        }
+                                    </td>
+                                    <td class="text-end pe-4">
+                                        <button class="btn btn-sm btn-outline-primary rounded-pill me-1"
+                                                @onclick="() => ShowEditModal(item)">
+                                            <span class="bi bi-pencil"></span> Sửa
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-danger rounded-pill"
+                                                @onclick="() => ShowDeleteConfirm(item)">
+                                            <span class="bi bi-trash"></span> Xóa
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
-    </div>
+    }
 </div>
+
+@* ══════════════════════════════════════════════════════════════
+   PHẦN 4: MODAL THÊM / SỬA — Dùng chung 1 modal
+   Thay đổi:
+   - Tất cả input đều @bind vào editingPoi
+   - Nút submit gọi SavePoi()
+   - Title thay đổi theo isEditing (Thêm / Sửa)
+   ══════════════════════════════════════════════════════════════ *@
 
 @if (isModalVisible)
 {
@@ -85,87 +170,381 @@
         <div class="modal-dialog modal-lg modal-dialog-centered">
             <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
                 <div class="modal-header border-0 pe-4 pt-4">
-                    <h5 class="modal-title fw-bold">Thêm gian hàng mới</h5>
+                    <h5 class="modal-title fw-bold">
+                        @(isEditing ? "Sửa gian hàng" : "Thêm gian hàng mới")
+                    </h5>
                     <button type="button" class="btn-close" @onclick="HideModal"></button>
                 </div>
                 <div class="modal-body p-4">
+                    @* Hiển thị lỗi nếu có *@
+                    @if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <div class="alert alert-danger rounded-pill text-center">
+                            @errorMessage
+                        </div>
+                    }
+
                     <div class="row g-3">
                         <div class="col-12">
                             <label class="form-label text-uppercase small fw-bold text-muted">Tên gian hàng</label>
-                            <input type="text" class="form-control rounded-pill bg-light border-0 ps-3 fs-5" placeholder="VD: Ốc Oanh" value="Ốc Oanh">
+                            <input type="text"
+                                   class="form-control rounded-pill bg-light border-0 ps-3 fs-5"
+                                   placeholder="VD: Ốc Oanh"
+                                   @bind="editingPoi.Name" />
                         </div>
                         <div class="col-12">
                             <label class="form-label text-uppercase small fw-bold text-muted">Địa chỉ</label>
-                            <input type="text" class="form-control rounded-pill bg-light border-0 ps-3 fs-5" placeholder="Địa chỉ chi tiết" value="534 Vĩnh Khánh, P.8, Q.4">
+                            <input type="text"
+                                   class="form-control rounded-pill bg-light border-0 ps-3 fs-5"
+                                   placeholder="Địa chỉ chi tiết"
+                                   @bind="editingPoi.Address" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-uppercase small fw-bold text-muted">Số điện thoại</label>
+                            <input type="text"
+                                   class="form-control rounded-pill bg-light border-0 ps-3 fs-5"
+                                   placeholder="VD: 0901234567"
+                                   @bind="editingPoi.Phone" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-uppercase small fw-bold text-muted">Chủ gian hàng (Owner ID)</label>
+                            <input type="number"
+                                   class="form-control rounded-pill bg-light border-0 ps-3 fs-5"
+                                   placeholder="Để trống nếu chưa gán"
+                                   @bind="editingPoi.OwnerId" />
                         </div>
                         <div class="col-md-6">
                             <label class="form-label text-uppercase small fw-bold text-muted">Vĩ độ (Latitude)</label>
-                            <input type="text" class="form-control rounded-pill bg-light border-0 ps-3 fs-5" value="10.76012345">
+                            <input type="number" step="0.00000001"
+                                   class="form-control rounded-pill bg-light border-0 ps-3 fs-5"
+                                   @bind="editingPoi.Latitude" />
                         </div>
                         <div class="col-md-6">
                             <label class="form-label text-uppercase small fw-bold text-muted">Kinh độ (Longitude)</label>
-                            <input type="text" class="form-control rounded-pill bg-light border-0 ps-3 fs-5" value="106.70298765">
+                            <input type="number" step="0.00000001"
+                                   class="form-control rounded-pill bg-light border-0 ps-3 fs-5"
+                                   @bind="editingPoi.Longitude" />
                         </div>
                         <div class="col-md-6">
                             <label class="form-label text-uppercase small fw-bold text-muted">Bán kính Geofence (m)</label>
-                            <input type="number" class="form-control rounded-pill bg-light border-0 ps-3 fs-5" value="20">
+                            <input type="number"
+                                   class="form-control rounded-pill bg-light border-0 ps-3 fs-5"
+                                   min="5" max="200"
+                                   @bind="editingPoi.Radius" />
                         </div>
                         <div class="col-md-6">
                             <label class="form-label text-uppercase small fw-bold text-muted">Mức ưu tiên (1=Cao)</label>
-                            <select class="form-select rounded-pill bg-light border-0 ps-3 fs-5">
-                                <option>1 - Cao nhất</option>
-                                <option>2</option>
+                            <select class="form-select rounded-pill bg-light border-0 ps-3 fs-5"
+                                    @bind="editingPoi.Priority">
+                                <option value="1">1 - Cao nhất</option>
+                                <option value="2">2 - Cao</option>
+                                <option value="3">3 - Trung bình</option>
+                                <option value="4">4 - Thấp</option>
+                                <option value="5">5 - Thấp nhất</option>
                             </select>
                         </div>
                         <div class="col-12">
-                            <label class="form-label text-uppercase small fw-bold text-muted">Chủ gian hàng</label>
-                            <select class="form-select rounded-pill bg-light border-0 ps-3 fs-5">
-                                <option>— Chưa gán —</option>
-                            </select>
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label text-uppercase small fw-bold text-muted">Ngôn ngữ thuyết minh</label>
-                            <div class="d-flex gap-2">
-                                <button class="btn btn-outline-danger btn-sm rounded-pill active">VN VI</button>
-                                <button class="btn btn-outline-danger btn-sm rounded-pill active">US EN</button>
-                                <button class="btn btn-outline-secondary btn-sm rounded-pill">CN ZH</button>
-                                <button class="btn btn-outline-secondary btn-sm rounded-pill">KR KO</button>
-                                <button class="btn btn-outline-secondary btn-sm rounded-pill">JP JA</button>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" role="switch"
+                                       id="switchActive"
+                                       @bind="editingPoi.IsActive" />
+                                <label class="form-check-label" for="switchActive">
+                                    @(editingPoi.IsActive ? "Đang hoạt động" : "Đã tắt")
+                                </label>
                             </div>
                         </div>
                     </div>
                 </div>
                 <div class="modal-footer border-0 p-4">
-                    <button class="btn text-muted" @onclick="HideModal">Hủy</button>
-                    <button class="btn btn-light px-4 rounded-pill disabled text-muted border">Tạo gian hàng</button>
+                    <button class="btn text-muted" @onclick="HideModal" disabled="@isSaving">
+                        Hủy
+                    </button>
+                    <button class="btn btn-dark px-4 rounded-pill"
+                            @onclick="SavePoi"
+                            disabled="@isSaving">
+                        @if (isSaving)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1"></span>
+                        }
+                        @(isEditing ? "Lưu thay đổi" : "Tạo gian hàng")
+                    </button>
                 </div>
             </div>
         </div>
     </div>
 }
 
+@* ══════════════════════════════════════════════════════════════
+   PHẦN 5: MODAL XÁC NHẬN XÓA
+   ══════════════════════════════════════════════════════════════ *@
+
+@if (isDeleteConfirmVisible)
+{
+    <div class="modal fade show d-block" style="background: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
+                <div class="modal-body p-4 text-center">
+                    <div class="fs-1 mb-3">⚠️</div>
+                    <h5 class="fw-bold">Xác nhận xóa</h5>
+                    <p class="text-muted">
+                        Bạn có chắc muốn xóa <strong>@deletingPoi?.Name</strong>?<br />
+                        <small class="text-danger">
+                            Tất cả thuyết minh, món ăn, hình ảnh và mã QR liên quan sẽ bị xóa theo.
+                        </small>
+                    </p>
+                    <div class="d-flex justify-content-center gap-2 mt-3">
+                        <button class="btn text-muted px-4" @onclick="HideDeleteConfirm">Hủy</button>
+                        <button class="btn btn-danger rounded-pill px-4"
+                                @onclick="DeletePoi"
+                                disabled="@isSaving">
+                            @if (isSaving)
+                            {
+                                <span class="spinner-border spinner-border-sm me-1"></span>
+                            }
+                            Xóa
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@* ══════════════════════════════════════════════════════════════
+   PHẦN 6: CODE-BEHIND — Toàn bộ logic C#
+   ══════════════════════════════════════════════════════════════ *@
+
 @code {
+    // ── State: Danh sách ────────────────────────────────
+    private List<Poi> allPois = new();
+    private bool isLoading = true;
+
+    // ── State: Tìm kiếm & Lọc ──────────────────────────
+    private string searchText = string.Empty;
+    private string filterStatus = "all";
+
+    // ── State: Modal Thêm/Sửa ──────────────────────────
     private bool isModalVisible = false;
-    private void ShowAddModal() => isModalVisible = true;
-    private void HideModal() => isModalVisible = false;
+    private bool isEditing = false;           // false = Thêm, true = Sửa
+    private bool isSaving = false;
+    private string errorMessage = string.Empty;
+    private Poi editingPoi = new();
 
-    // Data mẫu khớp với hình ảnh của bạn
-    private List<PoiDummy> Pois = new()
-    {
-        new PoiDummy { Name = "Ốc Oanh", Address = "534 Vĩnh Khánh, P.8, Q.4", Latitude = 10.76012345, Longitude = 106.70298765, Radius = 20 },
-        new PoiDummy { Name = "Ốc Vũ", Address = "37 Vĩnh Khánh, P.8, Q.4", Latitude = 10.76054321, Longitude = 106.70312345, Radius = 15 },
-        new PoiDummy { Name = "Sushi Viên VK", Address = "Đường Vĩnh Khánh, P.8, Q.4", Latitude = 10.76100000, Longitude = 106.70400000, Radius = 15 },
-        new PoiDummy { Name = "Lãng Quán", Address = "531 Vĩnh Khánh, P.10, Q.4", Latitude = 10.75921500, Longitude = 106.70251200, Radius = 20 },
-        new PoiDummy { Name = "Ớt Xiêm Quán", Address = "568 Vĩnh Khánh, P.10, Q.4", Latitude = 10.75884200, Longitude = 106.70213000, Radius = 15 },
-        new PoiDummy { Name = "Quán Ốc Sáu Nở", Address = "128 Vĩnh Khánh, P.8, Q.4", Latitude = 10.76211000, Longitude = 106.70452200, Radius = 15 }
-    };
+    // ── State: Modal Xóa ────────────────────────────────
+    private bool isDeleteConfirmVisible = false;
+    private Poi? deletingPoi;
 
-    public class PoiDummy
+    // ═════════════════════════════════════════════════════
+    //  COMPUTED PROPERTY: Danh sách đã lọc
+    //  Mỗi khi searchText hoặc filterStatus thay đổi,
+    //  Blazor tự gọi lại render → property này chạy lại
+    // ═════════════════════════════════════════════════════
+    private IEnumerable<Poi> FilteredPois
     {
-        public string Name { get; set; }
-        public string Address { get; set; }
-        public double Latitude { get; set; }
-        public double Longitude { get; set; }
-        public int Radius { get; set; }
+        get
+        {
+            var query = allPois.AsEnumerable();
+
+            // Lọc theo text tìm kiếm (tên hoặc địa chỉ)
+            if (!string.IsNullOrWhiteSpace(searchText))
+            {
+                var term = searchText.Trim().ToLower();
+                query = query.Where(p =>
+                    p.Name.ToLower().Contains(term) ||
+                    (p.Address ?? "").ToLower().Contains(term));
+            }
+
+            // Lọc theo trạng thái
+            query = filterStatus switch
+            {
+                "active" => query.Where(p => p.IsActive),
+                "inactive" => query.Where(p => !p.IsActive),
+                _ => query  // "all" — không lọc
+            };
+
+            return query;
+        }
+    }
+
+    // ═════════════════════════════════════════════════════
+    //  LIFECYCLE: Chạy khi page load lần đầu
+    // ═════════════════════════════════════════════════════
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        isLoading = true;
+        try
+        {
+            allPois = await PoiService.GetAllAsync();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Lỗi tải dữ liệu: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    // ═════════════════════════════════════════════════════
+    //  MODAL: Hiện/Ẩn
+    // ═════════════════════════════════════════════════════
+
+    private void ShowAddModal()
+    {
+        isEditing = false;
+        errorMessage = string.Empty;
+
+        // Tạo POI mới với giá trị mặc định hợp lý
+        editingPoi = new Poi
+        {
+            Radius = 20,
+            Priority = 1,
+            IsActive = true,
+            // Tọa độ mặc định = trung tâm phố Vĩnh Khánh
+            Latitude = 10.76012345m,
+            Longitude = 106.70298765m
+        };
+
+        isModalVisible = true;
+    }
+
+    private void ShowEditModal(Poi poi)
+    {
+        isEditing = true;
+        errorMessage = string.Empty;
+
+        // TẠO BẢN SAO để chỉnh sửa — không sửa trực tiếp trên list
+        // Nếu user bấm Hủy, data gốc không bị ảnh hưởng
+        editingPoi = new Poi
+        {
+            PoiId = poi.PoiId,
+            Name = poi.Name,
+            Address = poi.Address,
+            Phone = poi.Phone,
+            Latitude = poi.Latitude,
+            Longitude = poi.Longitude,
+            Radius = poi.Radius,
+            Priority = poi.Priority,
+            OwnerId = poi.OwnerId,
+            IsActive = poi.IsActive,
+            CreatedAt = poi.CreatedAt
+        };
+
+        isModalVisible = true;
+    }
+
+    private void HideModal()
+    {
+        isModalVisible = false;
+        errorMessage = string.Empty;
+    }
+
+    // ═════════════════════════════════════════════════════
+    //  SAVE: Xử lý cả Thêm mới và Cập nhật
+    // ═════════════════════════════════════════════════════
+    private async Task SavePoi()
+    {
+        // Validate cơ bản phía client
+        if (string.IsNullOrWhiteSpace(editingPoi.Name))
+        {
+            errorMessage = "Tên gian hàng không được để trống.";
+            return;
+        }
+
+        // Kiểm tra trùng tên
+        var nameExists = await PoiService.IsNameExistsAsync(
+            editingPoi.Name.Trim(),
+            editingPoi.PoiId  // excludeId: 0 nếu thêm mới, >0 nếu sửa
+        );
+        if (nameExists)
+        {
+            errorMessage = $"Tên \"{editingPoi.Name}\" đã tồn tại.";
+            return;
+        }
+
+        isSaving = true;
+        errorMessage = string.Empty;
+
+        try
+        {
+            if (isEditing)
+            {
+                var success = await PoiService.UpdateAsync(editingPoi);
+                if (!success)
+                {
+                    errorMessage = "Không tìm thấy gian hàng để cập nhật.";
+                    return;
+                }
+            }
+            else
+            {
+                await PoiService.CreateAsync(editingPoi);
+            }
+
+            // Thành công → đóng modal, reload data
+            HideModal();
+            await LoadData();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Lỗi lưu dữ liệu: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    // ═════════════════════════════════════════════════════
+    //  DELETE: Xác nhận rồi mới xóa
+    // ═════════════════════════════════════════════════════
+
+    private void ShowDeleteConfirm(Poi poi)
+    {
+        deletingPoi = poi;
+        isDeleteConfirmVisible = true;
+    }
+
+    private void HideDeleteConfirm()
+    {
+        isDeleteConfirmVisible = false;
+        deletingPoi = null;
+    }
+
+    private async Task DeletePoi()
+    {
+        if (deletingPoi is null) return;
+
+        isSaving = true;
+
+        try
+        {
+            await PoiService.DeleteAsync(deletingPoi.PoiId);
+            HideDeleteConfirm();
+            await LoadData();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Lỗi xóa: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    // ═════════════════════════════════════════════════════
+    //  TOGGLE: Bật/Tắt nhanh từ bảng
+    // ═════════════════════════════════════════════════════
+    private async Task ToggleActive(int poiId)
+    {
+        await PoiService.ToggleActiveAsync(poiId);
+        await LoadData();
     }
 }

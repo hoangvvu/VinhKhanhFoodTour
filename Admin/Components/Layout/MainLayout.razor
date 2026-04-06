@@ -1,8 +1,18 @@
 ﻿@inherits LayoutComponentBase
 
-<div class="page">
-    <NavMenu />
-    <main>
+<AuthorizeView>
+    <Authorized>
+        @* ── Đã đăng nhập: Hiện sidebar + nội dung ── *@
+        <div class="page">
+            <NavMenu />
+            <main>
+                @Body
+            </main>
+        </div>
+    </Authorized>
+
+    <NotAuthorized>
+        @* ── Chưa đăng nhập: Chỉ hiện nội dung (trang Login) ── *@
         @Body
-    </main>
-</div>
+    </NotAuthorized>
+</AuthorizeView>

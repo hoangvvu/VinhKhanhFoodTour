@@ -5,4 +5,12 @@
 @using Microsoft.AspNetCore.Components.Web
 @using static Microsoft.AspNetCore.Components.Web.RenderMode
 @using Microsoft.AspNetCore.Components.Web.Virtualization
+@using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.JSInterop
+
+@* ── Thay đổi: Dùng Infrastructure thay vì Admin.Models ── *@
+@using VKFoodTour.Infrastructure.Entities
+@using VKFoodTour.Infrastructure.Data
+
+@* ── Services vẫn giữ nguyên namespace Admin ── *@
+@using global::Admin.Services

@@ -1,0 +1,141 @@
+@page "/login"
+@using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.Authentication.Cookies
+@using System.Security.Claims
+@inject AuthService AuthService
+@inject IHttpContextAccessor HttpContextAccessor
+@inject NavigationManager Navigation
+
+@* ══════════════════════════════════════════════════════════
+   TRANG ĐĂNG NHẬP — Không dùng InteractiveServer
+   Lý do: Cookie Auth cần HttpContext, chỉ hoạt động trong
+   Static SSR (server-side rendering). Sau khi login xong,
+   redirect sang trang chính (Interactive).
+   ══════════════════════════════════════════════════════════ *@
+
+<div style="background-color: #0F0E0E; min-height: 100vh; display: flex; align-items: center; justify-content: center;">
+    <div style="width: 400px;">
+
+        @* Logo *@
+        <div class="text-center mb-4">
+            <div style="font-size: 32px; color: #E8A020; font-weight: bold; letter-spacing: 2px;">
+                VĨNH KHÁNH
+            </div>
+            <div style="font-size: 12px; color: #8A8078; letter-spacing: 3px;">
+                ADMIN PORTAL
+            </div>
+        </div>
+
+        @* Card đăng nhập *@
+        <div style="background-color: #1A1818; border-radius: 20px; padding: 40px;">
+
+            <h5 class="text-center mb-4" style="color: #F0EBE3; font-weight: 600;">
+                Đăng nhập
+            </h5>
+
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="alert alert-danger text-center py-2"
+                     style="border-radius: 12px; font-size: 14px;">
+                    @errorMessage
+                </div>
+            }
+
+            <form method="post" @formname="login" @onsubmit="HandleLogin">
+                <AntiforgeryToken />
+
+                <div class="mb-3">
+                    <label class="form-label small" style="color: #8A8078; text-transform: uppercase; letter-spacing: 1px;">
+                        Email
+                    </label>
+                    <input type="email" name="email"
+                           class="form-control border-0 ps-3"
+                           style="background-color: #262121; color: #F0EBE3; border-radius: 12px; height: 48px;"
+                           placeholder="admin@vinhkhanh.vn"
+                           @bind="email"
+                           required />
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label small" style="color: #8A8078; text-transform: uppercase; letter-spacing: 1px;">
+                        Mật khẩu
+                    </label>
+                    <input type="password" name="password"
+                           class="form-control border-0 ps-3"
+                           style="background-color: #262121; color: #F0EBE3; border-radius: 12px; height: 48px;"
+                           placeholder="••••••••"
+                           @bind="password"
+                           required />
+                </div>
+
+                <button type="submit"
+                        class="btn w-100"
+                        style="background-color: #C8372D; color: white; border-radius: 12px; height: 48px; font-weight: 600;">
+                    Đăng nhập
+                </button>
+            </form>
+        </div>
+
+        <p class="text-center mt-3" style="color: #8A8078; font-size: 12px;">
+            Vĩnh Khánh Food Tour &copy; 2026
+        </p>
+    </div>
+</div>
+
+@code {
+    [SupplyParameterFromForm]
+    private string email { get; set; } = string.Empty;
+
+    [SupplyParameterFromForm]
+    private string password { get; set; } = string.Empty;
+
+    private string errorMessage = string.Empty;
+
+    private async Task HandleLogin()
+    {
+        // ── Validate input ──────────────────────────
+        if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
+        {
+            errorMessage = "Vui lòng nhập email và mật khẩu.";
+            return;
+        }
+
+        // ── Xác thực với DB ─────────────────────────
+        var user = await AuthService.AuthenticateAsync(email, password);
+
+        if (user is null)
+        {
+            errorMessage = "Email hoặc mật khẩu không đúng.";
+            return;
+        }
+
+        // ── Tạo Claims (thông tin người dùng lưu trong Cookie) ──
+        var claims = new List<Claim>
+        {
+            new Claim(ClaimTypes.NameIdentifier, user.UserId.ToString()),
+            new Claim(ClaimTypes.Name, user.Name),
+            new Claim(ClaimTypes.Email, user.Email),
+            new Claim(ClaimTypes.Role, user.Role)  // "Admin" hoặc "Vendor"
+        };
+
+        var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+        var principal = new ClaimsPrincipal(identity);
+
+        // ── Ghi Cookie vào trình duyệt ──────────────
+        var httpContext = HttpContextAccessor.HttpContext;
+        if (httpContext is not null)
+        {
+            await httpContext.SignInAsync(
+                CookieAuthenticationDefaults.AuthenticationScheme,
+                principal,
+                new AuthenticationProperties
+                {
+                    IsPersistent = true,    // Nhớ đăng nhập
+                    ExpiresUtc = DateTimeOffset.UtcNow.AddHours(8)
+                });
+        }
+
+        // ── Redirect về trang chính ─────────────────
+        Navigation.NavigateTo("/", forceLoad: true);
+    }
+}

@@ -1,21 +1,18 @@
 ﻿@rendermode InteractiveServer
 
-<div class="sidebar p-4" style="background-color: #121212; min-height: 100vh;">
+<div class="sidebar p-4" style="background-color: #121212; min-height: 100vh; display: flex; flex-direction: column;">
     <div class="brand-section text-center mb-5 mt-3">
-        @* Logo Stylized text, tương tự font trên mobile app *@
         <div style="font-size: 24px; color: #E8A020; font-weight: bold; letter-spacing: 1px;">VĨNH KHÁNH</div>
         <div style="font-size: 10px; color: #8A8078; letter-spacing: 2px;">AUDIO GUIDE ADMIN</div>
     </div>
 
     <nav class="nav flex-column gap-2">
-        @* Sử dụng Nav Card style mới *@
         <NavLink class="nav-card active-nav" href="" Match="NavLinkMatch.All">
             <span class="bi bi-speedometer2 me-2 fs-5"></span> Dashboard
         </NavLink>
 
-        <NavLink class="nav-card" href="gian-hang">
+        <NavLink class="nav-card" href="admin/pois">
             <span class="bi bi-shop me-2 fs-5"></span> Gian hàng
-            <span class="badge bg-danger ms-auto rounded-circle p-1 px-2" style="font-size: 11px;">6</span>
         </NavLink>
 
         <NavLink class="nav-card" href="thuyet-minh">
@@ -26,12 +23,40 @@
             <span class="bi bi-qr-code me-2 fs-5"></span> Mã QR
         </NavLink>
 
-        <NavLink class="nav-card" href="nguoi-dung">
-            <span class="bi bi-people me-2 fs-5"></span> Người dùng
-        </NavLink>
+        @* ── Chỉ Admin mới thấy mục Người dùng ── *@
+        <AuthorizeView Roles="Admin">
+            <NavLink class="nav-card" href="nguoi-dung">
+                <span class="bi bi-people me-2 fs-5"></span> Người dùng
+            </NavLink>
+        </AuthorizeView>
 
         <NavLink class="nav-card" href="analytics">
             <span class="bi bi-graph-up me-2 fs-5"></span> Analytics
         </NavLink>
     </nav>
+
+    @* ── Khu vực user info + Logout ở cuối sidebar ── *@
+    <div class="mt-auto pt-4" style="border-top: 1px solid #2E2A2A;">
+        <AuthorizeView>
+            <Authorized>
+                <div class="d-flex align-items-center gap-2 px-2 mb-3">
+                    <span class="badge rounded-circle p-2 fs-6"
+                          style="background-color: #C8372D; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;">
+                        @context.User.Identity?.Name?.Substring(0, 1).ToUpper()
+                    </span>
+                    <div>
+                        <div style="color: #F0EBE3; font-size: 13px; font-weight: 500;">
+                            @context.User.Identity?.Name
+                        </div>
+                        <div style="color: #8A8078; font-size: 11px;">
+                            @context.User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value
+                        </div>
+                    </div>
+                </div>
+                <a href="/logout" class="nav-card" style="color: #C8372D;">
+                    <span class="bi bi-box-arrow-left me-2 fs-5"></span> Đăng xuất
+                </a>
+            </Authorized>
+        </AuthorizeView>
+    </div>
 </div>
