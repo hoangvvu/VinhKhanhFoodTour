@@ -4,9 +4,14 @@
     <Project Path="VKFoodTour.Application/VKFoodTour.Application.csproj" />
     <Project Path="VKFoodTour.Infrastructure/VKFoodTour.Infrastructure.csproj" />
   </Folder>
+  <Folder Name="/BlazorWebApp/">
+    <Project Path="Admin/Admin.csproj" Id="f701e8f2-e5b3-4b34-b588-1b8324f2fc88" />
+  </Folder>
   <Folder Name="/Mobile/">
     <Project Path="VKFoodTour.Mobile.Core/VKFoodTour.Mobile.Core.csproj" />
-    <Project Path="VKFoodTour.Mobile/VKFoodTour.Mobile.csproj" />
+    <Project Path="VKFoodTour.Mobile/VKFoodTour.Mobile.csproj">
+      <Deploy Solution="Debug|*" />
+    </Project>
   </Folder>
   <Folder Name="/Shared/">
     <Project Path="VKFoodTour.Shared/VKFoodTour.Shared.csproj" />

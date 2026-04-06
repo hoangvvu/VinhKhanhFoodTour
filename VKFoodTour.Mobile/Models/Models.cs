@@ -14,6 +14,8 @@ public class Poi
     public double Longitude { get; set; }
     public int Radius { get; set; } = 20;
     public int Priority { get; set; } = 1;
+    public double Rating { get; set; } = 5.0; // Điểm sao (ví dụ: 4.8)
+    public int ReviewCount { get; set; } = 0; // Số lượng đánh giá
 
     [Ignore] public string CoverEmoji { get; set; } = "🍜";
 }

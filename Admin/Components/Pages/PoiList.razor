@@ -1,0 +1,171 @@
+@page "/admin/pois"
+@rendermode InteractiveServer
+
+<div class="container-fluid p-4" style="margin-left: 250px; background-color: #f8f9fa; min-height: 100vh;">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="mb-0 fw-bold">Gian hàng</h3>
+        <div class="d-flex align-items-center gap-3">
+            <div class="position-relative">
+                <input type="text" class="form-control rounded-pill border-0 shadow-sm ps-4" placeholder="Tìm kiếm...">
+                <span class="bi bi-search position-absolute text-muted" style="top: 10px; right: 15px;"></span>
+            </div>
+            <button class="btn btn-link text-muted position-relative">
+                <span class="bi bi-bell fs-5"></span>
+                <span class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle"></span>
+            </button>
+            <div class="d-flex align-items-center gap-2">
+                <span class="badge bg-danger rounded-circle p-3 fs-6">A</span>
+                <div class="small">
+                    <strong>Admin</strong><br>
+                    <small class="text-muted">Quản trị viên</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card card-admin mb-4 border-0 shadow-sm" style="border-radius: 15px;">
+        <div class="card-body d-flex gap-3">
+            <input type="text" class="form-control rounded-pill bg-light border-0 ps-4 w-50" placeholder="Tìm gian hàng...">
+            <select class="form-select rounded-pill bg-light border-0 w-25">
+                <option>Tất cả trạng thái</option>
+            </select>
+            <button class="btn btn-dark rounded-pill px-4 ms-auto" @onclick="ShowAddModal">
+                + Thêm gian hàng
+            </button>
+        </div>
+    </div>
+
+    <div class="card card-admin border-0 shadow-sm" style="border-radius: 15px;">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table mb-0 table-admin table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th class="ps-4">GIAN HÀNG</th>
+                            <th>ĐỊA CHỈ</th>
+                            <th>TỌA ĐỘ</th>
+                            <th>BÁN KÍNH</th>
+                            <th>NGÔN NGỮ</th>
+                            <th class="text-end pe-4">TRẠNG THÁI</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Pois)
+                        {
+                            <tr>
+                                <td class="ps-4">
+                                    <strong>@item.Name</strong><br />
+                                    <small class="text-muted">@item.Address</small>
+                                </td>
+                                <td>@item.Address</td>
+                                <td><small class="text-muted">@item.Latitude<br />@item.Longitude</small></td>
+                                <td><span class="badge bg-primary-subtle text-primary rounded-pill">@item.Radius m</span></td>
+                                <td>
+                                    <span class="badge-lang badge-vi">VI</span>
+                                    <span class="badge-lang badge-en">EN</span>
+                                    <span class="badge-lang badge-vi">ZH</span>
+                                    <span class="badge-lang badge-other">KO</span>
+                                    <span class="badge-lang badge-vi">JA</span>
+                                </td>
+                                <td class="text-end pe-4">
+                                    <span class="badge bg-success-subtle text-success">Đã bật</span>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (isModalVisible)
+{
+    <div class="modal fade show d-block" style="background: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
+                <div class="modal-header border-0 pe-4 pt-4">
+                    <h5 class="modal-title fw-bold">Thêm gian hàng mới</h5>
+                    <button type="button" class="btn-close" @onclick="HideModal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label text-uppercase small fw-bold text-muted">Tên gian hàng</label>
+                            <input type="text" class="form-control rounded-pill bg-light border-0 ps-3 fs-5" placeholder="VD: Ốc Oanh" value="Ốc Oanh">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label text-uppercase small fw-bold text-muted">Địa chỉ</label>
+                            <input type="text" class="form-control rounded-pill bg-light border-0 ps-3 fs-5" placeholder="Địa chỉ chi tiết" value="534 Vĩnh Khánh, P.8, Q.4">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-uppercase small fw-bold text-muted">Vĩ độ (Latitude)</label>
+                            <input type="text" class="form-control rounded-pill bg-light border-0 ps-3 fs-5" value="10.76012345">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-uppercase small fw-bold text-muted">Kinh độ (Longitude)</label>
+                            <input type="text" class="form-control rounded-pill bg-light border-0 ps-3 fs-5" value="106.70298765">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-uppercase small fw-bold text-muted">Bán kính Geofence (m)</label>
+                            <input type="number" class="form-control rounded-pill bg-light border-0 ps-3 fs-5" value="20">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-uppercase small fw-bold text-muted">Mức ưu tiên (1=Cao)</label>
+                            <select class="form-select rounded-pill bg-light border-0 ps-3 fs-5">
+                                <option>1 - Cao nhất</option>
+                                <option>2</option>
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label text-uppercase small fw-bold text-muted">Chủ gian hàng</label>
+                            <select class="form-select rounded-pill bg-light border-0 ps-3 fs-5">
+                                <option>— Chưa gán —</option>
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label text-uppercase small fw-bold text-muted">Ngôn ngữ thuyết minh</label>
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-outline-danger btn-sm rounded-pill active">VN VI</button>
+                                <button class="btn btn-outline-danger btn-sm rounded-pill active">US EN</button>
+                                <button class="btn btn-outline-secondary btn-sm rounded-pill">CN ZH</button>
+                                <button class="btn btn-outline-secondary btn-sm rounded-pill">KR KO</button>
+                                <button class="btn btn-outline-secondary btn-sm rounded-pill">JP JA</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 p-4">
+                    <button class="btn text-muted" @onclick="HideModal">Hủy</button>
+                    <button class="btn btn-light px-4 rounded-pill disabled text-muted border">Tạo gian hàng</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private bool isModalVisible = false;
+    private void ShowAddModal() => isModalVisible = true;
+    private void HideModal() => isModalVisible = false;
+
+    // Data mẫu khớp với hình ảnh của bạn
+    private List<PoiDummy> Pois = new()
+    {
+        new PoiDummy { Name = "Ốc Oanh", Address = "534 Vĩnh Khánh, P.8, Q.4", Latitude = 10.76012345, Longitude = 106.70298765, Radius = 20 },
+        new PoiDummy { Name = "Ốc Vũ", Address = "37 Vĩnh Khánh, P.8, Q.4", Latitude = 10.76054321, Longitude = 106.70312345, Radius = 15 },
+        new PoiDummy { Name = "Sushi Viên VK", Address = "Đường Vĩnh Khánh, P.8, Q.4", Latitude = 10.76100000, Longitude = 106.70400000, Radius = 15 },
+        new PoiDummy { Name = "Lãng Quán", Address = "531 Vĩnh Khánh, P.10, Q.4", Latitude = 10.75921500, Longitude = 106.70251200, Radius = 20 },
+        new PoiDummy { Name = "Ớt Xiêm Quán", Address = "568 Vĩnh Khánh, P.10, Q.4", Latitude = 10.75884200, Longitude = 106.70213000, Radius = 15 },
+        new PoiDummy { Name = "Quán Ốc Sáu Nở", Address = "128 Vĩnh Khánh, P.8, Q.4", Latitude = 10.76211000, Longitude = 106.70452200, Radius = 15 }
+    };
+
+    public class PoiDummy
+    {
+        public string Name { get; set; }
+        public string Address { get; set; }
+        public double Latitude { get; set; }
+        public double Longitude { get; set; }
+        public int Radius { get; set; }
+    }
+}

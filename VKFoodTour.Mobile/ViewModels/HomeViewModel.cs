@@ -42,28 +42,47 @@ public partial class HomeViewModel : ObservableObject
     [RelayCommand]
     public async Task LoadDataAsync()
     {
+        // Ngăn chặn việc gọi lại nhiều lần khi đang tải
         if (IsBusy) return;
 
         try
         {
             IsBusy = true;
+
+            // Gọi Service lấy dữ liệu từ API hoặc Mock Data
             var result = await _dataService.GetPoisAsync();
 
-            // Cập nhật danh sách (Pois viết hoa là do thư viện sinh ra từ pois)
-            Pois = new ObservableCollection<Poi>(result);
-
-            // Giả lập tìm quán gần nhất để hiện lên Card nổi bật
-            if (Pois != null && Pois.Count > 0)
+            if (result != null && result.Any())
             {
-                NearestPoi = Pois.FirstOrDefault(p => p.Priority >= 1);
+                // 1. Sắp xếp quán NỔI BẬT (Priority cao nhất) lên đầu 
+                // và gán vào ObservableCollection để giao diện cập nhật
+                var sortedPois = result.OrderByDescending(p => p.Priority).ToList();
+                Pois = new ObservableCollection<Poi>(sortedPois);
+
+                // 2. Tìm quán "GẦN NHẤT" hoặc "NHIỀU ĐÁNH GIÁ" nhất để hiện ở Card lớn
+                // Tạm thời mình lấy quán đầu tiên trong danh sách đã sắp xếp
+                NearestPoi = Pois.FirstOrDefault();
+
+                // 3. Cập nhật trạng thái Audio đang phát (nếu có)
+                if (NearestPoi != null)
+                {
+                    NowPlayingText = $"Đã tìm thấy {Pois.Count} gian hàng quanh bạn.";
+                }
+            }
+            else
+            {
+                NowPlayingText = "Không tìm thấy gian hàng nào gần đây.";
             }
         }
         catch (Exception ex)
         {
-            NowPlayingText = "Lỗi tải dữ liệu: " + ex.Message;
+            // Ghi log lỗi và thông báo lên UI
+            NowPlayingText = "Lỗi tải dữ liệu: Kiểm tra kết nối mạng.";
+            System.Diagnostics.Debug.WriteLine($"Error: {ex.Message}");
         }
         finally
         {
+            // Giải phóng trạng thái bận
             IsBusy = false;
         }
     }

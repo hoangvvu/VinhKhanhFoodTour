@@ -9,82 +9,70 @@
              BackgroundColor="#0F0E0E"
              Shell.NavBarIsVisible="False">
 
-    <ScrollView>
-        <VerticalStackLayout Padding="20" Spacing="20">
+    <ScrollView BackgroundColor="#0F0E0E">
+        <VerticalStackLayout Padding="20" Spacing="25">
 
             <Grid ColumnDefinitions="*, Auto">
-                <VerticalStackLayout Grid.Column="0" Spacing="2">
-                    <Label Text="XIN CHÀO! 👋" FontSize="14" TextColor="#8A8078" FontFamily="DMSansMedium"/>
-                    <Label Text="KHÁM PHÁ VĨNH KHÁNH" FontSize="26" TextColor="#F0EBE3" FontFamily="BebasNeue"/>
+                <VerticalStackLayout Grid.Column="0">
+                    <Label Text="XIN CHÀO! 👋" FontSize="12" TextColor="#8A8078"/>
+                    <Label Text="KHÁM PHÁ VĨNH KHÁNH" FontSize="26" FontFamily="BebasNeue" TextColor="#F0EBE3"/>
                 </VerticalStackLayout>
-
-                <Border Grid.Column="1" BackgroundColor="#1A1818" Stroke="#2E2A2A" HeightRequest="45" WidthRequest="45">
+                <Border Grid.Column="1" WidthRequest="45" HeightRequest="45" BackgroundColor="#1A1818" Stroke="#2E2A2A">
                     <Border.StrokeShape>
                         <RoundRectangle CornerRadius="22.5"/>
                     </Border.StrokeShape>
-                    <Label Text="{Binding CurrentLang, Converter={StaticResource LangToFlagConverter}}" 
-                           HorizontalOptions="Center" VerticalOptions="Center" FontSize="20"/>
+                    <Label Text="🇻🇳" HorizontalOptions="Center" VerticalOptions="Center" FontSize="20"/>
                 </Border>
             </Grid>
 
-            <Border HeightRequest="200" StrokeThickness="0" BackgroundColor="#1A1818">
+            <Border HeightRequest="180" StrokeThickness="0">
                 <Border.StrokeShape>
                     <RoundRectangle CornerRadius="20"/>
                 </Border.StrokeShape>
                 <Grid>
-                    <maps:Map x:Name="miniMap" IsScrollEnabled="False" IsZoomEnabled="False" />
+                    <maps:Map x:Name="miniMap" IsScrollEnabled="False" IsZoomEnabled="False"/>
                     <BoxView Color="Transparent">
                         <BoxView.GestureRecognizers>
                             <TapGestureRecognizer Command="{Binding OpenFullMapCommand}"/>
                         </BoxView.GestureRecognizers>
                     </BoxView>
-                    <Border VerticalOptions="End" 
-                        HorizontalOptions="End" 
-                        Margin="10" 
-                        BackgroundColor="#CC000000" 
-                        Padding="8,4">
-                        <Border.StrokeShape>
-                            <RoundRectangle CornerRadius="10"/>
-                        </Border.StrokeShape>
-                        <Label Text="Phóng to bản đồ ↗️" FontSize="10" TextColor="White"/>
-                    </Border>
                 </Grid>
             </Border>
 
-            <Border BackgroundColor="#C8372D" Padding="15">
+            <Border BackgroundColor="#C8372D" Padding="15" StrokeThickness="0">
                 <Border.StrokeShape>
                     <RoundRectangle CornerRadius="15"/>
                 </Border.StrokeShape>
                 <Grid ColumnDefinitions="Auto, *">
-                    <Label Grid.Column="0" Text="🎙️" FontSize="24" VerticalOptions="Center"/>
+                    <Label Text="🎙️" FontSize="24" VerticalOptions="Center"/>
                     <VerticalStackLayout Grid.Column="1" Margin="15,0,0,0">
-                        <Label Text="THUYẾT MINH TỰ ĐỘNG" FontSize="12" TextColor="White" FontFamily="DMSansMedium" Opacity="0.9"/>
-                        <Label Text="{Binding NowPlayingText, FallbackValue='Sẵn sàng phát khi bạn đến gần quán ăn...'}" 
-                               TextColor="White" FontSize="13" MaxLines="2"/>
+                        <Label Text="THUYẾT MINH TỰ ĐỘNG" FontSize="11" TextColor="White" Opacity="0.8"/>
+                        <Label Text="{Binding NowPlayingText, FallbackValue='Sẵn sàng khi bạn đến gần quán ăn...'}" 
+                           TextColor="White" FontSize="14" MaxLines="1" LineBreakMode="TailTruncation"/>
                     </VerticalStackLayout>
                 </Grid>
             </Border>
 
             <VerticalStackLayout Spacing="10">
-                <Grid ColumnDefinitions="*, Auto">
-                    <Label Grid.Column="0" Text="GIAN HÀNG NỔI BẬT" FontSize="18" TextColor="#F0EBE3" FontFamily="BebasNeue"/>
-                    <Label Grid.Column="1" Text="Xem tất cả" TextColor="#E8A020" FontSize="12" VerticalOptions="Center"/>
-                </Grid>
+                <Label Text="GIAN HÀNG NỔI BẬT" FontSize="18" FontFamily="BebasNeue" TextColor="#F0EBE3"/>
 
-                <CollectionView ItemsSource="{Binding Pois}" HeightRequest="180">
+                <CollectionView ItemsSource="{Binding Pois}" HeightRequest="200">
                     <CollectionView.ItemsLayout>
                         <LinearItemsLayout Orientation="Horizontal" ItemSpacing="15"/>
                     </CollectionView.ItemsLayout>
                     <CollectionView.ItemTemplate>
                         <DataTemplate x:DataType="models:Poi">
-                            <Border WidthRequest="150" BackgroundColor="#1A1818" Stroke="#2E2A2A">
+                            <Border WidthRequest="160" BackgroundColor="#1A1818" Stroke="#2E2A2A" Padding="12">
                                 <Border.StrokeShape>
                                     <RoundRectangle CornerRadius="15"/>
                                 </Border.StrokeShape>
-                                <VerticalStackLayout Padding="10" Spacing="5">
-                                    <Label Text="{Binding CoverEmoji}" FontSize="40" HorizontalOptions="Center" Margin="0,10"/>
-                                    <Label Text="{Binding Name}" TextColor="#F0EBE3" FontFamily="BebasNeue" HorizontalOptions="Center"/>
-                                    <Label Text="{Binding Priority, StringFormat='⭐ {0} điểm'}" TextColor="#E8A020" FontSize="11" HorizontalOptions="Center"/>
+                                <VerticalStackLayout Spacing="8">
+                                    <Label Text="{Binding CoverEmoji}" FontSize="45" HorizontalOptions="Center" Margin="0,10"/>
+                                    <Label Text="{Binding Name}" TextColor="#F0EBE3" FontFamily="BebasNeue" FontSize="16" HorizontalOptions="Center"/>
+                                    <HorizontalStackLayout HorizontalOptions="Center" Spacing="5">
+                                        <Label Text="⭐ 4.9" TextColor="#E8A020" FontSize="11"/>
+                                        <Label Text="(120+)" TextColor="#8A8078" FontSize="11"/>
+                                    </HorizontalStackLayout>
                                 </VerticalStackLayout>
                             </Border>
                         </DataTemplate>

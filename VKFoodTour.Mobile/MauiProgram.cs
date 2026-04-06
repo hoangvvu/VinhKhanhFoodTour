@@ -38,6 +38,7 @@ public static class MauiProgram
         builder.Services.AddTransient<StallListPage>();
         builder.Services.AddTransient<PlayerPage>();
         builder.Services.AddTransient<ProfilePage>();
+        builder.Services.AddTransient<FullMapPage>();
 
         return builder.Build();
     }
