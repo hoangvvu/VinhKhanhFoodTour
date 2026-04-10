@@ -24,6 +24,7 @@
 	<ItemGroup>
 	  <Folder Include="Components\Layout\Admin\" />
 	  <Folder Include="wwwroot\uploads\menu\" />
+	  <Folder Include="wwwroot\uploads\poi\" />
 	</ItemGroup>
 
 </Project>
