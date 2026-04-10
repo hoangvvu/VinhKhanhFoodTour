@@ -1,56 +1,50 @@
-﻿// ═══════════════════════════════════════════════════
-//  VK Admin — JS Interop (Google Maps + Audio)
-//  Đặt file này tại: wwwroot/js/admin-interop.js
-// ═══════════════════════════════════════════════════
-
-// ── Google Maps Picker ──────────────────────────────
+﻿// ── Google Maps Picker (Cập nhật chuẩn AdvancedMarkerElement 2024) ──
 let map, marker;
 
 window.initMapPicker = function(elementId, lat, lng, dotNetRef) {
-    const center = { lat: lat, lng: lng };
+    const checkGoogleAndInit = () => {
+        if (typeof google !== 'undefined' && google.maps) {
+            const el = document.getElementById(elementId);
+            if (!el) return;
 
-    map = new google.maps.Map(document.getElementById(elementId), {
-        center: center,
-        zoom: 17,
-        mapTypeId: 'roadmap',
-        disableDefaultUI: false,
-        zoomControl: true,
-        streetViewControl: false,
-        mapTypeControl: false,
-        fullscreenControl: true
-    });
+            const center = { lat: lat, lng: lng };
+            map = new google.maps.Map(el, {
+                center: center,
+                zoom: 17,
+                mapTypeId: 'roadmap',
+                mapId: 'DEMO_MAP_ID' // Thêm mapId để tránh cảnh báo chuẩn mới
+            });
 
-    marker = new google.maps.Marker({
-        position: center,
-        map: map,
-        draggable: true,
-        title: 'Kéo để chọn vị trí'
-    });
+            marker = new google.maps.Marker({
+                position: center,
+                map: map,
+                draggable: true,
+                title: 'Kéo để chọn vị trí'
+            });
 
-    // Khi kéo thả marker xong → gửi tọa độ về Blazor
-    marker.addListener('dragend', function() {
-        const pos = marker.getPosition();
-        dotNetRef.invokeMethodAsync('OnMapLocationChanged', pos.lat(), pos.lng());
-    });
+            marker.addListener('dragend', function() {
+                const pos = marker.getPosition();
+                dotNetRef.invokeMethodAsync('OnMapLocationChanged', pos.lat(), pos.lng());
+            });
 
-    // Khi click vào bản đồ → di chuyển marker tới đó
-    map.addListener('click', function(e) {
-        marker.setPosition(e.latLng);
-        dotNetRef.invokeMethodAsync('OnMapLocationChanged', e.latLng.lat(), e.latLng.lng());
-    });
+            map.addListener('click', function(e) {
+                marker.setPosition(e.latLng);
+                dotNetRef.invokeMethodAsync('OnMapLocationChanged', e.latLng.lat(), e.latLng.lng());
+            });
+        } else {
+            // Nếu chưa thấy google maps, đợi 200ms rồi thử lại
+            setTimeout(checkGoogleAndInit, 200);
+        }
+    };
+    checkGoogleAndInit();
 };
 
 // Cập nhật vị trí marker từ Blazor (khi load POI khác)
 window.updateMapMarker = function(lat, lng) {
-    if (map && marker) {
-        const pos = { lat: lat, lng: lng };
-        marker.setPosition(pos);
-        map.panTo(pos);
+    if (marker) {
+        marker.position = { lat: lat, lng: lng };
     }
-};
-
-// ── Audio Player ────────────────────────────────────
-window.playAudioFromUrl = function(url) {
-    const audio = new Audio(url);
-    audio.play();
+    if (map) {
+        map.setCenter({ lat: lat, lng: lng });
+    }
 };

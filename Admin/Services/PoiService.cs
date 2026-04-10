@@ -23,7 +23,7 @@ public class PoiService
     }
 
     /// <summary>
-    /// Lấy POI theo owner (dùng cho Vendor — chỉ thấy POI của mình).
+    /// Lấy danh sách POI theo owner
     /// </summary>
     public async Task<List<Poi>> GetByOwnerAsync(int ownerId)
     {
@@ -33,6 +33,41 @@ public class PoiService
             .ThenBy(p => p.Name)
             .AsNoTracking()
             .ToListAsync();
+    }
+
+    // ============================================================
+    // MỚI: Lấy 1 POI duy nhất cho trang ThongTinQuan.razor
+    // ============================================================
+    public async Task<Poi?> GetPoiByOwnerIdAsync(int ownerId)
+    {
+        return await _db.Pois
+            .Include(p => p.QrCodes) // Lấy kèm mã QR
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.OwnerId == ownerId);
+    }
+
+    // ============================================================
+    // MỚI: Cập nhật thông tin quán từ giao diện Vendor
+    // ============================================================
+    public async Task<bool> UpdateStallInfoAsync(int id, string name, string desc, string addr, double lat, double lng, string imgUrl)
+    {
+        var poi = await _db.Pois.FindAsync(id);
+        if (poi == null) return false;
+
+        poi.Name = name;
+        poi.Address = addr;
+        poi.Latitude = (decimal)lat;   // Ép kiểu sang decimal
+        poi.Longitude = (decimal)lng;  // Ép kiểu sang decimal
+        poi.UpdatedAt = DateTime.Now;
+        poi.Description = desc;
+
+        if (!string.IsNullOrEmpty(imgUrl))
+        {
+            poi.ImageUrl = imgUrl;
+        }
+
+        await _db.SaveChangesAsync();
+        return true;
     }
 
     public async Task<List<Poi>> GetActiveAsync()

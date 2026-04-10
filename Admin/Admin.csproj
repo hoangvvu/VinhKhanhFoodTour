@@ -17,14 +17,18 @@
 		</PackageReference>
 	</ItemGroup>
 
-	<!-- ★ MỚI: Reference tới Infrastructure để dùng chung Entities + DbContext -->
 	<ItemGroup>
 		<ProjectReference Include="..\VKFoodTour.Infrastructure\VKFoodTour.Infrastructure.csproj" />
 	</ItemGroup>
+
 	<ItemGroup>
-	  <Folder Include="Components\Layout\Admin\" />
-	  <Folder Include="wwwroot\uploads\menu\" />
-	  <Folder Include="wwwroot\uploads\poi\" />
+		<Folder Include="Components\Layout\Admin\" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<Watch Remove="UploadsData\**" />
+		<Content Remove="UploadsData\**" />
+		<None Remove="UploadsData\**" />
 	</ItemGroup>
 
 </Project>

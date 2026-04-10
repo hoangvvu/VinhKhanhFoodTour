@@ -16,4 +16,7 @@
   <Folder Name="/Shared/">
     <Project Path="VKFoodTour.Shared/VKFoodTour.Shared.csproj" />
   </Folder>
+  <Folder Name="/UploadsData/" />
+  <Folder Name="/UploadsData/menu/" />
+  <Folder Name="/UploadsData/poi/" />
 </Solution>

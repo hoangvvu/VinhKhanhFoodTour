@@ -1,30 +1,26 @@
 using Admin.Components;
+using Microsoft.Extensions.FileProviders;
 using Admin.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
-using VKFoodTour.Infrastructure.Data;  // ★ Dùng Infrastructure DbContext
+using VKFoodTour.Infrastructure.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// --- 1. ĐĂNG KÝ SERVICES (DI CONTAINER) ---
-
-// Hỗ trợ giao diện Blazor và Tương tác Server
+// --- ĐĂNG KÝ SERVICES ---
 builder.Services.AddRazorComponents()
-    .AddInteractiveServerComponents();
+    .AddInteractiveServerComponents()
+    .AddHubOptions(options =>
+    {
+        options.MaximumReceiveMessageSize = 15 * 1024 * 1024; // 15MB
+        options.ClientTimeoutInterval = TimeSpan.FromSeconds(60);
+    });
 
-builder.Services.AddSignalR(options =>
-{
-    options.MaximumReceiveMessageSize = 10 * 1024 * 1024; // 10MB
-});
-
-// ★ Đăng ký Infrastructure DbContext (thay thế Admin.Data.ApplicationDbContext)
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Cần HttpContextAccessor để đọc Cookie Auth trong Blazor Server
 builder.Services.AddHttpContextAccessor();
 
-// Cấu hình Xác thực bằng Cookie (Authentication)
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
     {
@@ -34,52 +30,73 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         options.ExpireTimeSpan = TimeSpan.FromHours(8);
     });
 
-// Kích hoạt Phân quyền (Authorization)
 builder.Services.AddAuthorization();
-
-builder.Services.AddScoped<MenuService>();
-
-// Quan trọng: Giúp Blazor nhận diện trạng thái Đăng nhập trên toàn App
 builder.Services.AddCascadingAuthenticationState();
-
-// Đăng ký HttpClient cho các Services
 builder.Services.AddHttpClient();
 
-// Đăng ký các Service nghiệp vụ
 builder.Services.AddScoped<PoiService>();
-builder.Services.AddScoped<AuthService>();  // ★ MỚI: Service đăng nhập
-builder.Services.AddScoped<TtsService>();   // ★ MỚI: Service Text-to-Speech
+builder.Services.AddScoped<MenuService>();
+builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<TtsService>();
 
 var app = builder.Build();
 
-// --- 2. SEED DỮ LIỆU ADMIN MẶC ĐỊNH ---
-// Tạo tài khoản Admin đầu tiên nếu DB chưa có user nào
+// --- KHỞI TẠO DỮ LIỆU ---
+// --- KHỞI TẠO DỮ LIỆU (ĐÃ ĐƯỢC BẢO VỆ CHỐNG SẬP) ---
 using (var scope = app.Services.CreateScope())
 {
-    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    await SeedData.InitializeAsync(db);
+    var services = scope.ServiceProvider;
+    try
+    {
+        var db = services.GetRequiredService<ApplicationDbContext>();
+
+        // Kiểm tra xem có kết nối được SQL Server không
+        bool canConnect = await db.Database.CanConnectAsync();
+        if (canConnect)
+        {
+            await SeedData.InitializeAsync(db);
+        }
+        else
+        {
+            Console.WriteLine("\n=======================================================");
+            Console.WriteLine("🚨 CẢNH BÁO: KHÔNG THỂ KẾT NỐI TỚI DATABASE SQL SERVER!");
+            Console.WriteLine("👉 Hãy kiểm tra lại SQL Server đã bật chưa và xem file appsettings.json");
+            Console.WriteLine("=======================================================\n");
+        }
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine("\n=======================================================");
+        Console.WriteLine($"🚨 LỖI TẠO DỮ LIỆU MẪU (Bảng USERS có thể chưa tồn tại):");
+        Console.WriteLine(ex.Message);
+        Console.WriteLine("=======================================================\n");
+    }
 }
 
-// --- 3. CẤU HÌNH HTTP PIPELINE (MIDDLEWARE) ---
+// 1. Phục vụ file tĩnh trong wwwroot (CSS, JS)
 app.UseStaticFiles();
 
-if (!app.Environment.IsDevelopment())
+// 2. ĐÃ SỬA: Đẩy thư mục UploadsData ra HẲN BÊN NGOÀI project (lùi 1 cấp "..")
+var uploadsFolderPath = Path.Combine(builder.Environment.ContentRootPath, "..", "UploadsData");
+if (!Directory.Exists(uploadsFolderPath))
 {
-    app.UseExceptionHandler("/Error", createScopeForErrors: true);
-    app.UseHsts();
+    Directory.CreateDirectory(Path.Combine(uploadsFolderPath, "poi"));
+    Directory.CreateDirectory(Path.Combine(uploadsFolderPath, "menu"));
 }
 
-app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
-app.UseHttpsRedirection();
-// QUAN TRỌNG: Thứ tự các dòng dưới đây không được thay đổi
-app.MapStaticAssets();
+// Mở cổng truy cập ảnh upload qua đường dẫn /uploads
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(uploadsFolderPath),
+    RequestPath = "/uploads"
+});
 
+// 3. THỨ TỰ BẮT BUỘC: Routing -> Auth -> Antiforgery -> Map
+app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
-
 app.UseAntiforgery();
 
-app.MapRazorComponents<App>()
-    .AddInteractiveServerRenderMode();
+app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
 
 app.Run();

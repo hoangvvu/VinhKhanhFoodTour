@@ -33,7 +33,7 @@ public class Poi
     public decimal Longitude { get; set; }
 
     [Column("radius")]
-    [Range(5, 200)] // Ràng buộc theo check constraint của DB
+    [Range(5, 200)]
     public int Radius { get; set; } = 20;
 
     [Column("priority")]
@@ -48,6 +48,13 @@ public class Poi
 
     [Column("updated_at")]
     public DateTime? UpdatedAt { get; set; }
+
+    // --- 2 TRƯỜNG MỚI THÊM VÀO ---
+    [Column("description")]
+    public string? Description { get; set; }
+
+    [Column("image_url")]
+    public string? ImageUrl { get; set; }
 
     // Navigation properties
     public ICollection<Narration> Narrations { get; set; } = new List<Narration>();
