@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using VKFoodTour.Infrastructure.Entities;
 
 namespace VKFoodTour.Infrastructure.Data;
@@ -158,6 +158,19 @@ public class ApplicationDbContext : DbContext
 
             entity.HasIndex(e => new { e.Latitude, e.Longitude })
                   .HasDatabaseName("idx_tracking_geo");
+        });
+
+        // ── MENU ITEMS ──────────────────────────────
+        modelBuilder.Entity<MenuItem>(entity =>
+        {
+            entity.ToTable("MENU_ITEMS");
+            entity.HasKey(e => e.ItemId);
+
+            entity.Property(e => e.ItemId)
+                  .ValueGeneratedOnAdd();
+
+            entity.Property(e => e.CreatedAt)
+                  .HasDefaultValueSql("GETDATE()");
         });
     }
 }

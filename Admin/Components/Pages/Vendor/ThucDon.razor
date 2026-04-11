@@ -1,15 +1,22 @@
 ﻿@page "/vendor/thuc-don"
 @using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
+@using global::Admin.Services
+@using VKFoodTour.Infrastructure.Entities
+@using MenuItem = VKFoodTour.Infrastructure.Entities.MenuItem
+
 @attribute [Authorize(Roles = "Vendor")]
 @rendermode InteractiveServer
+
 @inject IJSRuntime JS
 @inject IWebHostEnvironment Env
+@inject AuthenticationStateProvider AuthStateProvider
+@inject PoiService PoiService
+@inject MenuService MenuService
 
 @* ══════════════════════════════════════════════════════════
    QUẢN LÝ THỰC ĐƠN
-   FIX: Upload ảnh không còn sập web
-   - Dùng OpenReadStream(maxAllowedSize) đúng cách
-   - Cần config SignalR MaximumReceiveMessageSize trong Program.cs
    ══════════════════════════════════════════════════════════ *@
 
 <div class="container-fluid p-4">
@@ -20,80 +27,108 @@
         </button>
     </div>
 
-    <div class="card bg-dark-card border-0 shadow" style="border-radius: 16px; overflow: hidden;">
-        <div class="card-body p-0">
-            <table class="table table-dark table-hover mb-0 align-middle">
-                <thead class="bg-black text-muted small">
-                    <tr>
-                        <th class="ps-4 py-3">MÓN ĂN</th>
-                        <th>GIÁ TIỀN</th>
-                        <th>TRẠNG THÁI</th>
-                        <th class="text-end pe-4">THAO TÁC</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var item in menuList)
-                    {
-                        <tr style="@(item.IsHidden ? "opacity: 0.5;" : "")">
-                            <td class="ps-4">
-                                <div class="d-flex align-items-center">
-                                    @if (!string.IsNullOrEmpty(item.ImageUrl))
+    @* ── Thông báo lỗi/thành công hiện ngay trên trang ── *@
+    @if (!string.IsNullOrEmpty(pageMessage))
+    {
+        <div class="alert @(pageMessageIsError ? "alert-danger" : "alert-success") alert-dismissible fade show" role="alert">
+            <i class="bi @(pageMessageIsError ? "bi-exclamation-triangle-fill" : "bi-check-circle-fill") me-2"></i>
+            @pageMessage
+            <button type="button" class="btn-close" @onclick="() => pageMessage = null"></button>
+        </div>
+    }
+
+    @if (isLoading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-danger" role="status"></div>
+            <p class="text-muted mt-3">Đang tải thực đơn...</p>
+        </div>
+    }
+    else if (currentPoiId == 0)
+    {
+        <div class="alert alert-warning">
+            <i class="bi bi-exclamation-triangle me-2"></i>
+            Tài khoản chưa được gán quán. Vui lòng liên hệ Admin.
+        </div>
+    }
+    else
+    {
+        <div class="card bg-dark-card border-0 shadow" style="border-radius: 16px; overflow: hidden;">
+            <div class="card-body p-0">
+                <table class="table table-dark table-hover mb-0 align-middle">
+                    <thead class="bg-black text-muted small">
+                        <tr>
+                            <th class="ps-4 py-3">MÓN ĂN</th>
+                            <th>GIÁ TIỀN</th>
+                            <th>TRẠNG THÁI</th>
+                            <th class="text-end pe-4">THAO TÁC</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in menuList)
+                        {
+                            var isHidden = item.Status == "HIDDEN";
+                            <tr style="@(isHidden ? "opacity: 0.5;" : "")">
+                                <td class="ps-4">
+                                    <div class="d-flex align-items-center">
+                                        @if (!string.IsNullOrEmpty(item.ImageUrl))
+                                        {
+                                            <img src="@item.ImageUrl" class="rounded-3 me-3"
+                                                 style="width: 60px; height: 60px; object-fit: cover;" />
+                                        }
+                                        else
+                                        {
+                                            <div class="rounded-3 me-3 bg-secondary d-flex align-items-center justify-content-center"
+                                                 style="width: 60px; height: 60px;">
+                                                <i class="bi bi-image text-muted"></i>
+                                            </div>
+                                        }
+                                        <div>
+                                            <span class="fw-bold text-white @(isHidden ? "text-decoration-line-through" : "")">
+                                                @item.Name
+                                            </span><br />
+                                            <span class="text-muted small">@item.Category</span>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="text-warning fw-bold">
+                                    @item.Price.ToString("N0") ₫
+                                </td>
+                                <td>
+                                    @if (!isHidden)
                                     {
-                                        <img src="@item.ImageUrl" class="rounded-3 me-3"
-                                             style="width: 60px; height: 60px; object-fit: cover;" />
+                                        <span class="badge bg-success">Đang bán</span>
                                     }
                                     else
                                     {
-                                        <div class="rounded-3 me-3 bg-secondary d-flex align-items-center justify-content-center"
-                                             style="width: 60px; height: 60px;">
-                                            <i class="bi bi-image text-muted"></i>
-                                        </div>
+                                        <span class="badge bg-secondary">Tạm ẩn</span>
                                     }
-                                    <div>
-                                        <span class="fw-bold text-white @(item.IsHidden ? "text-decoration-line-through" : "")">
-                                            @item.Name
-                                        </span><br />
-                                        <span class="text-muted small">@item.Category</span>
-                                    </div>
-                                </div>
-                            </td>
-                            <td class="text-warning fw-bold">
-                                @(item.Price?.ToString("N0") ?? "—") ₫
-                            </td>
-                            <td>
-                                @if (!item.IsHidden)
-                                {
-                                    <span class="badge bg-success">Đang bán</span>
-                                }
-                                else
-                                {
-                                    <span class="badge bg-secondary">Tạm ẩn</span>
-                                }
-                            </td>
-                            <td class="text-end pe-4">
-                                <button class="btn btn-sm @(!item.IsHidden ? "btn-outline-warning" : "btn-warning text-dark") me-2"
-                                        @onclick="() => ToggleStatus(item)">
-                                    <i class="bi @(!item.IsHidden ? "bi-eye-slash" : "bi-eye")"></i>
-                                </button>
-                                <button class="btn btn-sm btn-outline-light" @onclick="() => ShowEditModal(item)">
-                                    <i class="bi bi-pencil"></i>
-                                </button>
-                            </td>
-                        </tr>
-                    }
+                                </td>
+                                <td class="text-end pe-4">
+                                    <button class="btn btn-sm @(!isHidden ? "btn-outline-warning" : "btn-warning text-dark") me-2"
+                                            @onclick="() => ToggleStatus(item)">
+                                        <i class="bi @(!isHidden ? "bi-eye-slash" : "bi-eye")"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-light" @onclick="() => ShowEditModal(item)">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        }
 
-                    @if (!menuList.Any())
-                    {
-                        <tr>
-                            <td colspan="4" class="text-center text-muted py-4">
-                                Chưa có món ăn nào trong thực đơn.
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
+                        @if (!menuList.Any())
+                        {
+                            <tr>
+                                <td colspan="4" class="text-center text-muted py-4">
+                                    Chưa có món ăn nào trong thực đơn.
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
         </div>
-    </div>
+    }
 </div>
 
 @* ══════════════════════════════════════════════════════════
@@ -124,15 +159,15 @@
                         @* ── Cột trái: Thông tin cơ bản ── *@
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label class="form-label text-muted small fw-bold">Tên món ăn</label>
+                                <label class="form-label text-muted small fw-bold">Tên món ăn <span class="text-danger">*</span></label>
                                 <input type="text" class="form-control bg-black border-secondary text-white"
                                        @bind="formName" placeholder="VD: Sò huyết nướng mọi" />
                             </div>
                             <div class="row mb-3">
                                 <div class="col-6">
-                                    <label class="form-label text-muted small fw-bold">Giá tiền (VNĐ)</label>
+                                    <label class="form-label text-muted small fw-bold">Giá tiền (VNĐ) <span class="text-danger">*</span></label>
                                     <input type="number" class="form-control bg-black border-secondary text-white"
-                                           @bind="formPrice" />
+                                           @bind="formPrice" placeholder="0" />
                                 </div>
                                 <div class="col-6">
                                     <label class="form-label text-muted small fw-bold">Danh mục</label>
@@ -217,7 +252,13 @@
 
 @code {
     // ── State: Danh sách ────────────────────────────
-    private List<MenuItemLocal> menuList = new();
+    private List<MenuItem> menuList = new();
+    private int currentPoiId;
+    private bool isLoading = true;
+
+    // ── State: Thông báo trên trang ─────────────────
+    private string? pageMessage;
+    private bool pageMessageIsError;
 
     // ── State: Modal ────────────────────────────────
     private bool isShowModal = false;
@@ -226,11 +267,10 @@
     private string modalError = string.Empty;
 
     // ── State: Form fields ──────────────────────────
-    // Dùng từng biến riêng thay vì 1 object phức tạp
-    // → tránh lỗi binding khi object bị null
+    // ĐÃ SỬA: formPrice là decimal (NOT NULL trong DB), default = 0
     private int formId = 0;
     private string formName = string.Empty;
-    private decimal? formPrice;
+    private decimal formPrice = 0;
     private string formCategory = "Món nướng";
     private string formDescription = string.Empty;
     private string formImageUrl = string.Empty;
@@ -242,11 +282,33 @@
     //  LIFECYCLE
     // ═════════════════════════════════════════════════
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-        // TODO: Thay bằng gọi Service lấy từ DB
-        // menuList = await FoodService.GetByPoiIdAsync(currentPoiId);
-        menuList = GetDemoData();
+        try
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var userIdStr = authState.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (int.TryParse(userIdStr, out int userId))
+            {
+                var poi = await PoiService.GetPoiByOwnerIdAsync(userId);
+                if (poi != null)
+                {
+                    currentPoiId = poi.PoiId;
+                    menuList = await MenuService.GetByPoiIdAsync(currentPoiId);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            pageMessage = $"Lỗi tải dữ liệu: {ex.Message}";
+            pageMessageIsError = true;
+            Console.WriteLine($"[MENU] Load error: {ex}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
     }
 
     // ═════════════════════════════════════════════════
@@ -259,30 +321,30 @@
         modalError = string.Empty;
         formId = 0;
         formName = string.Empty;
-        formPrice = null;
+        formPrice = 0;
         formCategory = "Món nướng";
         formDescription = string.Empty;
         formImageUrl = string.Empty;
         isShowModal = true;
     }
 
-    private void ShowEditModal(MenuItemLocal item)
+    private void ShowEditModal(MenuItem item)
     {
         isEditing = true;
         modalError = string.Empty;
-        formId = item.Id;
+        formId = item.ItemId;
         formName = item.Name;
         formPrice = item.Price;
-        formCategory = item.Category;
-        formDescription = item.Description;
-        formImageUrl = item.ImageUrl;
+        formCategory = item.Category ?? "Món nướng";
+        formDescription = item.Description ?? string.Empty;
+        formImageUrl = item.ImageUrl ?? string.Empty;
         isShowModal = true;
     }
 
     private void HideModal() => isShowModal = false;
 
     // ═════════════════════════════════════════════════
-    //  UPLOAD ẢNH — ĐÃ FIX LỖI SẬP WEB
+    //  UPLOAD ẢNH
     // ═════════════════════════════════════════════════
 
     private async Task HandleMenuImageUpload(InputFileChangeEventArgs e)
@@ -294,9 +356,8 @@
         try
         {
             var file = e.File;
-            long maxSize = 5 * 1024 * 1024; // 5MB
+            long maxSize = 5 * 1024 * 1024;
 
-            // ── Validate ────────────────────────────
             if (file.Size > maxSize)
             {
                 modalError = $"Ảnh vượt quá 5MB ({(file.Size / 1024 / 1024.0):F1}MB).";
@@ -309,30 +370,25 @@
                 return;
             }
 
-            // ── Tạo đường dẫn lưu file ─────────────
             var extension = Path.GetExtension(file.Name).ToLower();
             var safeName = $"{Guid.NewGuid()}{extension}";
-            var uploadsDir = Path.Combine(Env.WebRootPath, "uploads", "menu");
+            var uploadsDir = Path.Combine(Env.ContentRootPath, "..", "UploadsData", "menu");
 
             if (!Directory.Exists(uploadsDir))
                 Directory.CreateDirectory(uploadsDir);
 
             var filePath = Path.Combine(uploadsDir, safeName);
 
-            // ── Ghi file — ĐIỂM FIX CHÍNH ──────────
-            // Phải truyền maxAllowedSize vào OpenReadStream()
-            // Mặc định nó chỉ cho 512KB → lỗi với ảnh lớn
             await using var readStream = file.OpenReadStream(maxAllowedSize: maxSize);
             await using var writeStream = new FileStream(filePath, FileMode.Create);
             await readStream.CopyToAsync(writeStream);
 
-            // ── Gán URL vào form ────────────────────
             formImageUrl = $"/uploads/menu/{safeName}";
         }
         catch (Exception ex)
         {
             modalError = $"Lỗi upload: {ex.Message}";
-            Console.WriteLine($"Menu image upload error: {ex}");
+            Console.WriteLine($"[MENU] Upload error: {ex}");
         }
         finally
         {
@@ -342,14 +398,21 @@
     }
 
     // ═════════════════════════════════════════════════
-    //  SAVE / TOGGLE
+    //  SAVE / TOGGLE — GỌI DB THẬT
     // ═════════════════════════════════════════════════
 
     private async Task SaveItem()
     {
+        // ── Validate bắt buộc ───────────────────────
         if (string.IsNullOrWhiteSpace(formName))
         {
             modalError = "Tên món ăn không được để trống.";
+            return;
+        }
+
+        if (formPrice <= 0)
+        {
+            modalError = "Giá tiền phải lớn hơn 0.";
             return;
         }
 
@@ -360,37 +423,56 @@
         {
             if (isEditing)
             {
-                var existing = menuList.FirstOrDefault(m => m.Id == formId);
-                if (existing != null)
+                var success = await MenuService.UpdateItemAsync(
+                    formId, formName, formPrice, formCategory,
+                    string.IsNullOrWhiteSpace(formDescription) ? null : formDescription,
+                    string.IsNullOrWhiteSpace(formImageUrl) ? null : formImageUrl
+                );
+
+                if (!success)
                 {
-                    existing.Name = formName;
-                    existing.Price = formPrice;
-                    existing.Category = formCategory;
-                    existing.Description = formDescription;
-                    existing.ImageUrl = formImageUrl;
+                    modalError = "Không tìm thấy món ăn để cập nhật.";
+                    return;
                 }
+
+                // Reload list từ DB
+                menuList = await MenuService.GetByPoiIdAsync(currentPoiId);
+
+                pageMessage = $"Đã cập nhật \"{formName}\" thành công!";
+                pageMessageIsError = false;
             }
             else
             {
-                menuList.Add(new MenuItemLocal
+                var newItem = new MenuItem
                 {
-                    Id = menuList.Any() ? menuList.Max(m => m.Id) + 1 : 1,
+                    PoiId = currentPoiId,
                     Name = formName,
                     Price = formPrice,
-                    Category = formCategory,
+                    Category = formCategory ?? "Món nướng",
                     Description = formDescription,
                     ImageUrl = formImageUrl,
-                    IsHidden = false
-                });
+                    Status = "AVAILABLE"
+                };
+
+                var savedItem = await MenuService.AddItemAsync(newItem);
+
+                Console.WriteLine($"[MENU] Đã thêm: {savedItem.Name} (ItemId={savedItem.ItemId}, PoiId={savedItem.PoiId})");
+
+                // Reload list từ DB
+                menuList = await MenuService.GetByPoiIdAsync(currentPoiId);
+
+                pageMessage = $"Đã thêm \"{formName}\" thành công!";
+                pageMessageIsError = false;
             }
 
-            // TODO: Gọi FoodService.SaveAsync() để lưu DB
-
+            // Chỉ đóng modal khi KHÔNG CÓ LỖI
             HideModal();
         }
         catch (Exception ex)
         {
-            modalError = $"Lỗi lưu: {ex.Message}";
+            // ĐÃ SỬA: Lỗi hiện RÕ trong modal, KHÔNG đóng modal
+            modalError = $"Lỗi lưu DB: {ex.Message}";
+            Console.WriteLine($"[MENU] SaveItem EXCEPTION: {ex}");
         }
         finally
         {
@@ -398,35 +480,18 @@
         }
     }
 
-    private void ToggleStatus(MenuItemLocal item)
+    private async Task ToggleStatus(MenuItem item)
     {
-        item.IsHidden = !item.IsHidden;
-        // TODO: Gọi FoodService.ToggleAsync(item.Id)
-    }
-
-    // ═════════════════════════════════════════════════
-    //  DEMO DATA (thay bằng DB sau)
-    // ═════════════════════════════════════════════════
-
-    private List<MenuItemLocal> GetDemoData() => new()
-    {
-        new() { Id = 1, Name = "Ốc hương rang muối ớt", Price = 120000, Category = "Món nướng", IsHidden = false },
-        new() { Id = 2, Name = "Sò điệp nướng mỡ hành", Price = 80000, Category = "Món nướng", IsHidden = false },
-        new() { Id = 3, Name = "Nghêu hấp sả", Price = 65000, Category = "Món hấp", IsHidden = false },
-    };
-
-    // ═════════════════════════════════════════════════
-    //  MODEL NỘI BỘ
-    // ═════════════════════════════════════════════════
-
-    private class MenuItemLocal
-    {
-        public int Id { get; set; }
-        public string Name { get; set; } = string.Empty;
-        public decimal? Price { get; set; }
-        public string Category { get; set; } = "Món nướng";
-        public string Description { get; set; } = string.Empty;
-        public string ImageUrl { get; set; } = string.Empty;
-        public bool IsHidden { get; set; }
+        try
+        {
+            await MenuService.ToggleStatusAsync(item.ItemId);
+            item.Status = (item.Status == "AVAILABLE") ? "HIDDEN" : "AVAILABLE";
+        }
+        catch (Exception ex)
+        {
+            pageMessage = $"Lỗi đổi trạng thái: {ex.Message}";
+            pageMessageIsError = true;
+            Console.WriteLine($"[MENU] ToggleStatus error: {ex}");
+        }
     }
 }

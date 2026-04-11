@@ -1,50 +1,213 @@
 ﻿@page "/vendor/thu-nhap"
 @using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
+@using global::Admin.Services
+@using VKFoodTour.Infrastructure.Data
+@using VKFoodTour.Infrastructure.Entities
+@using Microsoft.EntityFrameworkCore
+
 @attribute [Authorize(Roles = "Vendor")]
 @rendermode InteractiveServer
+
+@inject AuthenticationStateProvider AuthStateProvider
+@inject PoiService PoiService
+@inject ApplicationDbContext Db
 
 <div class="container-fluid p-4">
     <h3 class="text-white fw-bold mb-4">THỐNG KÊ DOANH THU & TƯƠNG TÁC</h3>
 
-    <div class="row g-4 mb-4">
-        <div class="col-md-3">
-            <div class="card bg-dark-card border-0 p-3 shadow-sm h-100" style="border-radius: 12px; border-left: 4px solid #198754 !important;">
-                <div class="text-muted small fw-bold mb-1">DOANH THU HÔM NAY</div>
-                <h4 class="text-white fw-bold mb-0">1,250,000 ₫</h4>
-            </div>
+    @if (isLoading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-danger" role="status"></div>
+            <p class="text-muted mt-3">Đang tải dữ liệu...</p>
         </div>
-        <div class="col-md-3">
-            <div class="card bg-dark-card border-0 p-3 shadow-sm h-100" style="border-radius: 12px; border-left: 4px solid #E8A020 !important;">
-                <div class="text-muted small fw-bold mb-1">LƯỢT QUÉT QR</div>
-                <h4 class="text-white fw-bold mb-0">45 lượt</h4>
-            </div>
+    }
+    else if (currentPoiId == 0)
+    {
+        <div class="alert alert-warning">
+            <i class="bi bi-exclamation-triangle me-2"></i>
+            Tài khoản chưa được gán quán. Vui lòng liên hệ Admin.
         </div>
-        <div class="col-md-3">
-            <div class="card bg-dark-card border-0 p-3 shadow-sm h-100" style="border-radius: 12px; border-left: 4px solid #0dcaf0 !important;">
-                <div class="text-muted small fw-bold mb-1">LƯỢT NGHE AUDIO</div>
-                <h4 class="text-white fw-bold mb-0">112 lượt</h4>
+    }
+    else
+    {
+        <div class="row g-4 mb-4">
+            @* ── Card 1: Doanh thu (N/A vì chưa có bảng thanh toán) ── *@
+            <div class="col-md-3">
+                <div class="card bg-dark-card border-0 p-3 shadow-sm h-100" style="border-radius: 12px; border-left: 4px solid #198754 !important;">
+                    <div class="text-muted small fw-bold mb-1">DOANH THU HÔM NAY</div>
+                    <h5 class="text-secondary fw-bold mb-0">N/A</h5>
+                    <small class="text-muted" style="font-size: 0.7rem;">Chưa có hệ thống thanh toán</small>
+                </div>
             </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card bg-dark-card border-0 p-3 shadow-sm h-100" style="border-radius: 12px; border-left: 4px solid #C8372D !important;">
-                <div class="text-muted small fw-bold mb-1">MÓN BÁN CHẠY NHẤT</div>
-                <h6 class="text-white fw-bold mb-0 mt-2">Ốc hương bơ tỏi</h6>
-            </div>
-        </div>
-    </div>
 
-    <div class="card bg-dark-card border-0 p-4 shadow-sm" style="border-radius: 16px;">
-        <h6 class="text-white fw-bold mb-4 border-bottom border-secondary pb-3">GIAO DỊCH GẦN ĐÂY</h6>
-        
-        <div class="d-flex justify-content-between align-items-center mb-3 text-muted border-bottom border-secondary pb-2">
-            <div><i class="bi bi-clock-history me-2"></i>15 phút trước</div>
-            <div class="text-white">Bàn số 04 - Thanh toán Momo</div>
-            <div class="text-success fw-bold">+ 345,000 ₫</div>
+            @* ── Card 2: Lượt quét QR hôm nay ── *@
+            <div class="col-md-3">
+                <div class="card bg-dark-card border-0 p-3 shadow-sm h-100" style="border-radius: 12px; border-left: 4px solid #E8A020 !important;">
+                    <div class="text-muted small fw-bold mb-1">LƯỢT QUÉT QR HÔM NAY</div>
+                    <h4 class="text-white fw-bold mb-0">@qrScanCount lượt</h4>
+                </div>
+            </div>
+
+            @* ── Card 3: Lượt nghe Audio hôm nay ── *@
+            <div class="col-md-3">
+                <div class="card bg-dark-card border-0 p-3 shadow-sm h-100" style="border-radius: 12px; border-left: 4px solid #0dcaf0 !important;">
+                    <div class="text-muted small fw-bold mb-1">LƯỢT NGHE AUDIO HÔM NAY</div>
+                    <h4 class="text-white fw-bold mb-0">@audioPlayCount lượt</h4>
+                </div>
+            </div>
+
+            @* ── Card 4: Đánh giá trung bình ── *@
+            <div class="col-md-3">
+                <div class="card bg-dark-card border-0 p-3 shadow-sm h-100" style="border-radius: 12px; border-left: 4px solid #C8372D !important;">
+                    <div class="text-muted small fw-bold mb-1">ĐÁNH GIÁ TRUNG BÌNH</div>
+                    @if (averageRating > 0)
+                    {
+                        <h4 class="text-white fw-bold mb-0">
+                            @averageRating.ToString("0.0") <i class="bi bi-star-fill text-warning" style="font-size: 0.9rem;"></i>
+                        </h4>
+                        <small class="text-muted" style="font-size: 0.7rem;">(@totalReviews đánh giá)</small>
+                    }
+                    else
+                    {
+                        <h6 class="text-secondary fw-bold mb-0 mt-2">Chưa có đánh giá</h6>
+                    }
+                </div>
+            </div>
         </div>
-        <div class="d-flex justify-content-between align-items-center mb-3 text-muted border-bottom border-secondary pb-2">
-            <div><i class="bi bi-clock-history me-2"></i>1 giờ trước</div>
-            <div class="text-white">Bàn số 12 - Tiền mặt</div>
-            <div class="text-success fw-bold">+ 120,000 ₫</div>
+
+        @* ── Danh sách đánh giá gần đây ── *@
+        <div class="card bg-dark-card border-0 p-4 shadow-sm" style="border-radius: 16px;">
+            <h6 class="text-white fw-bold mb-4 border-bottom border-secondary pb-3">
+                <i class="bi bi-chat-left-quote me-2 text-warning"></i>ĐÁNH GIÁ GẦN ĐÂY
+            </h6>
+
+            @if (recentReviews.Any())
+            {
+                @foreach (var review in recentReviews)
+                {
+                    <div class="d-flex justify-content-between align-items-start mb-3 border-bottom border-secondary pb-3">
+                        <div class="flex-grow-1">
+                            <div class="d-flex align-items-center mb-1">
+                                @* Hiển thị sao *@
+                                @for (int i = 1; i <= 5; i++)
+                                {
+                                    var starIndex = i;
+                                    <i class="bi @(starIndex <= review.Rating ? "bi-star-fill text-warning" : "bi-star text-secondary")"
+                                       style="font-size: 0.85rem; margin-right: 2px;"></i>
+                                }
+                                <span class="text-muted small ms-2">@review.Rating/5</span>
+                            </div>
+                            <div class="text-white small">
+                                @(string.IsNullOrWhiteSpace(review.Comment) ? "(Không có nhận xét)" : review.Comment)
+                            </div>
+                        </div>
+                        <div class="text-muted small text-end ms-3" style="min-width: 100px;">
+                            <i class="bi bi-clock-history me-1"></i>@FormatTimeAgo(review.CreatedAt)
+                        </div>
+                    </div>
+                }
+            }
+            else
+            {
+                <div class="text-center text-muted py-4">
+                    <i class="bi bi-emoji-smile fs-1 d-block mb-2"></i>
+                    Chưa có đánh giá nào. Hãy chờ khách hàng ghé thăm quán bạn!
+                </div>
+            }
         </div>
-    </div>
+    }
 </div>
+
+@code {
+    // ── State ──────────────────────────────
+    private bool isLoading = true;
+    private int currentPoiId;
+
+    // Thống kê tracking
+    private int qrScanCount;
+    private int audioPlayCount;
+
+    // Đánh giá
+    private double averageRating;
+    private int totalReviews;
+    private List<Review> recentReviews = new();
+
+    // ── Lifecycle ──────────────────────────
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await LoadDataAsync();
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    // ── Load dữ liệu từ DB ────────────────
+    private async Task LoadDataAsync()
+    {
+        // 1. Lấy UserId từ Authentication (giống ThongTinQuan.razor)
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var userIdStr = authState.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+        if (!int.TryParse(userIdStr, out int userId)) return;
+
+        // 2. Lấy POI của vendor
+        var poi = await PoiService.GetPoiByOwnerIdAsync(userId);
+        if (poi == null) return;
+
+        currentPoiId = poi.PoiId;
+
+        // 3. Mốc thời gian: đầu ngày hôm nay
+        var today = DateTime.Today;
+
+        // 4. Thống kê TRACKING_LOGS hôm nay
+        qrScanCount = await Db.TrackingLogs
+            .AsNoTracking()
+            .CountAsync(t => t.PoiId == currentPoiId
+                          && t.EventType == "QR_SCAN"
+                          && t.CreatedAt >= today);
+
+        audioPlayCount = await Db.TrackingLogs
+            .AsNoTracking()
+            .CountAsync(t => t.PoiId == currentPoiId
+                          && t.EventType == "AUDIO_PLAY"
+                          && t.CreatedAt >= today);
+
+        // 5. Thống kê REVIEWS
+        var reviewQuery = Db.Reviews
+            .AsNoTracking()
+            .Where(r => r.PoiId == currentPoiId);
+
+        totalReviews = await reviewQuery.CountAsync();
+
+        if (totalReviews > 0)
+        {
+            averageRating = await reviewQuery.AverageAsync(r => (double)r.Rating);
+        }
+
+        // 6. Lấy 10 đánh giá gần đây nhất
+        recentReviews = await reviewQuery
+            .OrderByDescending(r => r.CreatedAt)
+            .Take(10)
+            .ToListAsync();
+    }
+
+    // ── Helper: format "X phút trước" ─────
+    private string FormatTimeAgo(DateTime? dateTime)
+    {
+        if (dateTime == null) return "N/A";
+
+        var span = DateTime.Now - dateTime.Value;
+
+        if (span.TotalMinutes < 1) return "Vừa xong";
+        if (span.TotalMinutes < 60) return $"{(int)span.TotalMinutes} phút trước";
+        if (span.TotalHours < 24) return $"{(int)span.TotalHours} giờ trước";
+        if (span.TotalDays < 7) return $"{(int)span.TotalDays} ngày trước";
+
+        return dateTime.Value.ToString("dd/MM/yyyy");
+    }
+}

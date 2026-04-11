@@ -33,6 +33,7 @@ public static class MauiProgram
         builder.Services.AddTransient<PlayerViewModel>();
         builder.Services.AddTransient<ProfileViewModel>();
 
+
         // Đăng ký Pages (Views)
         builder.Services.AddTransient<HomePage>();
         builder.Services.AddTransient<StallListPage>();
