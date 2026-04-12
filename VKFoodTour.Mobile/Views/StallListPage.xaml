@@ -18,7 +18,9 @@
 
         <CollectionView Grid.Row="1" 
                         ItemsSource="{Binding Pois}" 
-                        Margin="20,0">
+                        Margin="20,0"
+                        SelectionMode="Single"
+                        SelectionChanged="OnStallSelected">
             <CollectionView.ItemTemplate>
                 <DataTemplate x:DataType="models:Poi">
                     <Border BackgroundColor="#1A1818" 
@@ -58,7 +60,7 @@
                                     <Label Text="{Binding Priority}" 
                                            FontSize="11" 
                                            TextColor="#E8A020" 
-                                           FontFamily="DMSansMedium"/>
+                                           FontFamily="OpenSansSemibold"/>
                                 </HorizontalStackLayout>
                             </VerticalStackLayout>
                         </Grid>

@@ -17,26 +17,54 @@ namespace VKFoodTour.Api.Controllers
         }
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<PoiDto>>> GetAllPois() // <-- Đổi kiểu trả về
+        public async Task<ActionResult<IEnumerable<PoiDto>>> GetAllPois()
         {
             var pois = await _context.Pois
-                .Select(p => new PoiDto // <-- Sử dụng DTO dùng chung
+                .AsNoTracking()
+                .Where(p => p.IsActive)
+                .OrderBy(p => p.Priority)
+                .ThenBy(p => p.Name)
+                .Select(p => new PoiDto
                 {
                     PoiId = p.PoiId,
                     Name = p.Name,
                     Address = p.Address,
                     Latitude = p.Latitude,
                     Longitude = p.Longitude,
-                    Radius = p.Radius
+                    Radius = p.Radius,
+                    Priority = p.Priority,
+                    Description = p.Description,
+                    ImageUrl = p.ImageUrl
                 })
                 .ToListAsync();
 
-            if (pois == null || pois.Count == 0)
-            {
-                return NotFound("Chưa có dữ liệu POI nào trong hệ thống.");
-            }
-
             return Ok(pois);
+        }
+
+        [HttpGet("{id:int}")]
+        public async Task<ActionResult<PoiDto>> GetPoiById(int id)
+        {
+            var dto = await _context.Pois
+                .AsNoTracking()
+                .Where(p => p.PoiId == id && p.IsActive)
+                .Select(p => new PoiDto
+                {
+                    PoiId = p.PoiId,
+                    Name = p.Name,
+                    Address = p.Address,
+                    Latitude = p.Latitude,
+                    Longitude = p.Longitude,
+                    Radius = p.Radius,
+                    Priority = p.Priority,
+                    Description = p.Description,
+                    ImageUrl = p.ImageUrl
+                })
+                .FirstOrDefaultAsync();
+
+            if (dto is null)
+                return NotFound();
+
+            return Ok(dto);
         }
     }
 }

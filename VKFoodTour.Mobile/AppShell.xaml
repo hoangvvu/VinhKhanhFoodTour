@@ -14,6 +14,9 @@
         <Tab Title="Gian hàng" Icon="icon_stall.png">
             <ShellContent ContentTemplate="{DataTemplate pages:StallListPage}" Route="stalls" />
         </Tab>
+        <Tab Title="Quét QR">
+            <ShellContent ContentTemplate="{DataTemplate pages:QrScanPage}" Route="qrscan" />
+        </Tab>
         <Tab Title="Nghe" Icon="icon_audio.png">
             <ShellContent ContentTemplate="{DataTemplate pages:PlayerPage}" Route="player" />
         </Tab>

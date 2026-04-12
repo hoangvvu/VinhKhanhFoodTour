@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage x:Class="VKFoodTour.Mobile.Views.QrScanPage"
+             xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:VKFoodTour.Mobile.ViewModels"
+             xmlns:zxing="clr-namespace:ZXing.Net.Maui.Controls;assembly=ZXing.Net.Maui.Controls"
+             x:DataType="vm:QrScanViewModel"
+             BackgroundColor="#0F0E0E"
+             Shell.NavBarIsVisible="False">
+
+    <Grid RowDefinitions="Auto, Auto, *, Auto" Padding="20" RowSpacing="16">
+        <Label Grid.Row="0"
+               Text="QUÉT QR QUÁN"
+               FontSize="28"
+               FontFamily="BebasNeue"
+               TextColor="#F0EBE3"/>
+
+        <Label Grid.Row="1"
+               Text="Quét mã do Admin tạo (vkfoodtour://…) — mở tab Nghe với mô tả quán."
+               FontSize="12"
+               TextColor="#8A8078"
+               LineBreakMode="WordWrap"/>
+
+        <Grid Grid.Row="2">
+            <zxing:CameraBarcodeReaderView x:Name="BarcodeReader"
+                                             IsDetecting="True"
+                                             IsTorchOn="False"
+                                             IsVisible="{Binding ShowCameraScanner}"
+                                             BarcodesDetected="OnBarcodesDetected"/>
+
+            <Border IsVisible="{Binding ShowManualEntry}"
+                    BackgroundColor="#1A1818"
+                    Stroke="#2E2A2A"
+                    Padding="16"
+                    VerticalOptions="Center">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="14"/>
+                </Border.StrokeShape>
+                <VerticalStackLayout Spacing="12">
+                    <Label Text="Nhập mã (dev / Windows)" TextColor="#8A8078" FontSize="12"/>
+                    <Entry Text="{Binding ManualCode}" Placeholder="vkfoodtour://VK-XXXX" TextColor="#F0EBE3" PlaceholderColor="#5C5650"/>
+                    <Button Text="Tra cứu và nghe mô tả" Command="{Binding ResolveManualCommand}" BackgroundColor="#C8372D" TextColor="White"/>
+                </VerticalStackLayout>
+            </Border>
+        </Grid>
+
+        <Label Grid.Row="3"
+               Text="{Binding StatusMessage}"
+               FontSize="13"
+               TextColor="#E8A020"
+               LineBreakMode="WordWrap"/>
+    </Grid>
+</ContentPage>

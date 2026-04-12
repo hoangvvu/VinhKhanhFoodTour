@@ -4,10 +4,20 @@ public interface ISettingsService
 {
     string SelectedLanguageCode { get; set; }
     bool AutoPlayEnabled { get; set; }
+
+    /// <summary>Gốc API không có / cuối, ví dụ http://10.0.2.2:5242 (Android emulator) hoặc http://192.168.1.5:5242 (máy thật).</summary>
+    string ApiBaseUrl { get; set; }
 }
 
 public class SettingsService : ISettingsService
 {
+    private static string DefaultApiBase() =>
+#if ANDROID
+        "http://10.0.2.2:5242";
+#else
+        "http://localhost:5242";
+#endif
+
     public string SelectedLanguageCode
     {
         get => Preferences.Default.Get(nameof(SelectedLanguageCode), "vi");
@@ -18,5 +28,11 @@ public class SettingsService : ISettingsService
     {
         get => Preferences.Default.Get(nameof(AutoPlayEnabled), true);
         set => Preferences.Default.Set(nameof(AutoPlayEnabled), value);
+    }
+
+    public string ApiBaseUrl
+    {
+        get => Preferences.Default.Get(nameof(ApiBaseUrl), DefaultApiBase());
+        set => Preferences.Default.Set(nameof(ApiBaseUrl), value.Trim().TrimEnd('/'));
     }
 }

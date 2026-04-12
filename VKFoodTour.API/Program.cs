@@ -46,8 +46,9 @@ app.UseSwaggerUI(c =>
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "VK Food Tour API v1");
 });
 
-// b. Tự động chuyển hướng các request HTTP sang HTTPS (Bảo mật)
-app.UseHttpsRedirection();
+// b. HTTPS redirect: tắt khi Development để app mobile (HTTP tới 10.0.2.2 / LAN) không bị chuyển sang cổng HTTPS khác
+if (!app.Environment.IsDevelopment())
+    app.UseHttpsRedirection();
 
 // c. Áp dụng chính sách CORS đã cấu hình ở trên
 app.UseCors("AllowAll");

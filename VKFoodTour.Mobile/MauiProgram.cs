@@ -1,8 +1,9 @@
 ﻿using CommunityToolkit.Maui;
 using Microsoft.Extensions.Logging;
-using VKFoodTour.Mobile.Services;     // Sửa lại namespace này
-using VKFoodTour.Mobile.ViewModels;   // Sửa lại namespace này
-using VKFoodTour.Mobile.Views;        // Sửa lại namespace này
+using VKFoodTour.Mobile.Services;
+using VKFoodTour.Mobile.ViewModels;
+using VKFoodTour.Mobile.Views;
+using ZXing.Net.Maui.Controls;
 
 namespace VKFoodTour.Mobile;
 
@@ -13,8 +14,9 @@ public static class MauiProgram
         var builder = MauiApp.CreateBuilder();
         builder
             .UseMauiApp<App>()
+            .UseBarcodeReader()
             .UseMauiCommunityToolkit()
-            .UseMauiMaps() // <-- Thêm dòng này
+            .UseMauiMaps()
             .ConfigureFonts(fonts =>
             {
                 fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
@@ -25,14 +27,21 @@ public static class MauiProgram
 
         // Đăng ký Services
         builder.Services.AddSingleton<ISettingsService, SettingsService>();
-        builder.Services.AddSingleton<IDataService, DataService>();
+        builder.Services.AddSingleton<IStallNarrationState, StallNarrationState>();
+        builder.Services.AddHttpClient<IDataService, DataService>(client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(25);
+        });
+
+        builder.Services.AddSingleton<AppShell>();
+        builder.Services.AddSingleton<App>();
 
         // Đăng ký ViewModels
         builder.Services.AddTransient<HomeViewModel>();
         builder.Services.AddTransient<StallListViewModel>();
         builder.Services.AddTransient<PlayerViewModel>();
         builder.Services.AddTransient<ProfileViewModel>();
-
+        builder.Services.AddTransient<QrScanViewModel>();
 
         // Đăng ký Pages (Views)
         builder.Services.AddTransient<HomePage>();
@@ -40,6 +49,7 @@ public static class MauiProgram
         builder.Services.AddTransient<PlayerPage>();
         builder.Services.AddTransient<ProfilePage>();
         builder.Services.AddTransient<FullMapPage>();
+        builder.Services.AddTransient<QrScanPage>();
 
         return builder.Build();
     }

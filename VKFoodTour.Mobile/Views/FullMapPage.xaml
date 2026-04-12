@@ -15,7 +15,7 @@
         <VerticalStackLayout VerticalOptions="End" HorizontalOptions="End" Margin="20" Spacing="10">
             <Button Text="🎯" WidthRequest="50" HeightRequest="50" CornerRadius="25" 
                     BackgroundColor="White" TextColor="Black" FontSize="20"
-                    Command="{Binding CenterMapCommand}"/>
+                    Clicked="OnCenterOnStreet"/>
         </VerticalStackLayout>
     </Grid>
 </ContentPage>

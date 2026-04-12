@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.Input;
 using System.Collections.ObjectModel;
 using VKFoodTour.Mobile.Models;
 using VKFoodTour.Mobile.Services;
+using VKFoodTour.Shared.DTOs;
 
 namespace VKFoodTour.Mobile.ViewModels;
 
@@ -176,6 +177,27 @@ public partial class PlayerViewModel : ObservableObject
     [ObservableProperty]
     private string selectedLang = "vi";
 
+    public void ApplyStall(string name)
+    {
+        NowPlayingName = name;
+        NowPlayingText = "Thuyết minh sẽ lấy từ dữ liệu Admin/API khi có file âm thanh.";
+    }
+
+    public void ApplyFromQr(QrResolveDto dto)
+    {
+        NowPlayingName = string.IsNullOrWhiteSpace(dto.NarrationTitle)
+            ? dto.Name
+            : $"{dto.Name} — {dto.NarrationTitle}";
+
+        var body = !string.IsNullOrWhiteSpace(dto.NarrationContent)
+            ? dto.NarrationContent
+            : dto.Description;
+
+        NowPlayingText = string.IsNullOrWhiteSpace(body)
+            ? "Chưa có nội dung mô tả cho quán này trong hệ thống."
+            : body;
+    }
+
     [RelayCommand]
     private void Stop()
     {
@@ -189,6 +211,9 @@ public partial class PlayerViewModel : ObservableObject
 // ═══════════════════════════════════════════════════════
 public partial class ProfileViewModel : ObservableObject
 {
+    private readonly ISettingsService _settings;
+    private readonly IDataService _data;
+
     [ObservableProperty]
     private int listenCount = 5;
 
@@ -197,4 +222,41 @@ public partial class ProfileViewModel : ObservableObject
 
     [ObservableProperty]
     private string selectedLang = "Tiếng Việt";
+
+    [ObservableProperty]
+    private string apiBaseUrl = string.Empty;
+
+    [ObservableProperty]
+    private string connectionStatus = string.Empty;
+
+    public ProfileViewModel(ISettingsService settings, IDataService data)
+    {
+        _settings = settings;
+        _data = data;
+        ApiBaseUrl = _settings.ApiBaseUrl;
+    }
+
+    public void SyncApiUrlFromSettings() => ApiBaseUrl = _settings.ApiBaseUrl;
+
+    [RelayCommand]
+    private void SaveApiUrl()
+    {
+        _settings.ApiBaseUrl = ApiBaseUrl;
+        ConnectionStatus = "Đã lưu địa chỉ API.";
+    }
+
+    [RelayCommand]
+    private async Task TestConnectionAsync()
+    {
+        _settings.ApiBaseUrl = ApiBaseUrl;
+        try
+        {
+            var list = await _data.GetPoisAsync();
+            ConnectionStatus = $"Kết nối OK — nhận được {list.Count} gian hàng.";
+        }
+        catch (Exception ex)
+        {
+            ConnectionStatus = $"Lỗi: {ex.Message}";
+        }
+    }
 }
