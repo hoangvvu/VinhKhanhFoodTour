@@ -5,11 +5,17 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <base href="/" />
-    
+
     <link rel="stylesheet" href="lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="css/app.css" />
     <link rel="stylesheet" href="Admin.styles.css" />
     <link rel="icon" type="image/png" href="favicon.png" />
+
+    <!-- ★ Leaflet.js CSS (thay Google Maps) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+          crossorigin="" />
+
     <HeadOutlet />
 </head>
 
@@ -17,15 +23,21 @@
     <CascadingAuthenticationState>
         <Routes />
     </CascadingAuthenticationState>
-    
+
     <ReconnectModal />
-    
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyB9C7rA4UaRhIzeOgNoz1Zd5X4xBY7etKM"></script>
+
+    <!-- ★ Leaflet.js (thay Google Maps — miễn phí, không cần key) -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+            crossorigin=""></script>
+
+    <!-- JS Interop cho Admin -->
     <script src="/js/admin-interop.js"></script>
+
     <script src="_framework/blazor.web.js"></script>
-    
+
     <script>
-        // Hàm JavaScript để phát nhạc từ đường dẫn URL
+        // Hàm phát nhạc từ URL (backup, cũng có trong admin-interop.js)
         window.playAudioFromUrl = (url) => {
             const audio = new Audio(url);
             audio.play();

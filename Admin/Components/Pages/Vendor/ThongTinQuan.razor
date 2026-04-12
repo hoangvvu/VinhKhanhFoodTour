@@ -191,31 +191,30 @@
     {
         try
         {
-            // 1. KIỂM TRA AN TOÀN TRƯỚC TIÊN: Nếu người dùng bấm Cancel (0 file) thì thoát luôn, không làm gì cả.
+            // Bảo vệ: Nếu thoát cửa sổ chọn ảnh mà không chọn gì
             if (e.FileCount == 0) return;
 
             var file = e.File;
-            if (file == null) return;
-
             isSaving = true;
-            statusMessage = "Đang xử lý ảnh...";
+            statusMessage = "Đang tải ảnh...";
+            isError = false;
             StateHasChanged();
 
             var ext = Path.GetExtension(file.Name).ToLower();
             var fileName = $"stall_{currentPoiId}_{Guid.NewGuid()}{ext}";
             
-            var folder = Path.Combine(Env.ContentRootPath, "..", "UploadsData", "poi");
+            // Đường dẫn tuyệt đối an toàn
+            var folder = Path.GetFullPath(Path.Combine(Env.ContentRootPath, "..", "UploadsData", "poi"));
             if (!Directory.Exists(folder)) Directory.CreateDirectory(folder);
 
             var path = Path.Combine(folder, fileName);
 
-            using var ms = new MemoryStream();
-            await file.OpenReadStream(maxAllowedSize: 15 * 1024 * 1024).CopyToAsync(ms);
-            await File.WriteAllBytesAsync(path, ms.ToArray());
+            // Ghi file trực tiếp (Streaming) để không tốn RAM
+            await using FileStream fs = new(path, FileMode.Create);
+            await file.OpenReadStream(maxAllowedSize: 15 * 1024 * 1024).CopyToAsync(fs);
 
             mainImageUrl = $"/uploads/poi/{fileName}";
             statusMessage = "Tải ảnh lên thành công!";
-            isError = false;
         }
         catch (Exception ex)
         {

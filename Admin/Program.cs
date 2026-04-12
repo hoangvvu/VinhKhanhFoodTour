@@ -7,12 +7,12 @@ using VKFoodTour.Infrastructure.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// --- ĐĂNG KÝ SERVICES ---
+// --- 1. ĐĂNG KÝ SERVICES ---
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents()
     .AddHubOptions(options =>
     {
-        options.MaximumReceiveMessageSize = 15 * 1024 * 1024; // 15MB
+        options.MaximumReceiveMessageSize = 15 * 1024 * 1024; // Hỗ trợ upload 15MB
         options.ClientTimeoutInterval = TimeSpan.FromSeconds(60);
     });
 
@@ -34,6 +34,7 @@ builder.Services.AddAuthorization();
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddHttpClient();
 
+// Đăng ký các Service (Dựa theo các file Service.cs bạn vừa gửi)
 builder.Services.AddScoped<PoiService>();
 builder.Services.AddScoped<MenuService>();
 builder.Services.AddScoped<AuthService>();
@@ -41,62 +42,53 @@ builder.Services.AddScoped<TtsService>();
 
 var app = builder.Build();
 
-// --- KHỞI TẠO DỮ LIỆU ---
-// --- KHỞI TẠO DỮ LIỆU (ĐÃ ĐƯỢC BẢO VỆ CHỐNG SẬP) ---
+// --- 2. KHỞI TẠO DỮ LIỆU (SeedData) ---
 using (var scope = app.Services.CreateScope())
 {
-    var services = scope.ServiceProvider;
     try
     {
-        var db = services.GetRequiredService<ApplicationDbContext>();
-
-        // Kiểm tra xem có kết nối được SQL Server không
-        bool canConnect = await db.Database.CanConnectAsync();
-        if (canConnect)
-        {
-            await SeedData.InitializeAsync(db);
-        }
-        else
-        {
-            Console.WriteLine("\n=======================================================");
-            Console.WriteLine("🚨 CẢNH BÁO: KHÔNG THỂ KẾT NỐI TỚI DATABASE SQL SERVER!");
-            Console.WriteLine("👉 Hãy kiểm tra lại SQL Server đã bật chưa và xem file appsettings.json");
-            Console.WriteLine("=======================================================\n");
-        }
+        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        await SeedData.InitializeAsync(db);
     }
     catch (Exception ex)
     {
-        Console.WriteLine("\n=======================================================");
-        Console.WriteLine($"🚨 LỖI TẠO DỮ LIỆU MẪU (Bảng USERS có thể chưa tồn tại):");
-        Console.WriteLine(ex.Message);
-        Console.WriteLine("=======================================================\n");
+        Console.WriteLine($"[LỖI KHỞI TẠO]: {ex.Message}");
     }
 }
 
-// 1. Phục vụ file tĩnh trong wwwroot (CSS, JS)
-app.UseStaticFiles();
-
-// 2. ĐÃ SỬA: Đẩy thư mục UploadsData ra HẲN BÊN NGOÀI project (lùi 1 cấp "..")
-var uploadsFolderPath = Path.Combine(builder.Environment.ContentRootPath, "..", "UploadsData");
-if (!Directory.Exists(uploadsFolderPath))
+// --- 3. CẤU HÌNH PIPELINE ---
+if (!app.Environment.IsDevelopment())
 {
-    Directory.CreateDirectory(Path.Combine(uploadsFolderPath, "poi"));
-    Directory.CreateDirectory(Path.Combine(uploadsFolderPath, "menu"));
+    app.UseExceptionHandler("/Error", createScopeForErrors: true);
+    app.UseHsts();
 }
 
-// Mở cổng truy cập ảnh upload qua đường dẫn /uploads
+app.UseHttpsRedirection();
+
+// QUAN TRỌNG: Thứ tự các StaticFiles
+app.UseStaticFiles(); // Cho wwwroot
+
+// Cấu hình thư mục UploadsData (Giấu khỏi Hot Reload để tránh sập Terminal)
+var uploadsPath = Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, "..", "UploadsData"));
+if (!Directory.Exists(uploadsPath))
+{
+    Directory.CreateDirectory(Path.Combine(uploadsPath, "poi"));
+    Directory.CreateDirectory(Path.Combine(uploadsPath, "menu"));
+}
+
 app.UseStaticFiles(new StaticFileOptions
 {
-    FileProvider = new PhysicalFileProvider(uploadsFolderPath),
+    FileProvider = new PhysicalFileProvider(uploadsPath),
     RequestPath = "/uploads"
 });
 
-// 3. THỨ TỰ BẮT BUỘC: Routing -> Auth -> Antiforgery -> Map
 app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseAntiforgery();
 
-app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
+// Không dùng MapStaticAssets ở đây để tránh lỗi manifest khi thêm file lúc runtime
+app.MapRazorComponents<App>()
+    .AddInteractiveServerRenderMode();
 
 app.Run();

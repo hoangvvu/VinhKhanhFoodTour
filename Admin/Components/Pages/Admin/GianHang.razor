@@ -1,45 +1,143 @@
 @page "/gian-hang"
 @using Microsoft.AspNetCore.Authorization
+@using VKFoodTour.Infrastructure.Data
+@using VKFoodTour.Infrastructure.Entities
+@using Microsoft.EntityFrameworkCore
 @attribute [Authorize]
 @rendermode InteractiveServer
+
+@inject ApplicationDbContext Db
 
 <div class="container-fluid p-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h3 class="text-white fw-bold">QUẢN LÝ GIAN HÀNG</h3>
-        <button class="btn btn-danger rounded-pill px-4 shadow">+ Thêm gian hàng</button>
+        <a href="/admin/pois" class="btn btn-danger rounded-pill px-4 shadow">
+            <i class="bi bi-pencil-square me-2"></i>Quản lý chi tiết (CRUD)
+        </a>
     </div>
 
-    <div class="card bg-dark-card border-0 shadow">
-        <div class="card-body p-0">
-            <table class="table table-dark table-hover mb-0 align-middle">
-                <thead class="bg-black text-muted small">
-                    <tr>
-                        <th class="ps-4 py-3">GIAN HÀNG</th>
-                        <th>ĐỊA CHỈ</th>
-                        <th>TỌA ĐỘ (LAT/LONG)</th>
-                        <th>NGÔN NGỮ</th>
-                        <th class="text-end pe-4">THAO TÁC</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td class="ps-4">
-                            <span class="fw-bold">Ốc Oanh</span><br />
-                            <span class="badge bg-danger-subtle text-danger small">Ưu tiên 1</span>
-                        </td>
-                        <td>534 Vĩnh Khánh, Q.4</td>
-                        <td class="text-muted small">10.7601 / 106.7029</td>
-                        <td>
-                            <span class="badge-lang badge-vi">VI</span>
-                            <span class="badge-lang badge-en">EN</span>
-                        </td>
-                        <td class="text-end pe-4">
-                            <button class="btn btn-sm btn-outline-light me-2">Sửa</button>
-                            <button class="btn btn-sm btn-outline-danger">Xóa</button>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
+    @if (isLoading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-danger" role="status"></div>
         </div>
-    </div>
+    }
+    else
+    {
+        <div class="card bg-dark-card border-0 shadow" style="border-radius: 16px;">
+            <div class="card-body p-0">
+                <table class="table table-dark table-hover mb-0 align-middle">
+                    <thead class="bg-black text-muted small">
+                        <tr>
+                            <th class="ps-4 py-3">GIAN HÀNG</th>
+                            <th>ĐỊA CHỈ</th>
+                            <th>TỌA ĐỘ (LAT/LONG)</th>
+                            <th>NGÔN NGỮ THUYẾT MINH</th>
+                            <th>MÓN ĂN</th>
+                            <th class="text-end pe-4">TRẠNG THÁI</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var poi in poiList)
+                        {
+                            <tr>
+                                <td class="ps-4">
+                                    <span class="fw-bold">@poi.Name</span><br />
+                                    <span class="badge @(poi.Priority == 1 ? "bg-danger-subtle text-danger" : "bg-secondary") small">
+                                        Ưu tiên @poi.Priority
+                                    </span>
+                                </td>
+                                <td>@(poi.Address ?? "—")</td>
+                                <td class="text-muted small">
+                                    @poi.Latitude.ToString("F4") / @poi.Longitude.ToString("F4")
+                                </td>
+                                <td>
+                                    @{
+                                        var langs = poiLanguages.GetValueOrDefault(poi.PoiId, new List<string>());
+                                    }
+                                    @foreach (var langCode in langs)
+                                    {
+                                        <span class="badge-lang @(langCode is "vi" or "en" ? "badge-vi" : "badge-other")">
+                                            @langCode.ToUpper()
+                                        </span>
+                                    }
+                                    @if (!langs.Any())
+                                    {
+                                        <span class="text-muted small">Chưa có</span>
+                                    }
+                                </td>
+                                <td>
+                                    <span class="badge bg-info-subtle text-info">
+                                        @(poiFoodCounts.GetValueOrDefault(poi.PoiId, 0)) món
+                                    </span>
+                                </td>
+                                <td class="text-end pe-4">
+                                    @if (poi.IsActive)
+                                    {
+                                        <span class="badge bg-success">Hoạt động</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary">Đã tắt</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+
+                        @if (!poiList.Any())
+                        {
+                            <tr>
+                                <td colspan="6" class="text-center text-muted py-4">Chưa có gian hàng nào.</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
 </div>
+
+@code {
+    private List<Poi> poiList = new();
+    private Dictionary<int, List<string>> poiLanguages = new();
+    private Dictionary<int, int> poiFoodCounts = new();
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            poiList = await Db.Pois
+                .OrderBy(p => p.Priority)
+                .ThenBy(p => p.Name)
+                .AsNoTracking()
+                .ToListAsync();
+
+            // Lấy ngôn ngữ thuyết minh cho mỗi POI
+            var narrations = await Db.Narrations
+                .Include(n => n.Language)
+                .Where(n => n.IsActive)
+                .Select(n => new { n.PoiId, n.Language.Code })
+                .AsNoTracking()
+                .ToListAsync();
+
+            poiLanguages = narrations
+                .GroupBy(n => n.PoiId)
+                .ToDictionary(g => g.Key, g => g.Select(n => n.Code).Distinct().ToList());
+
+            // Đếm số món ăn mỗi POI
+            poiFoodCounts = await Db.Foods
+                .Where(f => f.IsAvailable)
+                .GroupBy(f => f.PoiId)
+                .ToDictionaryAsync(g => g.Key, g => g.Count());
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[GIANHANG] Error: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}

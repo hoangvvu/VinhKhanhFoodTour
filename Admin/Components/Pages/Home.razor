@@ -1,97 +1,307 @@
 ﻿@page "/"
 @using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
+@using VKFoodTour.Infrastructure.Data
+@using VKFoodTour.Infrastructure.Entities
+@using Microsoft.EntityFrameworkCore
 @attribute [Authorize]
 @rendermode InteractiveServer
+
+@inject AuthenticationStateProvider AuthStateProvider
+@inject ApplicationDbContext Db
+@inject PoiService PoiService
 
 <PageTitle>Dashboard - Vĩnh Khánh</PageTitle>
 
 <div class="page-content p-4" style="background-color: #262121; min-height: 100vh;">
-    
-    @* ════════════════════════════════════════════════════════════
-       GIAO DIỆN DÀNH CHO ADMIN
-       ════════════════════════════════════════════════════════════ *@
-    <AuthorizeView Roles="Admin">
-        <Authorized>
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h3 class="mb-0 fw-bold" style="color: #F0EBE3;">TỔNG QUAN HỆ THỐNG</h3>
-                <span class="badge bg-danger p-2 px-3">Quyền: Quản trị viên</span>
-            </div>
 
-            <div class="row g-4">
-                <div class="col-md-6">
-                    <div class="card bg-dark-card border-0 p-4 shadow-sm h-100" style="border-radius: 16px;">
-                        <h5 class="text-warning fw-bold mb-4"><i class="bi bi-geo-alt-fill me-2"></i>TOP 10 NƠI ĐẾN NHIỀU NHẤT</h5>
-                        <ul class="list-group list-group-flush bg-transparent">
-                            <li class="list-group-item bg-transparent text-white border-secondary px-0 d-flex justify-content-between align-items-center">
-                                <span><span class="badge bg-secondary me-2">1</span> Ốc Oanh</span>
-                                <span class="text-warning fw-bold">1,245 lượt</span>
-                            </li>
-                            <li class="list-group-item bg-transparent text-white border-secondary px-0 d-flex justify-content-between align-items-center">
-                                <span><span class="badge bg-secondary me-2">2</span> Sushi Viên VK</span>
-                                <span class="text-warning fw-bold">980 lượt</span>
-                            </li>
-                            <li class="list-group-item bg-transparent text-white border-secondary px-0 d-flex justify-content-between align-items-center">
-                                <span><span class="badge bg-secondary me-2">3</span> Lãng Quán</span>
-                                <span class="text-warning fw-bold">850 lượt</span>
-                            </li>
-                        </ul>
+    @if (isLoading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-danger" role="status"></div>
+            <p class="text-muted mt-3">Đang tải dữ liệu...</p>
+        </div>
+    }
+    else
+    {
+        @* ════════════════════════════════════════════════════════════
+           GIAO DIỆN DÀNH CHO ADMIN
+           ════════════════════════════════════════════════════════════ *@
+        <AuthorizeView Roles="Admin">
+            <Authorized>
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h3 class="mb-0 fw-bold" style="color: #F0EBE3;">TỔNG QUAN HỆ THỐNG</h3>
+                    <span class="badge bg-danger p-2 px-3">Quyền: Quản trị viên</span>
+                </div>
+
+                @* ── Thẻ thống kê tổng ── *@
+                <div class="row g-3 mb-4">
+                    <div class="col-md-3">
+                        <div class="card bg-dark-card border-0 p-3 shadow-sm" style="border-radius: 12px; border-left: 4px solid #E8A020 !important;">
+                            <div class="text-muted small fw-bold mb-1">TỔNG GIAN HÀNG</div>
+                            <h3 class="text-white fw-bold mb-0">@totalPois</h3>
+                            <small class="text-muted">@activePois đang hoạt động</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-dark-card border-0 p-3 shadow-sm" style="border-radius: 12px; border-left: 4px solid #0dcaf0 !important;">
+                            <div class="text-muted small fw-bold mb-1">THUYẾT MINH</div>
+                            <h3 class="text-white fw-bold mb-0">@totalNarrations</h3>
+                            <small class="text-muted">@totalLanguages ngôn ngữ</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-dark-card border-0 p-3 shadow-sm" style="border-radius: 12px; border-left: 4px solid #198754 !important;">
+                            <div class="text-muted small fw-bold mb-1">MÃ QR HOẠT ĐỘNG</div>
+                            <h3 class="text-white fw-bold mb-0">@totalQrCodes</h3>
+                            <small class="text-muted">@todayQrScans lượt quét hôm nay</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-dark-card border-0 p-3 shadow-sm" style="border-radius: 12px; border-left: 4px solid #C8372D !important;">
+                            <div class="text-muted small fw-bold mb-1">NGƯỜI DÙNG</div>
+                            <h3 class="text-white fw-bold mb-0">@totalUsers</h3>
+                            <small class="text-muted">@totalVendors vendor</small>
+                        </div>
                     </div>
                 </div>
 
-                <div class="col-md-6">
-                    <div class="card bg-dark-card border-0 p-4 shadow-sm h-100" style="border-radius: 16px;">
-                        <h5 class="text-info fw-bold mb-4"><i class="bi bi-headphones me-2"></i>TOP 10 AUDIO NGHE NHIỀU NHẤT</h5>
-                        <ul class="list-group list-group-flush bg-transparent">
-                            <li class="list-group-item bg-transparent text-white border-secondary px-0 d-flex justify-content-between align-items-center">
-                                <span><span class="badge bg-secondary me-2">1</span> Sự tích Ốc Oanh (VI)</span>
-                                <span class="text-info fw-bold">3,400 phút</span>
-                            </li>
-                            <li class="list-group-item bg-transparent text-white border-secondary px-0 d-flex justify-content-between align-items-center">
-                                <span><span class="badge bg-secondary me-2">2</span> Vĩnh Khánh History (EN)</span>
-                                <span class="text-info fw-bold">2,100 phút</span>
-                            </li>
-                        </ul>
+                <div class="row g-4">
+                    @* ── Top POI được quan tâm nhất ── *@
+                    <div class="col-md-6">
+                        <div class="card bg-dark-card border-0 p-4 shadow-sm h-100" style="border-radius: 16px;">
+                            <h5 class="text-warning fw-bold mb-4">
+                                <i class="bi bi-geo-alt-fill me-2"></i>TOP GIAN HÀNG ĐƯỢC QUAN TÂM
+                            </h5>
+                            @if (topPois.Any())
+                            {
+                                <ul class="list-group list-group-flush bg-transparent">
+                                    @foreach (var (poi, index) in topPois.Select((p, i) => (p, i)))
+                                    {
+                                        <li class="list-group-item bg-transparent text-white border-secondary px-0 d-flex justify-content-between align-items-center">
+                                            <span>
+                                                <span class="badge bg-secondary me-2">@(index + 1)</span>
+                                                @poi.PoiName
+                                            </span>
+                                            <span class="text-warning fw-bold">@poi.EventCount lượt</span>
+                                        </li>
+                                    }
+                                </ul>
+                            }
+                            else
+                            {
+                                <p class="text-muted text-center py-3">Chưa có dữ liệu tracking.</p>
+                            }
+                        </div>
+                    </div>
+
+                    @* ── Top Audio được nghe nhiều nhất ── *@
+                    <div class="col-md-6">
+                        <div class="card bg-dark-card border-0 p-4 shadow-sm h-100" style="border-radius: 16px;">
+                            <h5 class="text-info fw-bold mb-4">
+                                <i class="bi bi-headphones me-2"></i>TOP THUYẾT MINH ĐƯỢC NGHE
+                            </h5>
+                            @if (topAudio.Any())
+                            {
+                                <ul class="list-group list-group-flush bg-transparent">
+                                    @foreach (var (item, index) in topAudio.Select((a, i) => (a, i)))
+                                    {
+                                        <li class="list-group-item bg-transparent text-white border-secondary px-0 d-flex justify-content-between align-items-center">
+                                            <span>
+                                                <span class="badge bg-secondary me-2">@(index + 1)</span>
+                                                @item.PoiName
+                                            </span>
+                                            <span class="text-info fw-bold">@item.TotalMinutes phút</span>
+                                        </li>
+                                    }
+                                </ul>
+                            }
+                            else
+                            {
+                                <p class="text-muted text-center py-3">Chưa có dữ liệu nghe audio.</p>
+                            }
+                        </div>
                     </div>
                 </div>
-            </div>
-        </Authorized>
-    </AuthorizeView>
+            </Authorized>
+        </AuthorizeView>
 
+        @* ════════════════════════════════════════════════════════════
+           GIAO DIỆN DÀNH CHO VENDOR (CHỦ QUÁN)
+           ════════════════════════════════════════════════════════════ *@
+        <AuthorizeView Roles="Vendor">
+            <Authorized>
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h3 class="mb-0 fw-bold" style="color: #F0EBE3;">
+                        XIN CHÀO, @vendorPoiName!
+                    </h3>
+                    <span class="badge bg-info text-dark p-2 px-3">Quyền: Đối tác (Vendor)</span>
+                </div>
 
-    @* ════════════════════════════════════════════════════════════
-       GIAO DIỆN DÀNH CHO VENDOR (CHỦ QUÁN)
-       ════════════════════════════════════════════════════════════ *@
-    <AuthorizeView Roles="Vendor">
-        <Authorized>
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h3 class="mb-0 fw-bold" style="color: #F0EBE3;">XIN CHÀO CHỦ QUÁN!</h3>
-                <span class="badge bg-info text-dark p-2 px-3">Quyền: Đối tác (Vendor)</span>
-            </div>
-
-            <div class="row g-4 mb-4">
-                <div class="col-md-4">
-                    <div class="card bg-dark-card border-0 p-4 shadow-sm" style="border-radius: 16px;">
-                        <div class="text-muted small fw-bold mb-2">DOANH THU THÁNG NÀY</div>
-                        <h2 class="text-success fw-bold">12,500,000 đ</h2>
-                        <div class="text-success small"><i class="bi bi-arrow-up-right me-1"></i>+15% so với tháng trước</div>
+                <div class="row g-4 mb-4">
+                    <div class="col-md-4">
+                        <div class="card bg-dark-card border-0 p-4 shadow-sm" style="border-radius: 16px;">
+                            <div class="text-muted small fw-bold mb-2">LƯỢT QUÉT QR HÔM NAY</div>
+                            <h2 class="text-warning fw-bold">@vendorQrScans</h2>
+                            <div class="text-muted small">Tại quán của bạn</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card bg-dark-card border-0 p-4 shadow-sm" style="border-radius: 16px;">
+                            <div class="text-muted small fw-bold mb-2">ĐÁNH GIÁ TRUNG BÌNH</div>
+                            @if (vendorAvgRating > 0)
+                            {
+                                <h2 class="text-warning fw-bold">
+                                    @vendorAvgRating.ToString("0.0") <i class="bi bi-star-fill fs-5"></i>
+                                </h2>
+                                <div class="text-muted small">Từ @vendorReviewCount đánh giá</div>
+                            }
+                            else
+                            {
+                                <h4 class="text-secondary">Chưa có</h4>
+                            }
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card bg-dark-card border-0 p-4 shadow-sm" style="border-radius: 16px;">
+                            <div class="text-muted small fw-bold mb-2">MÓN ĂN TRONG THỰC ĐƠN</div>
+                            <h2 class="text-info fw-bold">@vendorMenuCount</h2>
+                            <div class="text-muted small">Đang hiển thị trên app</div>
+                        </div>
                     </div>
                 </div>
-                <div class="col-md-4">
-                    <div class="card bg-dark-card border-0 p-4 shadow-sm" style="border-radius: 16px;">
-                        <div class="text-muted small fw-bold mb-2">ĐÁNH GIÁ MỚI (REVIEWS)</div>
-                        <h2 class="text-warning fw-bold">4.8 <i class="bi bi-star-fill fs-5"></i></h2>
-                        <div class="text-muted small">Từ 120 khách hàng quét QR</div>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="card bg-dark-card border-0 p-4 shadow-sm" style="border-radius: 16px;">
-                        <div class="text-muted small fw-bold mb-2">LƯỢT NGHE THUYẾT MINH</div>
-                        <h2 class="text-info fw-bold">450 lượt</h2>
-                        <div class="text-muted small">Giọng nữ miền Nam được yêu thích nhất</div>
-                    </div>
-                </div>
-            </div>
-        </Authorized>
-    </AuthorizeView>
-
+            </Authorized>
+        </AuthorizeView>
+    }
 </div>
+
+@code {
+    private bool isLoading = true;
+
+    // ── Admin stats ─────────────────────────
+    private int totalPois, activePois, totalNarrations, totalLanguages;
+    private int totalQrCodes, todayQrScans, totalUsers, totalVendors;
+    private List<TopPoiItem> topPois = new();
+    private List<TopAudioItem> topAudio = new();
+
+    // ── Vendor stats ────────────────────────
+    private string vendorPoiName = "Chủ quán";
+    private int vendorQrScans, vendorReviewCount, vendorMenuCount;
+    private double vendorAvgRating;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+            var role = user.FindFirst(ClaimTypes.Role)?.Value;
+
+            if (role == "Admin")
+                await LoadAdminStats();
+            else if (role == "Vendor")
+                await LoadVendorStats(user);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[HOME] Load error: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task LoadAdminStats()
+    {
+        var today = DateTime.Today;
+
+        // Counts
+        totalPois = await Db.Pois.CountAsync();
+        activePois = await Db.Pois.CountAsync(p => p.IsActive);
+        totalNarrations = await Db.Narrations.CountAsync();
+        totalLanguages = await Db.Languages.CountAsync(l => l.IsActive);
+        totalQrCodes = await Db.QrCodes.CountAsync(q => q.IsActive);
+        totalUsers = await Db.Users.CountAsync();
+        totalVendors = await Db.Users.CountAsync(u => u.Role == "Vendor");
+
+        todayQrScans = await Db.TrackingLogs
+            .CountAsync(t => t.EventType == "qr_scan" && t.CreatedAt >= today);
+
+        // Top POIs by tracking events (enter + qr_scan)
+        topPois = await Db.TrackingLogs
+            .Where(t => t.PoiId != null && (t.EventType == "enter" || t.EventType == "qr_scan"))
+            .GroupBy(t => t.PoiId)
+            .Select(g => new TopPoiItem
+            {
+                PoiId = g.Key!.Value,
+                EventCount = g.Count()
+            })
+            .OrderByDescending(x => x.EventCount)
+            .Take(5)
+            .ToListAsync();
+
+        // Gắn tên POI
+        var poiIds = topPois.Select(x => x.PoiId).ToList();
+        var poiNames = await Db.Pois
+            .Where(p => poiIds.Contains(p.PoiId))
+            .ToDictionaryAsync(p => p.PoiId, p => p.Name);
+
+        foreach (var item in topPois)
+            item.PoiName = poiNames.GetValueOrDefault(item.PoiId, "N/A");
+
+        // Top Audio by listened duration
+        topAudio = await Db.TrackingLogs
+            .Where(t => t.PoiId != null && t.EventType == "listen_end" && t.ListenedDurationSec != null)
+            .GroupBy(t => t.PoiId)
+            .Select(g => new TopAudioItem
+            {
+                PoiId = g.Key!.Value,
+                TotalMinutes = (int)(g.Sum(t => t.ListenedDurationSec!.Value) / 60.0)
+            })
+            .OrderByDescending(x => x.TotalMinutes)
+            .Take(5)
+            .ToListAsync();
+
+        foreach (var item in topAudio)
+            item.PoiName = poiNames.GetValueOrDefault(item.PoiId, "N/A");
+    }
+
+    private async Task LoadVendorStats(ClaimsPrincipal user)
+    {
+        var userIdStr = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (!int.TryParse(userIdStr, out int userId)) return;
+
+        var poi = await PoiService.GetPoiByOwnerIdAsync(userId);
+        if (poi == null) return;
+
+        vendorPoiName = poi.Name;
+        var today = DateTime.Today;
+
+        vendorQrScans = await Db.TrackingLogs
+            .CountAsync(t => t.PoiId == poi.PoiId && t.EventType == "qr_scan" && t.CreatedAt >= today);
+
+        var reviews = Db.Reviews.Where(r => r.PoiId == poi.PoiId);
+        vendorReviewCount = await reviews.CountAsync();
+        if (vendorReviewCount > 0)
+            vendorAvgRating = await reviews.AverageAsync(r => (double)r.Rating);
+
+        vendorMenuCount = await Db.Foods.CountAsync(f => f.PoiId == poi.PoiId && f.IsAvailable);
+    }
+
+    // ── Helper models ───────────────────────
+    private class TopPoiItem
+    {
+        public int PoiId { get; set; }
+        public string PoiName { get; set; } = "N/A";
+        public int EventCount { get; set; }
+    }
+
+    private class TopAudioItem
+    {
+        public int PoiId { get; set; }
+        public string PoiName { get; set; } = "N/A";
+        public int TotalMinutes { get; set; }
+    }
+}
