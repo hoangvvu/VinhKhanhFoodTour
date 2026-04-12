@@ -1,5 +1,6 @@
 ﻿using System.Text;
 using System.Text.Json;
+using Microsoft.AspNetCore.Hosting;
 
 namespace Admin.Services;
 
@@ -12,13 +13,15 @@ public class TtsResult
 public class TtsService
 {
     private readonly HttpClient _httpClient;
+    private readonly IWebHostEnvironment _env;
 
     // Dán mã API Key của FPT.AI mà bạn vừa copy vào đây
     private readonly string _apiKey = "PtJ2wolAlCHog4FgK48FsaJOAtwxNHeG";
 
-    public TtsService(HttpClient httpClient)
+    public TtsService(HttpClient httpClient, IWebHostEnvironment env)
     {
         _httpClient = httpClient;
+        _env = env;
     }
 
     public async Task<TtsResult> GenerateAudioAsync(string text, string voiceCode)
@@ -52,6 +55,29 @@ public class TtsService
             var error = await response.Content.ReadAsStringAsync();
             Console.WriteLine($"Lỗi API FPT: {error}");
             return new TtsResult { ErrorMessage = error };
+        }
+    }
+
+    /// <summary>Gọi FPT TTS rồi tải file về thư mục UploadsData/narration để lưu lâu dài.</summary>
+    public async Task<TtsResult> GenerateAndPersistLocalAsync(string text, string voiceCode, string fileNameStem)
+    {
+        var remote = await GenerateAudioAsync(text, voiceCode);
+        if (!string.IsNullOrEmpty(remote.ErrorMessage) || string.IsNullOrEmpty(remote.Url))
+            return remote;
+
+        try
+        {
+            var bytes = await _httpClient.GetByteArrayAsync(remote.Url);
+            var dir = Path.GetFullPath(Path.Combine(_env.ContentRootPath, "..", "UploadsData", "narration"));
+            Directory.CreateDirectory(dir);
+            var safeStem = string.Join("_", fileNameStem.Split(Path.GetInvalidFileNameChars()));
+            var fn = $"{safeStem}_{Guid.NewGuid():N}.mp3";
+            await File.WriteAllBytesAsync(Path.Combine(dir, fn), bytes);
+            return new TtsResult { Url = $"/uploads/narration/{fn}" };
+        }
+        catch (Exception ex)
+        {
+            return new TtsResult { Url = remote.Url, ErrorMessage = $"Đã tạo trên FPT nhưng lưu file thất bại: {ex.Message}" };
         }
     }
 }

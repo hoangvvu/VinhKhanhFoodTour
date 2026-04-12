@@ -29,6 +29,11 @@ public class Narration
     [Column("tts_voice")]
     public string? TtsVoice { get; set; }
 
+    /// <summary>File âm thanh thuyết minh đã lưu (đường dẫn /uploads/...).</summary>
+    [MaxLength(500)]
+    [Column("audio_url")]
+    public string? AudioUrl { get; set; }
+
     [Column("is_active")]
     public bool IsActive { get; set; } = true;
 

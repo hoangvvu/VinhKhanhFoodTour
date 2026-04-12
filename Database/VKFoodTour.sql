@@ -29,7 +29,7 @@ CREATE TABLE USERS (
     email         NVARCHAR(100) NOT NULL UNIQUE,
     password_hash NVARCHAR(255) NOT NULL,
     role          NVARCHAR(20)  NOT NULL DEFAULT 'Vendor',
-        CONSTRAINT chk_users_role CHECK (role IN ('Admin', 'Vendor')),
+        CONSTRAINT chk_users_role CHECK (role IN ('Admin', 'Vendor', 'User')),
     is_active     BIT           NOT NULL DEFAULT 1,
     created_at    DATETIME      NOT NULL DEFAULT GETDATE(),
     updated_at    DATETIME      NULL
@@ -69,6 +69,7 @@ CREATE TABLE NARRATIONS (
     title         NVARCHAR(200)  NOT NULL,
     content       NVARCHAR(MAX)  NOT NULL,   -- Văn bản đưa vào TTS
     tts_voice     NVARCHAR(100)  NULL,       -- Override giọng đọc riêng (nếu cần)
+    audio_url     NVARCHAR(500)  NULL,       -- File MP3 đã lưu (/uploads/narration/...) — đồng bộ với EF migration AddNarrationAudioUrl
     is_active     BIT            NOT NULL DEFAULT 1,
     updated_at    DATETIME       NULL,
     CONSTRAINT uq_narration_poi_lang UNIQUE (poi_id, language_id),
@@ -193,8 +194,9 @@ USE foodtour
 GO
 
 -- ============================================================
---  1. BẢNG POI_IMAGES (Quản lý Thư viện hình ảnh của quán)
---  Phục vụ cho trang: Mô tả & Hình ảnh (ThongTinQuan.razor)
+--  1. BẢNG POI_IMAGES (bản mở rộng / dự phòng)
+--  Lưu ý: Ứng dụng hiện tại (EF) dùng bảng IMAGES ở trên cho ảnh POI + món.
+--  Chỉ tạo POI_IMAGES nếu bạn thật sự cần tách schema; tránh trùng dữ liệu với IMAGES.
 -- ============================================================
 CREATE TABLE POI_IMAGES (
     image_id      INT           IDENTITY(1,1) PRIMARY KEY,
@@ -344,3 +346,20 @@ SELECT * FROM USERS;
 ALTER TABLE POIS ADD description NVARCHAR(MAX) NULL;
 ALTER TABLE POIS ADD image_url NVARCHAR(255) NULL;
 GO
+
+-- ============================================================
+--  Bổ sung CSDL đã tồn tại (không chạy CREATE từ đầu)
+-- ============================================================
+IF NOT EXISTS (
+    SELECT 1 FROM sys.columns
+    WHERE object_id = OBJECT_ID(N'NARRATIONS') AND name = N'audio_url'
+)
+BEGIN
+    ALTER TABLE NARRATIONS ADD audio_url NVARCHAR(500) NULL;
+END
+GO
+
+-- DB cũ: nếu CHECK role chỉ cho phép Admin/Vendor, bỏ comment và chạy một lần:
+-- ALTER TABLE USERS DROP CONSTRAINT chk_users_role;
+-- ALTER TABLE USERS ADD CONSTRAINT chk_users_role CHECK (role IN ('Admin', 'Vendor', 'User'));
+-- GO

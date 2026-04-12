@@ -110,6 +110,11 @@ public class ApplicationDbContext : DbContext
 
             entity.Property(e => e.CreatedAt)
                   .HasDefaultValueSql("GETDATE()");
+
+            entity.HasOne(e => e.Poi)
+                  .WithMany(p => p.Images)
+                  .HasForeignKey(e => e.PoiId)
+                  .OnDelete(DeleteBehavior.Cascade);
         });
 
         // ── QRCODE ──────────────────────────────────

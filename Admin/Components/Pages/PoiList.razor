@@ -1,6 +1,6 @@
 @page "/admin/pois"
 @using Microsoft.AspNetCore.Authorization
-@attribute [Authorize]
+@attribute [Authorize(Roles = "Admin")]
 @rendermode InteractiveServer
 @inject PoiService PoiService
 
@@ -141,9 +141,9 @@
                                                 @onclick="() => ShowEditModal(item)">
                                             <span class="bi bi-pencil"></span> Sửa
                                         </button>
-                                        <button class="btn btn-sm btn-outline-danger rounded-pill"
-                                                @onclick="() => ShowDeleteConfirm(item)">
-                                            <span class="bi bi-trash"></span> Xóa
+                                        <button class="btn btn-sm btn-outline-warning rounded-pill"
+                                                @onclick="() => ShowHideConfirm(item)">
+                                            <span class="bi bi-eye-slash"></span> Ẩn
                                         </button>
                                     </td>
                                 </tr>
@@ -275,33 +275,31 @@
 }
 
 @* ══════════════════════════════════════════════════════════════
-   PHẦN 5: MODAL XÁC NHẬN XÓA
+   PHẦN 5: MODAL XÁC NHẬN ẨN GIAN HÀNG
    ══════════════════════════════════════════════════════════════ *@
 
-@if (isDeleteConfirmVisible)
+@if (isHideConfirmVisible)
 {
     <div class="modal fade show d-block" style="background: rgba(0,0,0,0.5);">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
                 <div class="modal-body p-4 text-center">
-                    <div class="fs-1 mb-3">⚠️</div>
-                    <h5 class="fw-bold">Xác nhận xóa</h5>
+                    <div class="fs-1 mb-3">👁‍🗨</div>
+                    <h5 class="fw-bold">Ẩn gian hàng</h5>
                     <p class="text-muted">
-                        Bạn có chắc muốn xóa <strong>@deletingPoi?.Name</strong>?<br />
-                        <small class="text-danger">
-                            Tất cả thuyết minh, món ăn, hình ảnh và mã QR liên quan sẽ bị xóa theo.
-                        </small>
+                        Gian hàng <strong>@hidingPoi?.Name</strong> sẽ được đánh dấu <strong>không hoạt động</strong> (ẩn khỏi app khách).<br />
+                        <small class="text-secondary">Dữ liệu vẫn lưu trong CSDL; có thể bật lại bằng trạng thái trong bảng hoặc sửa gian hàng.</small>
                     </p>
                     <div class="d-flex justify-content-center gap-2 mt-3">
-                        <button class="btn text-muted px-4" @onclick="HideDeleteConfirm">Hủy</button>
-                        <button class="btn btn-danger rounded-pill px-4"
-                                @onclick="DeletePoi"
+                        <button class="btn text-muted px-4" @onclick="HideHideConfirm">Hủy</button>
+                        <button class="btn btn-warning text-dark rounded-pill px-4"
+                                @onclick="HidePoiAsync"
                                 disabled="@isSaving">
                             @if (isSaving)
                             {
                                 <span class="spinner-border spinner-border-sm me-1"></span>
                             }
-                            Xóa
+                            Ẩn gian hàng
                         </button>
                     </div>
                 </div>
@@ -330,9 +328,9 @@
     private string errorMessage = string.Empty;
     private Poi editingPoi = new();
 
-    // ── State: Modal Xóa ────────────────────────────────
-    private bool isDeleteConfirmVisible = false;
-    private Poi? deletingPoi;
+    // ── State: Modal Ẩn ────────────────────────────────
+    private bool isHideConfirmVisible = false;
+    private Poi? hidingPoi;
 
     // ═════════════════════════════════════════════════════
     //  COMPUTED PROPERTY: Danh sách đã lọc
@@ -502,36 +500,37 @@
     }
 
     // ═════════════════════════════════════════════════════
-    //  DELETE: Xác nhận rồi mới xóa
+    //  ẨN gian hàng (soft — IsActive = false)
     // ═════════════════════════════════════════════════════
 
-    private void ShowDeleteConfirm(Poi poi)
+    private void ShowHideConfirm(Poi poi)
     {
-        deletingPoi = poi;
-        isDeleteConfirmVisible = true;
+        hidingPoi = poi;
+        isHideConfirmVisible = true;
     }
 
-    private void HideDeleteConfirm()
+    private void HideHideConfirm()
     {
-        isDeleteConfirmVisible = false;
-        deletingPoi = null;
+        isHideConfirmVisible = false;
+        hidingPoi = null;
     }
 
-    private async Task DeletePoi()
+    private async Task HidePoiAsync()
     {
-        if (deletingPoi is null) return;
+        if (hidingPoi is null)
+            return;
 
         isSaving = true;
 
         try
         {
-            await PoiService.DeleteAsync(deletingPoi.PoiId);
-            HideDeleteConfirm();
+            await PoiService.HideStallAsync(hidingPoi.PoiId);
+            HideHideConfirm();
             await LoadData();
         }
         catch (Exception ex)
         {
-            errorMessage = $"Lỗi xóa: {ex.Message}";
+            errorMessage = $"Lỗi: {ex.Message}";
         }
         finally
         {

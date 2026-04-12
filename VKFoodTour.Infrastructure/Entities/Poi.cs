@@ -59,4 +59,5 @@ public class Poi
     // Navigation properties
     public ICollection<Narration> Narrations { get; set; } = new List<Narration>();
     public ICollection<QrCode> QrCodes { get; set; } = new List<QrCode>();
+    public ICollection<Image> Images { get; set; } = new List<Image>();
 }

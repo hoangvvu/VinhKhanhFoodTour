@@ -41,9 +41,158 @@ public class PoiService
     public async Task<Poi?> GetPoiByOwnerIdAsync(int ownerId)
     {
         return await _db.Pois
-            .Include(p => p.QrCodes) // Lấy kèm mã QR
+            .Include(p => p.QrCodes)
+            .Include(p => p.Images)
+            .Include(p => p.Narrations)
+            .ThenInclude(n => n.Language)
             .AsNoTracking()
             .FirstOrDefaultAsync(p => p.OwnerId == ownerId);
+    }
+
+    /// <summary>Tạo gian hàng mặc định nếu vendor chưa có POI (đăng nhập Gmail hoặc tài khoản mới).</summary>
+    public async Task<Poi> EnsureVendorPoiAsync(int userId, string defaultStallName)
+    {
+        var existing = await _db.Pois.FirstOrDefaultAsync(p => p.OwnerId == userId);
+        if (existing is not null)
+            return existing;
+
+        var name = string.IsNullOrWhiteSpace(defaultStallName) ? "Quán của tôi" : defaultStallName.Trim();
+        var poi = new Poi
+        {
+            OwnerId = userId,
+            Name = name,
+            Address = "",
+            Latitude = 10.7578m,
+            Longitude = 106.7095m,
+            Radius = 20,
+            Priority = 3,
+            IsActive = true
+        };
+        _db.Pois.Add(poi);
+        await _db.SaveChangesAsync();
+        return poi;
+    }
+
+    public async Task<List<Image>> GetStallGalleryAsync(int poiId, int ownerUserId)
+    {
+        var ok = await _db.Pois.AnyAsync(p => p.PoiId == poiId && p.OwnerId == ownerUserId);
+        if (!ok)
+            return new List<Image>();
+
+        return await _db.Images
+            .AsNoTracking()
+            .Where(i => i.PoiId == poiId && i.FoodId == null && !i.IsCover)
+            .OrderBy(i => i.SortOrder)
+            .ToListAsync();
+    }
+
+    public async Task<bool> AddStallGalleryImageAsync(int poiId, int ownerUserId, string imageUrl)
+    {
+        var poi = await _db.Pois.FirstOrDefaultAsync(p => p.PoiId == poiId && p.OwnerId == ownerUserId);
+        if (poi is null)
+            return false;
+
+        var maxOrder = await _db.Images
+            .Where(i => i.PoiId == poiId && i.FoodId == null && !i.IsCover)
+            .Select(i => (int?)i.SortOrder)
+            .MaxAsync() ?? 0;
+
+        _db.Images.Add(new Image
+        {
+            PoiId = poiId,
+            FoodId = null,
+            ImageUrl = imageUrl,
+            IsCover = false,
+            SortOrder = maxOrder + 1
+        });
+        await _db.SaveChangesAsync();
+        return true;
+    }
+
+    public async Task<bool> RemoveStallGalleryImageAsync(int imageId, int ownerUserId)
+    {
+        var img = await _db.Images
+            .Include(i => i.Poi)
+            .FirstOrDefaultAsync(i => i.ImageId == imageId);
+
+        if (img is null || img.Poi?.OwnerId != ownerUserId || img.IsCover)
+            return false;
+
+        _db.Images.Remove(img);
+        await _db.SaveChangesAsync();
+        return true;
+    }
+
+    /// <summary>Tạo mã QR đầu tiên cho quán nếu chưa có (token dạng VK-XXXXXXXX).</summary>
+    public async Task<string?> EnsurePrimaryQrForVendorAsync(int poiId, int ownerUserId, string? locationNote = null)
+    {
+        var poi = await _db.Pois
+            .Include(p => p.QrCodes)
+            .FirstOrDefaultAsync(p => p.PoiId == poiId && p.OwnerId == ownerUserId);
+        if (poi is null)
+            return null;
+
+        var existing = poi.QrCodes.FirstOrDefault(q => q.IsActive);
+        if (existing is not null)
+            return existing.QrToken;
+
+        string token;
+        do
+        {
+            token = $"VK-{Guid.NewGuid().ToString("N")[..8].ToUpperInvariant()}";
+        } while (await _db.QrCodes.AnyAsync(q => q.QrToken == token));
+
+        _db.QrCodes.Add(new QrCode
+        {
+            PoiId = poiId,
+            QrToken = token,
+            LocationNote = string.IsNullOrWhiteSpace(locationNote) ? "Quét tại quán" : locationNote.Trim(),
+            IsActive = true
+        });
+        await _db.SaveChangesAsync();
+        return token;
+    }
+
+    public async Task UpsertNarrationAsync(int poiId, int languageId, string title, string content, string? ttsVoice, string? audioUrl)
+    {
+        var existing = await _db.Narrations.FirstOrDefaultAsync(n => n.PoiId == poiId && n.LanguageId == languageId);
+        if (existing is not null)
+        {
+            existing.Title = title;
+            existing.Content = content;
+            existing.TtsVoice = ttsVoice;
+            existing.AudioUrl = audioUrl;
+            existing.UpdatedAt = DateTime.Now;
+            existing.IsActive = true;
+        }
+        else
+        {
+            _db.Narrations.Add(new Narration
+            {
+                PoiId = poiId,
+                LanguageId = languageId,
+                Title = title,
+                Content = content,
+                TtsVoice = ttsVoice,
+                AudioUrl = audioUrl,
+                IsActive = true
+            });
+        }
+
+        await _db.SaveChangesAsync();
+    }
+
+    /// <summary>Ẩn gian hàng (không xóa bản ghi).</summary>
+    public async Task<bool> HideStallAsync(int id)
+    {
+        var poi = await _db.Pois.FindAsync(id);
+        if (poi is null)
+            return false;
+
+        poi.IsActive = false;
+        poi.UpdatedAt = DateTime.Now;
+        await _db.SaveChangesAsync();
+        return true;
     }
 
     // ============================================================
@@ -144,4 +293,12 @@ public class PoiService
 
     public async Task<bool> IsNameExistsAsync(string name, int excludeId = 0) =>
         await _db.Pois.AnyAsync(p => p.Name == name && p.PoiId != excludeId);
+
+    public async Task<int> GetVietnameseLanguageIdAsync()
+    {
+        var lang = await _db.Languages.AsNoTracking().FirstOrDefaultAsync(l => l.Code == "vi");
+        if (lang is null)
+            throw new InvalidOperationException("Thiếu ngôn ngữ 'vi' trong bảng LANGUAGES. Khởi động lại app để chạy Seed.");
+        return lang.LanguageId;
+    }
 }

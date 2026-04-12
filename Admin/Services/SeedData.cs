@@ -35,10 +35,20 @@ public static class SeedData
             Console.WriteLine("═══════════════════════════════════════");
         }
 
+        // ── 1b. Ngôn ngữ thuyết minh (bắt buộc cho TTS / Narration) ──
+        if (!await db.Languages.AnyAsync())
+        {
+            db.Languages.AddRange(
+                new Language { Code = "vi", Name = "Tiếng Việt", IsActive = true },
+                new Language { Code = "en", Name = "English", IsActive = true });
+            await db.SaveChangesAsync();
+        }
+
         // ── 2. Vendor (Chủ gian hàng) ─────────────────────────
+        User? vendorUser = null;
         if (!await db.Users.AnyAsync(u => u.Email == "vendorvk@gmail.com"))
         {
-            var vendor = new User
+            vendorUser = new User
             {
                 Name = "Vendor",
                 Email = "vendorvk@gmail.com",
@@ -47,7 +57,7 @@ public static class SeedData
                 IsActive = true
             };
 
-            db.Users.Add(vendor);
+            db.Users.Add(vendorUser);
             await db.SaveChangesAsync();
 
             Console.WriteLine("═══════════════════════════════════════");
@@ -56,6 +66,27 @@ public static class SeedData
             Console.WriteLine("    Password: Vendor@123");
             Console.WriteLine("    ⚠ Hãy đổi mật khẩu sau khi đăng nhập!");
             Console.WriteLine("═══════════════════════════════════════");
+        }
+        else
+        {
+            vendorUser = await db.Users.FirstAsync(u => u.Email == "vendorvk@gmail.com");
+        }
+
+        if (vendorUser is not null && !await db.Pois.AnyAsync(p => p.OwnerId == vendorUser.UserId))
+        {
+            db.Pois.Add(new Poi
+            {
+                OwnerId = vendorUser.UserId,
+                Name = vendorUser.Name,
+                Address = "534 Vĩnh Khánh (mẫu)",
+                Latitude = 10.7578m,
+                Longitude = 106.7095m,
+                Radius = 20,
+                Priority = 2,
+                IsActive = true,
+                Description = "Gian hàng mẫu — chỉnh sửa tại trang Mô tả & hình ảnh."
+            });
+            await db.SaveChangesAsync();
         }
 
         // ── 3. User (Người dùng thường) ────────────────────────

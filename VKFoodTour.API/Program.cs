@@ -38,6 +38,19 @@ builder.Services.AddSwaggerGen();
 // ==============================================================================
 var app = builder.Build();
 
+await using (var scope = app.Services.CreateAsyncScope())
+{
+    try
+    {
+        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        await db.Database.MigrateAsync();
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[API] Lỗi áp dụng migration: {ex.Message}");
+    }
+}
+
 // a. Kích hoạt Swagger khi đang chạy ở chế độ Development (Local)
 // Tạm thời bỏ kiểm tra môi trường để ép Swagger luôn chạy
 app.UseSwagger();

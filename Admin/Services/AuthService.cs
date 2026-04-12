@@ -89,4 +89,69 @@ public class AuthService
             u.Email.ToLower() == email.Trim().ToLower()
             && u.UserId != excludeId);
     }
+
+    public async Task<User?> GetUserByEmailAsync(string email) =>
+        await _db.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u =>
+                u.Email.ToLower() == email.Trim().ToLower()
+                && u.IsActive);
+
+    /// <summary>Đăng nhập Google: tìm theo email; nếu chưa có thì tạo vendor + gian hàng. Admin hiện có giữ vai trò Admin.</summary>
+    public async Task<User> FindOrCreateUserFromGoogleAsync(string email, string? displayName)
+    {
+        var normalized = email.Trim().ToLowerInvariant();
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Email.ToLower() == normalized);
+
+        if (user is not null)
+        {
+            if (!string.IsNullOrWhiteSpace(displayName) && user.Name != displayName)
+            {
+                user.Name = displayName.Trim();
+                user.UpdatedAt = DateTime.Now;
+                await _db.SaveChangesAsync();
+            }
+
+            if (string.Equals(user.Role, "Vendor", StringComparison.OrdinalIgnoreCase))
+                await EnsureVendorPoiExistsAsync(user.UserId, user.Name);
+            return user;
+        }
+
+        var name = string.IsNullOrWhiteSpace(displayName)
+            ? normalized.Split('@')[0]
+            : displayName.Trim();
+
+        user = new User
+        {
+            Name = name,
+            Email = normalized,
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString("N")),
+            Role = "Vendor",
+            IsActive = true
+        };
+
+        _db.Users.Add(user);
+        await _db.SaveChangesAsync();
+        await EnsureVendorPoiExistsAsync(user.UserId, user.Name);
+        return user;
+    }
+
+    private async Task EnsureVendorPoiExistsAsync(int userId, string stallName)
+    {
+        if (await _db.Pois.AnyAsync(p => p.OwnerId == userId))
+            return;
+
+        _db.Pois.Add(new Poi
+        {
+            OwnerId = userId,
+            Name = string.IsNullOrWhiteSpace(stallName) ? "Quán của tôi" : stallName.Trim(),
+            Address = "",
+            Latitude = 10.7578m,
+            Longitude = 106.7095m,
+            Radius = 20,
+            Priority = 3,
+            IsActive = true
+        });
+        await _db.SaveChangesAsync();
+    }
 }

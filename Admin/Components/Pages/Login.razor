@@ -1,10 +1,12 @@
 @page "/login"
 @using Microsoft.AspNetCore.Authentication
 @using Microsoft.AspNetCore.Authentication.Cookies
+@using Microsoft.AspNetCore.WebUtilities
 @using System.Security.Claims
 @inject AuthService AuthService
 @inject IHttpContextAccessor HttpContextAccessor
 @inject NavigationManager Navigation
+@inject IConfiguration Configuration
 
 @* ══════════════════════════════════════════════════════════
    TRANG ĐĂNG NHẬP — Không dùng InteractiveServer
@@ -74,6 +76,15 @@
                     Đăng nhập
                 </button>
             </form>
+
+            @if (!string.IsNullOrWhiteSpace(Configuration["Authentication:Google:ClientId"]))
+            {
+                <div class="text-center text-muted small my-3">hoặc</div>
+                <a href="/auth/google" class="btn w-100 btn-outline-light" style="border-radius: 12px; height: 48px; font-weight: 600;">
+                    <i class="bi bi-google me-2"></i>Đăng nhập bằng Google
+                </a>
+                <p class="text-muted small mt-2 mb-0 text-center">Lần đầu: tạo tài khoản chủ quán và gian hàng mặc định theo email.</p>
+            }
         </div>
 
         <p class="text-center mt-3" style="color: #8A8078; font-size: 12px;">
@@ -90,6 +101,13 @@
     private string password { get; set; } = string.Empty;
 
     private string errorMessage = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
+        if (QueryHelpers.ParseQuery(uri.Query).TryGetValue("error", out var err) && err == "noemail")
+            errorMessage = "Google không cấp email công khai. Hãy thử tài khoản Google khác hoặc đăng nhập bằng mật khẩu.";
+    }
 
     private async Task HandleLogin()
     {

@@ -282,6 +282,11 @@ namespace VKFoodTour.Infrastructure.Migrations
                         .HasColumnType("nvarchar(100)")
                         .HasColumnName("tts_voice");
 
+                    b.Property<string>("AudioUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("audio_url");
+
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2")
                         .HasColumnName("updated_at");

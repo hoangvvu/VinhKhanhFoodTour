@@ -1,9 +1,8 @@
 @page "/gian-hang"
 @using Microsoft.AspNetCore.Authorization
 @using VKFoodTour.Infrastructure.Data
-@using VKFoodTour.Infrastructure.Entities
 @using Microsoft.EntityFrameworkCore
-@attribute [Authorize]
+@attribute [Authorize(Roles = "Admin")]
 @rendermode InteractiveServer
 
 @inject ApplicationDbContext Db
@@ -12,7 +11,7 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h3 class="text-white fw-bold">QUẢN LÝ GIAN HÀNG</h3>
         <a href="/admin/pois" class="btn btn-danger rounded-pill px-4 shadow">
-            <i class="bi bi-pencil-square me-2"></i>Quản lý chi tiết (CRUD)
+            <i class="bi bi-pencil-square me-2"></i>Chỉnh sửa / ẩn gian hàng
         </a>
     </div>
 
@@ -26,118 +25,170 @@
     {
         <div class="card bg-dark-card border-0 shadow" style="border-radius: 16px;">
             <div class="card-body p-0">
-                <table class="table table-dark table-hover mb-0 align-middle">
-                    <thead class="bg-black text-muted small">
-                        <tr>
-                            <th class="ps-4 py-3">GIAN HÀNG</th>
-                            <th>ĐỊA CHỈ</th>
-                            <th>TỌA ĐỘ (LAT/LONG)</th>
-                            <th>NGÔN NGỮ THUYẾT MINH</th>
-                            <th>MÓN ĂN</th>
-                            <th class="text-end pe-4">TRẠNG THÁI</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var poi in poiList)
-                        {
+                <div class="table-responsive">
+                    <table class="table table-dark table-hover mb-0 align-middle">
+                        <thead class="bg-black text-muted small">
                             <tr>
-                                <td class="ps-4">
-                                    <span class="fw-bold">@poi.Name</span><br />
-                                    <span class="badge @(poi.Priority == 1 ? "bg-danger-subtle text-danger" : "bg-secondary") small">
-                                        Ưu tiên @poi.Priority
-                                    </span>
-                                </td>
-                                <td>@(poi.Address ?? "—")</td>
-                                <td class="text-muted small">
-                                    @poi.Latitude.ToString("F4") / @poi.Longitude.ToString("F4")
-                                </td>
-                                <td>
-                                    @{
-                                        var langs = poiLanguages.GetValueOrDefault(poi.PoiId, new List<string>());
-                                    }
-                                    @foreach (var langCode in langs)
-                                    {
-                                        <span class="badge-lang @(langCode is "vi" or "en" ? "badge-vi" : "badge-other")">
-                                            @langCode.ToUpper()
+                                <th class="ps-4 py-3">GIAN HÀNG</th>
+                                <th>CHỦ &amp; GMAIL</th>
+                                <th>ẢNH</th>
+                                <th>ĐỊA CHỈ</th>
+                                <th>NGÔN NGỮ TM</th>
+                                <th>MÓN ĂN</th>
+                                <th class="text-end pe-4">TRẠNG THÁI</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var row in rows)
+                            {
+                                <tr>
+                                    <td class="ps-4">
+                                        <span class="fw-bold">@row.PoiName</span><br />
+                                        <span class="badge @(row.Priority == 1 ? "bg-danger-subtle text-danger" : "bg-secondary") small">
+                                            Ưu tiên @row.Priority
                                         </span>
-                                    }
-                                    @if (!langs.Any())
-                                    {
-                                        <span class="text-muted small">Chưa có</span>
-                                    }
-                                </td>
-                                <td>
-                                    <span class="badge bg-info-subtle text-info">
-                                        @(poiFoodCounts.GetValueOrDefault(poi.PoiId, 0)) món
-                                    </span>
-                                </td>
-                                <td class="text-end pe-4">
-                                    @if (poi.IsActive)
-                                    {
-                                        <span class="badge bg-success">Hoạt động</span>
-                                    }
-                                    else
-                                    {
-                                        <span class="badge bg-secondary">Đã tắt</span>
-                                    }
-                                </td>
-                            </tr>
-                        }
+                                    </td>
+                                    <td class="small">
+                                        <div class="text-white">@row.OwnerName</div>
+                                        <div class="text-muted">@row.OwnerEmail</div>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex gap-1 flex-wrap" style="max-width: 140px;">
+                                            @if (!string.IsNullOrEmpty(row.CoverUrl))
+                                            {
+                                                <img src="@row.CoverUrl" class="rounded border border-secondary" style="width:44px;height:44px;object-fit:cover;" alt="" />
+                                            }
+                                            @foreach (var u in row.GalleryUrls)
+                                            {
+                                                <img src="@u" class="rounded border border-secondary" style="width:44px;height:44px;object-fit:cover;" alt="" />
+                                            }
+                                        </div>
+                                    </td>
+                                    <td>@(string.IsNullOrEmpty(row.Address) ? "—" : row.Address)</td>
+                                    <td>
+                                        @foreach (var langCode in row.LangCodes)
+                                        {
+                                            <span class="badge-lang @(langCode is "vi" or "en" ? "badge-vi" : "badge-other")">
+                                                @langCode.ToUpper()
+                                            </span>
+                                        }
+                                        @if (!row.LangCodes.Any())
+                                        {
+                                            <span class="text-muted small">Chưa có</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-info-subtle text-info">@row.FoodCount món</span>
+                                    </td>
+                                    <td class="text-end pe-4">
+                                        @if (row.IsActive)
+                                        {
+                                            <span class="badge bg-success">Hoạt động</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary">Đã ẩn / tắt</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
 
-                        @if (!poiList.Any())
-                        {
-                            <tr>
-                                <td colspan="6" class="text-center text-muted py-4">Chưa có gian hàng nào.</td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
+                            @if (!rows.Any())
+                            {
+                                <tr>
+                                    <td colspan="7" class="text-center text-muted py-4">Chưa có gian hàng nào.</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     }
 </div>
 
 @code {
-    private List<Poi> poiList = new();
-    private Dictionary<int, List<string>> poiLanguages = new();
-    private Dictionary<int, int> poiFoodCounts = new();
+    private List<GianHangRow> rows = new();
     private bool isLoading = true;
 
     protected override async Task OnInitializedAsync()
     {
         try
         {
-            poiList = await Db.Pois
+            var pois = await Db.Pois
+                .AsNoTracking()
                 .OrderBy(p => p.Priority)
                 .ThenBy(p => p.Name)
-                .AsNoTracking()
                 .ToListAsync();
 
-            // Lấy ngôn ngữ thuyết minh cho mỗi POI
+            var ownerIds = pois.Where(p => p.OwnerId != null).Select(p => p.OwnerId!.Value).Distinct().ToList();
+            var users = await Db.Users.AsNoTracking()
+                .Where(u => ownerIds.Contains(u.UserId))
+                .ToDictionaryAsync(u => u.UserId, u => u);
+
             var narrations = await Db.Narrations
                 .Include(n => n.Language)
                 .Where(n => n.IsActive)
-                .Select(n => new { n.PoiId, n.Language.Code })
                 .AsNoTracking()
+                .Select(n => new { n.PoiId, n.Language!.Code })
                 .ToListAsync();
 
-            poiLanguages = narrations
+            var langsByPoi = narrations
                 .GroupBy(n => n.PoiId)
-                .ToDictionary(g => g.Key, g => g.Select(n => n.Code).Distinct().ToList());
+                .ToDictionary(g => g.Key, g => g.Select(x => x.Code).Distinct().ToList());
 
-            // Đếm số món ăn mỗi POI
-            poiFoodCounts = await Db.Foods
+            var foodCounts = await Db.Foods
                 .Where(f => f.IsAvailable)
                 .GroupBy(f => f.PoiId)
                 .ToDictionaryAsync(g => g.Key, g => g.Count());
+
+            var images = await Db.Images
+                .AsNoTracking()
+                .Where(i => i.PoiId != null && i.FoodId == null && !i.IsCover)
+                .GroupBy(i => i.PoiId!.Value)
+                .ToDictionaryAsync(g => g.Key, g => g.OrderBy(i => i.SortOrder).Select(i => i.ImageUrl).Take(3).ToList());
+
+            rows = pois.Select(p =>
+            {
+                users.TryGetValue(p.OwnerId ?? 0, out var u);
+                langsByPoi.TryGetValue(p.PoiId, out var lc);
+                images.TryGetValue(p.PoiId, out var gal);
+                return new GianHangRow
+                {
+                    PoiName = p.Name,
+                    Priority = p.Priority,
+                    Address = p.Address,
+                    IsActive = p.IsActive,
+                    OwnerName = u?.Name ?? "—",
+                    OwnerEmail = u?.Email ?? "—",
+                    CoverUrl = p.ImageUrl ?? "",
+                    GalleryUrls = gal ?? new List<string>(),
+                    LangCodes = lc ?? new List<string>(),
+                    FoodCount = foodCounts.GetValueOrDefault(p.PoiId, 0)
+                };
+            }).ToList();
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[GIANHANG] Error: {ex.Message}");
+            Console.WriteLine($"[GIANHANG] {ex.Message}");
         }
         finally
         {
             isLoading = false;
         }
+    }
+
+    private sealed class GianHangRow
+    {
+        public string PoiName { get; set; } = "";
+        public int Priority { get; set; }
+        public string? Address { get; set; }
+        public bool IsActive { get; set; }
+        public string OwnerName { get; set; } = "";
+        public string OwnerEmail { get; set; } = "";
+        public string CoverUrl { get; set; } = "";
+        public List<string> GalleryUrls { get; set; } = new();
+        public List<string> LangCodes { get; set; } = new();
+        public int FoodCount { get; set; }
     }
 }
