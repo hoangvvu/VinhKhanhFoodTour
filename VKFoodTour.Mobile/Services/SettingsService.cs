@@ -11,9 +11,11 @@ public interface ISettingsService
 
 public class SettingsService : ISettingsService
 {
+    private const string LegacyLanApi = "http://192.168.1.8:5242";
+
     private static string DefaultApiBase() =>
 #if ANDROID
-        "http://192.168.1.8:5242";
+        "https://cleaver-distress-shush.ngrok-free.dev";
 #else
         "http://localhost:5242";
 #endif
@@ -32,7 +34,18 @@ public class SettingsService : ISettingsService
 
     public string ApiBaseUrl
     {
-        get => Preferences.Default.Get(nameof(ApiBaseUrl), DefaultApiBase());
+        get
+        {
+            var saved = Preferences.Default.Get(nameof(ApiBaseUrl), DefaultApiBase()).Trim().TrimEnd('/');
+            if (string.Equals(saved, LegacyLanApi, StringComparison.OrdinalIgnoreCase))
+            {
+                var fallback = DefaultApiBase();
+                Preferences.Default.Set(nameof(ApiBaseUrl), fallback);
+                return fallback;
+            }
+
+            return saved;
+        }
         set => Preferences.Default.Set(nameof(ApiBaseUrl), value.Trim().TrimEnd('/'));
     }
 }
