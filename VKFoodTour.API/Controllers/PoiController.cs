@@ -90,7 +90,7 @@ namespace VKFoodTour.Api.Controllers
 
             var menuItems = await _context.MenuItems
                 .AsNoTracking()
-                .Where(m => m.PoiId == id && m.Status == "AVAILABLE")
+                .Where(m => m.PoiId == id)
                 .OrderBy(m => m.Category)
                 .ThenBy(m => m.Name)
                 .Select(m => new MenuItemDto
@@ -135,7 +135,13 @@ namespace VKFoodTour.Api.Controllers
                 Name = poi.Name,
                 Address = poi.Address,
                 Description = poi.Description,
-                CoverImageUrl = poi.ImageUrl,
+                CoverImageUrl = !string.IsNullOrWhiteSpace(poi.ImageUrl)
+                    ? poi.ImageUrl
+                    : await _context.Images.AsNoTracking()
+                        .Where(i => i.PoiId == id && i.FoodId == null && i.IsCover)
+                        .OrderBy(i => i.SortOrder)
+                        .Select(i => i.ImageUrl)
+                        .FirstOrDefaultAsync(),
                 GalleryImages = gallery,
                 MenuItems = menuItems,
                 AudioItems = narrations.Concat(menuAudios).ToList()

@@ -33,6 +33,7 @@
                         <Border Padding="10" Margin="0,0,0,8" Stroke="#DDDDDD">
                             <VerticalStackLayout>
                                 <Label Text="{Binding Name}" FontAttributes="Bold"/>
+                                <Image Source="{Binding ImageUrl}" HeightRequest="90" Aspect="AspectFill"/>
                                 <Label Text="{Binding Description}" FontSize="12"/>
                                 <Label Text="{Binding Price, StringFormat='{0:N0} đ'}" TextColor="#C8372D"/>
                             </VerticalStackLayout>

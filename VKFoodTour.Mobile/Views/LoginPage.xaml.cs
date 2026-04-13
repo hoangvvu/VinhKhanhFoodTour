@@ -6,18 +6,15 @@ public partial class LoginPage : ContentPage
 {
     private readonly IDataService _dataService;
     private readonly IAuthSessionService _session;
-    private readonly ISettingsService _settings;
     private readonly AppShell _shell;
     private bool _isRegisterMode;
 
-    public LoginPage(IDataService dataService, IAuthSessionService session, ISettingsService settings, AppShell shell)
+    public LoginPage(IDataService dataService, IAuthSessionService session, AppShell shell)
     {
         InitializeComponent();
         _dataService = dataService;
         _session = session;
-        _settings = settings;
         _shell = shell;
-        ApiUrlEntry.Text = _settings.ApiBaseUrl;
     }
 
     private void OnToggleMode(object? sender, EventArgs e)
@@ -35,14 +32,6 @@ public partial class LoginPage : ContentPage
     {
         var email = EmailEntry.Text?.Trim() ?? string.Empty;
         var password = PasswordEntry.Text ?? string.Empty;
-        var apiUrl = ApiUrlEntry.Text?.Trim() ?? string.Empty;
-        if (string.IsNullOrWhiteSpace(apiUrl))
-        {
-            StatusLabel.Text = "Vui lòng nhập địa chỉ API.";
-            return;
-        }
-
-        _settings.ApiBaseUrl = apiUrl;
         if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
         {
             StatusLabel.Text = "Vui lòng nhập email và mật khẩu.";

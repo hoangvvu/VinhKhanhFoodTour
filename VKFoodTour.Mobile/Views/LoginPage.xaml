@@ -8,9 +8,6 @@
         <VerticalStackLayout Padding="24" Spacing="14" VerticalOptions="Center">
             <Label Text="VK FOOD TOUR" FontSize="34" TextColor="#F0EBE3" FontFamily="BebasNeue" HorizontalOptions="Center"/>
             <Label x:Name="ModeLabel" Text="Đăng nhập để sử dụng ứng dụng" TextColor="White" HorizontalOptions="Center"/>
-            <Label Text="Địa chỉ API" TextColor="White" FontSize="12"/>
-            <Entry x:Name="ApiUrlEntry" Placeholder="http://10.0.2.2:5242" TextColor="White" PlaceholderColor="#A0A0A0"/>
-            <Label Text="Android Emulator dùng 10.0.2.2, máy thật dùng IP LAN của máy chạy API." TextColor="#BDBDBD" FontSize="11"/>
 
             <Entry x:Name="NameEntry" Placeholder="Họ tên" IsVisible="False" TextColor="White" PlaceholderColor="#A0A0A0"/>
             <Entry x:Name="EmailEntry" Placeholder="Email" Keyboard="Email" TextColor="White" PlaceholderColor="#A0A0A0"/>

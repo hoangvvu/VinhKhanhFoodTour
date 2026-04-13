@@ -44,6 +44,12 @@
                     <Label Text="{Binding ConnectionStatus}" FontSize="12" TextColor="#E8A020"/>
                 </VerticalStackLayout>
             </Border>
+
+            <Button Text="Đăng xuất"
+                    Clicked="OnLogoutClicked"
+                    BackgroundColor="#8B1E1E"
+                    TextColor="White"
+                    CornerRadius="12"/>
         </VerticalStackLayout>
     </ScrollView>
 </ContentPage>

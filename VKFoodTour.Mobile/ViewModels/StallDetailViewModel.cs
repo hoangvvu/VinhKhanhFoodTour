@@ -58,4 +58,12 @@ public partial class StallDetailViewModel : ObservableObject
             return;
         await Launcher.OpenAsync(url);
     }
+
+    public async Task PlayFirstAudioIfAnyAsync()
+    {
+        var first = AudioItems.FirstOrDefault();
+        if (first is null || string.IsNullOrWhiteSpace(first.Url))
+            return;
+        await Launcher.OpenAsync(first.Url);
+    }
 }

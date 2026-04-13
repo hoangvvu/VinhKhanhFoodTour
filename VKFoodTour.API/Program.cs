@@ -39,6 +39,12 @@ builder.Services.AddSwaggerGen();
 var app = builder.Build();
 // Giữ DB theo script SQL thủ công: không auto chạy EF migration khi khởi động API.
 
+if (app.Environment.IsDevelopment() && string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("ASPNETCORE_URLS")))
+{
+    // Mặc định mở cổng LAN để thiết bị Android thật truy cập được API.
+    app.Urls.Add("http://0.0.0.0:5242");
+}
+
 // a. Kích hoạt Swagger khi đang chạy ở chế độ Development (Local)
 // Tạm thời bỏ kiểm tra môi trường để ép Swagger luôn chạy
 app.UseSwagger();

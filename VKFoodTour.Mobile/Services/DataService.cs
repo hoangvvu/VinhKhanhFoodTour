@@ -92,11 +92,23 @@ public class DataService : IDataService
         {
             var response = await _http.PostAsJsonAsync($"{ApiRoot}/api/Auth/login",
                 new LoginRequestDto { Email = email, Password = password }, cancellationToken);
-            return await response.Content.ReadFromJsonAsync<AuthResponseDto>(cancellationToken: cancellationToken);
+            var payload = await response.Content.ReadFromJsonAsync<AuthResponseDto>(cancellationToken: cancellationToken);
+            if (payload is not null)
+                return payload;
+
+            return new AuthResponseDto
+            {
+                Success = false,
+                Message = $"Máy chủ trả về mã {(int)response.StatusCode} nhưng không có nội dung phản hồi."
+            };
         }
-        catch
+        catch (Exception ex)
         {
-            return null;
+            return new AuthResponseDto
+            {
+                Success = false,
+                Message = $"Không kết nối được máy chủ ({ApiRoot}). Chi tiết: {ex.Message}"
+            };
         }
     }
 
@@ -106,11 +118,23 @@ public class DataService : IDataService
         {
             var response = await _http.PostAsJsonAsync($"{ApiRoot}/api/Auth/register",
                 new RegisterRequestDto { Name = name, Email = email, Password = password }, cancellationToken);
-            return await response.Content.ReadFromJsonAsync<AuthResponseDto>(cancellationToken: cancellationToken);
+            var payload = await response.Content.ReadFromJsonAsync<AuthResponseDto>(cancellationToken: cancellationToken);
+            if (payload is not null)
+                return payload;
+
+            return new AuthResponseDto
+            {
+                Success = false,
+                Message = $"Máy chủ trả về mã {(int)response.StatusCode} nhưng không có nội dung phản hồi."
+            };
         }
-        catch
+        catch (Exception ex)
         {
-            return null;
+            return new AuthResponseDto
+            {
+                Success = false,
+                Message = $"Không kết nối được máy chủ ({ApiRoot}). Chi tiết: {ex.Message}"
+            };
         }
     }
 
