@@ -1,0 +1,81 @@
+@page "/admin/ban-do"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@using VKFoodTour.Infrastructure.Data
+@attribute [Authorize(Roles = "Admin")]
+@rendermode InteractiveServer
+
+@inject ApplicationDbContext Db
+@inject IJSRuntime JS
+
+<div class="container-fluid p-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="text-white fw-bold mb-1">BẢN ĐỒ GIAN HÀNG</h3>
+            <p class="text-muted small mb-0">Các POI đang hoạt động (OpenStreetMap + Leaflet)</p>
+        </div>
+        <a href="admin/pois" class="btn btn-outline-danger rounded-pill">Quản lý POI</a>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-danger" role="status"></div>
+        </div>
+    }
+    else
+    {
+        <div class="card bg-dark-card border-0 shadow-sm" style="border-radius: 16px;">
+            <div class="card-body p-0">
+                <div id="admin-poi-map" style="height: min(70vh, 640px); min-height: 420px; border-radius: 16px; overflow: hidden;"></div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private bool isLoading = true;
+    private List<PoiMapMarker> _markers = new();
+    private bool _mapInitialized;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var pois = await Db.Pois
+            .AsNoTracking()
+            .Where(p => p.IsActive)
+            .OrderBy(p => p.Priority)
+            .ThenBy(p => p.Name)
+            .ToListAsync();
+
+        _markers = pois.Select(p => new PoiMapMarker
+        {
+            lat = (double)p.Latitude,
+            lng = (double)p.Longitude,
+            name = p.Name,
+            address = p.Address ?? "",
+            radius = p.Radius,
+            priority = p.Priority
+        }).ToList();
+
+        isLoading = false;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (isLoading || _mapInitialized)
+            return;
+
+        await JS.InvokeVoidAsync("initPoiOverviewMap", "admin-poi-map", _markers);
+        _mapInitialized = true;
+    }
+
+    private sealed class PoiMapMarker
+    {
+        public double lat { get; set; }
+        public double lng { get; set; }
+        public string name { get; set; } = "";
+        public string address { get; set; } = "";
+        public int radius { get; set; }
+        public int priority { get; set; }
+    }
+}

@@ -32,19 +32,6 @@
                 </Border>
             </Grid>
 
-            <Label Text="KẾT NỐI MÁY CHỦ (cùng dữ liệu với Web Admin)" FontSize="14" TextColor="#8A8078" Margin="0,10,0,0"/>
-            <Border BackgroundColor="#1A1818" Padding="16" StrokeShape="RoundRectangle 12">
-                <VerticalStackLayout Spacing="12">
-                    <Label Text="URL gốc API (không có / ở cuối)" FontSize="11" TextColor="#8A8078"/>
-                    <Entry Text="{Binding ApiBaseUrl}" Placeholder="http://10.0.2.2:5242" TextColor="#F0EBE3" PlaceholderColor="#5C5650"/>
-                    <Grid ColumnDefinitions="*, *" ColumnSpacing="12">
-                        <Button Grid.Column="0" Text="Lưu" Command="{Binding SaveApiUrlCommand}" BackgroundColor="#2E2A2A" TextColor="#F0EBE3"/>
-                        <Button Grid.Column="1" Text="Thử kết nối" Command="{Binding TestConnectionCommand}" BackgroundColor="#C8372D" TextColor="White"/>
-                    </Grid>
-                    <Label Text="{Binding ConnectionStatus}" FontSize="12" TextColor="#E8A020"/>
-                </VerticalStackLayout>
-            </Border>
-
             <Button Text="Đăng xuất"
                     Clicked="OnLogoutClicked"
                     BackgroundColor="#8B1E1E"

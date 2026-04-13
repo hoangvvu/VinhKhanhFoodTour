@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.Input;
 using System.Collections.ObjectModel;
 using VKFoodTour.Mobile.Models;
 using VKFoodTour.Mobile.Services;
+using VKFoodTour.Mobile.Views;
 using VKFoodTour.Shared.DTOs;
 
 namespace VKFoodTour.Mobile.ViewModels;
@@ -10,12 +11,22 @@ namespace VKFoodTour.Mobile.ViewModels;
 public partial class HomeViewModel : ObservableObject
 {
     private readonly IDataService _dataService;
+    private readonly IFavoriteService _favorites;
 
     // Các biến dùng [ObservableProperty] PHẢI viết thường chữ cái đầu (camelCase)
     // Thư viện sẽ tự tạo ra bản chữ HOA (Pois, NearestPoi, CurrentLang...)
 
     [ObservableProperty]
     private ObservableCollection<Poi> pois = new();
+
+    [ObservableProperty]
+    private ObservableCollection<Poi> favoritePois = new();
+
+    [ObservableProperty]
+    private bool hasFavoritePois;
+
+    [ObservableProperty]
+    private ObservableCollection<ReviewListItemDto> recentReviews = new();
 
     [ObservableProperty]
     private Poi? nearestPoi;
@@ -32,16 +43,17 @@ public partial class HomeViewModel : ObservableObject
     [ObservableProperty]
     private bool isBusy;
 
-    public HomeViewModel(IDataService dataService)
+    public HomeViewModel(IDataService dataService, IFavoriteService favorites)
     {
         _dataService = dataService;
+        _favorites = favorites;
 
         // Gọi hàm load dữ liệu khi khởi động
         _ = LoadDataAsync();
     }
 
     [RelayCommand]
-    public async Task LoadDataAsync()
+    public async Task LoadDataAsync(CancellationToken cancellationToken = default)
     {
         // Ngăn chặn việc gọi lại nhiều lần khi đang tải
         if (IsBusy) return;
@@ -51,18 +63,23 @@ public partial class HomeViewModel : ObservableObject
             IsBusy = true;
 
             // Gọi Service lấy dữ liệu từ API hoặc Mock Data
-            var result = await _dataService.GetPoisAsync();
+            var result = await _dataService.GetPoisAsync(cancellationToken);
 
             if (result != null && result.Any())
             {
                 // 1. Sắp xếp quán NỔI BẬT (Priority cao nhất) lên đầu 
                 // và gán vào ObservableCollection để giao diện cập nhật
                 var sortedPois = result.OrderByDescending(p => p.Priority).ToList();
+                foreach (var p in sortedPois)
+                    p.IsFavorite = _favorites.IsFavorite(p.PoiId);
+
                 Pois = new ObservableCollection<Poi>(sortedPois);
 
                 // 2. Tìm quán "GẦN NHẤT" hoặc "NHIỀU ĐÁNH GIÁ" nhất để hiện ở Card lớn
                 // Tạm thời mình lấy quán đầu tiên trong danh sách đã sắp xếp
                 NearestPoi = Pois.FirstOrDefault();
+
+                RefreshFavoritePois();
 
                 // 3. Cập nhật trạng thái Audio đang phát (nếu có)
                 if (NearestPoi != null)
@@ -74,6 +91,9 @@ public partial class HomeViewModel : ObservableObject
             {
                 NowPlayingText = "Không tìm thấy gian hàng nào gần đây.";
             }
+
+            var reviews = await _dataService.GetRecentReviewsAsync(25, cancellationToken);
+            RecentReviews = new ObservableCollection<ReviewListItemDto>(reviews);
         }
         catch (Exception ex)
         {
@@ -86,6 +106,33 @@ public partial class HomeViewModel : ObservableObject
             // Giải phóng trạng thái bận
             IsBusy = false;
         }
+    }
+
+    private void RefreshFavoritePois()
+    {
+        var fav = Pois.Where(p => _favorites.IsFavorite(p.PoiId)).ToList();
+        FavoritePois = new ObservableCollection<Poi>(fav);
+        HasFavoritePois = FavoritePois.Count > 0;
+    }
+
+    [RelayCommand]
+    private void ToggleFavorite(Poi? poi)
+    {
+        if (poi is null)
+            return;
+
+        _favorites.Toggle(poi.PoiId);
+        poi.IsFavorite = _favorites.IsFavorite(poi.PoiId);
+        RefreshFavoritePois();
+    }
+
+    [RelayCommand]
+    private async Task OpenStallAsync(Poi? poi)
+    {
+        if (poi is null)
+            return;
+
+        await Shell.Current.GoToAsync($"{nameof(StallDetailPage)}?poiId={poi.PoiId}");
     }
 
     [RelayCommand]
@@ -145,13 +192,15 @@ public partial class HomeViewModel : ObservableObject
 public partial class StallListViewModel : ObservableObject
 {
     private readonly IDataService _dataService;
+    private readonly IFavoriteService _favorites;
 
     [ObservableProperty]
     private ObservableCollection<Poi> pois = new();
 
-    public StallListViewModel(IDataService dataService)
+    public StallListViewModel(IDataService dataService, IFavoriteService favorites)
     {
         _dataService = dataService;
+        _favorites = favorites;
         _ = LoadPoisAsync();
     }
 
@@ -159,7 +208,18 @@ public partial class StallListViewModel : ObservableObject
     private async Task LoadPoisAsync()
     {
         var result = await _dataService.GetPoisAsync();
+        foreach (var p in result)
+            p.IsFavorite = _favorites.IsFavorite(p.PoiId);
         Pois = new ObservableCollection<Poi>(result);
+    }
+
+    [RelayCommand]
+    private void ToggleFavorite(Poi? poi)
+    {
+        if (poi is null)
+            return;
+        _favorites.Toggle(poi.PoiId);
+        poi.IsFavorite = _favorites.IsFavorite(poi.PoiId);
     }
 }
 
@@ -168,6 +228,8 @@ public partial class StallListViewModel : ObservableObject
 // ═══════════════════════════════════════════════════════
 public partial class PlayerViewModel : ObservableObject
 {
+    private readonly IAudioPlaybackService _audio;
+
     [ObservableProperty]
     private string nowPlayingName = "Chưa phát";
 
@@ -185,6 +247,11 @@ public partial class PlayerViewModel : ObservableObject
 
     [ObservableProperty]
     private string audioHint = "Chưa có file âm thanh cho gian hàng này.";
+
+    public PlayerViewModel(IAudioPlaybackService audio)
+    {
+        _audio = audio;
+    }
 
     public void ApplyStall(string name)
     {
@@ -208,7 +275,7 @@ public partial class PlayerViewModel : ObservableObject
         AudioUrl = dto.AudioUrl;
         HasAudio = !string.IsNullOrWhiteSpace(dto.AudioUrl);
         AudioHint = HasAudio
-            ? "Nhấn nút NGHE ÂM THANH để mở trình phát."
+            ? "Nhấn NGHE ÂM THANH để phát trong ứng dụng."
             : "Chưa có file âm thanh cho gian hàng này.";
         NowPlayingText = string.IsNullOrWhiteSpace(body)
             ? "Chưa có nội dung mô tả cho quán này trong hệ thống."
@@ -223,17 +290,19 @@ public partial class PlayerViewModel : ObservableObject
 
         try
         {
-            await Launcher.OpenAsync(AudioUrl);
+            await _audio.PlayAsync(AudioUrl);
+            AudioHint = "Đang phát trong ứng dụng.";
         }
         catch
         {
-            AudioHint = "Không mở được file âm thanh. Kiểm tra lại API URL và mạng.";
+            AudioHint = "Không phát được âm thanh. Kiểm tra lại API URL và mạng.";
         }
     }
 
     [RelayCommand]
     private void Stop()
     {
+        _audio.Stop();
         NowPlayingName = "Chưa phát";
         NowPlayingText = "Chọn một quán để nghe thuyết minh";
         AudioUrl = null;
@@ -249,12 +318,13 @@ public partial class ProfileViewModel : ObservableObject
 {
     private readonly ISettingsService _settings;
     private readonly IDataService _data;
+    private readonly IFavoriteService _favorites;
 
     [ObservableProperty]
     private int listenCount = 5;
 
     [ObservableProperty]
-    private int favoriteCount = 2;
+    private int favoriteCount;
 
     [ObservableProperty]
     private string selectedLang = "Tiếng Việt";
@@ -265,14 +335,20 @@ public partial class ProfileViewModel : ObservableObject
     [ObservableProperty]
     private string connectionStatus = string.Empty;
 
-    public ProfileViewModel(ISettingsService settings, IDataService data)
+    public ProfileViewModel(ISettingsService settings, IDataService data, IFavoriteService favorites)
     {
         _settings = settings;
         _data = data;
+        _favorites = favorites;
         ApiBaseUrl = _settings.ApiBaseUrl;
+        FavoriteCount = _favorites.Count;
     }
 
-    public void SyncApiUrlFromSettings() => ApiBaseUrl = _settings.ApiBaseUrl;
+    public void SyncApiUrlFromSettings()
+    {
+        ApiBaseUrl = _settings.ApiBaseUrl;
+        FavoriteCount = _favorites.Count;
+    }
 
     [RelayCommand]
     private void SaveApiUrl()

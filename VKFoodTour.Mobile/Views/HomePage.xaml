@@ -3,8 +3,9 @@
              xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:vm="clr-namespace:VKFoodTour.Mobile.ViewModels"
-             xmlns:maps="clr-namespace:Microsoft.Maui.Controls.Maps;assembly=Microsoft.Maui.Controls.Maps"
              xmlns:models="clr-namespace:VKFoodTour.Mobile.Models"
+             xmlns:controls="clr-namespace:VKFoodTour.Mobile.Controls"
+             xmlns:dto="clr-namespace:VKFoodTour.Shared.DTOs;assembly=VKFoodTour.Shared"
              x:DataType="vm:HomeViewModel"
              BackgroundColor="#0F0E0E"
              Shell.NavBarIsVisible="False">
@@ -25,20 +26,6 @@
                 </Border>
             </Grid>
 
-            <Border HeightRequest="180" StrokeThickness="0">
-                <Border.StrokeShape>
-                    <RoundRectangle CornerRadius="20"/>
-                </Border.StrokeShape>
-                <Grid>
-                    <maps:Map x:Name="miniMap" IsScrollEnabled="False" IsZoomEnabled="False"/>
-                    <BoxView Color="Transparent">
-                        <BoxView.GestureRecognizers>
-                            <TapGestureRecognizer Command="{Binding OpenFullMapCommand}"/>
-                        </BoxView.GestureRecognizers>
-                    </BoxView>
-                </Grid>
-            </Border>
-
             <Border BackgroundColor="#C8372D" Padding="15" StrokeThickness="0">
                 <Border.StrokeShape>
                     <RoundRectangle CornerRadius="15"/>
@@ -47,11 +34,54 @@
                     <Label Text="🎙️" FontSize="24" VerticalOptions="Center"/>
                     <VerticalStackLayout Grid.Column="1" Margin="15,0,0,0">
                         <Label Text="THUYẾT MINH TỰ ĐỘNG" FontSize="11" TextColor="White" Opacity="0.8"/>
-                        <Label Text="{Binding NowPlayingText, FallbackValue='Sẵn sàng khi bạn đến gần quán ăn...'}" 
-                           TextColor="White" FontSize="14" MaxLines="1" LineBreakMode="TailTruncation"/>
+                        <Label Text="{Binding NowPlayingText, FallbackValue='Sẵn sàng khi bạn đến gần quán ăn...'}"
+                               TextColor="White" FontSize="14" MaxLines="2" LineBreakMode="WordWrap"/>
                     </VerticalStackLayout>
                 </Grid>
             </Border>
+
+            <VerticalStackLayout Spacing="10" IsVisible="{Binding HasFavoritePois}">
+                <Label Text="YÊU THÍCH" FontSize="18" FontFamily="BebasNeue" TextColor="#F0EBE3"/>
+                <CollectionView ItemsSource="{Binding FavoritePois}" HeightRequest="200">
+                    <CollectionView.ItemsLayout>
+                        <LinearItemsLayout Orientation="Horizontal" ItemSpacing="15"/>
+                    </CollectionView.ItemsLayout>
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate x:DataType="models:Poi">
+                            <Border WidthRequest="160" BackgroundColor="#1A1818" Stroke="#2E2A2A" Padding="12">
+                                <Border.StrokeShape>
+                                    <RoundRectangle CornerRadius="15"/>
+                                </Border.StrokeShape>
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer
+                                        Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.OpenStallCommand}"
+                                        CommandParameter="{Binding .}"/>
+                                </Border.GestureRecognizers>
+                                <VerticalStackLayout Spacing="8">
+                                    <Grid HeightRequest="100" HorizontalOptions="Fill">
+                                        <controls:NetworkImageView Url="{Binding CoverImageUrl}"
+                                                                   Placeholder="{Binding CoverEmoji}"
+                                                                   HeightRequest="100"/>
+                                        <Button Text="{Binding FavoriteIcon}"
+                                                Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.ToggleFavoriteCommand}"
+                                                CommandParameter="{Binding .}"
+                                                BackgroundColor="#80000000"
+                                                TextColor="White"
+                                                FontSize="16"
+                                                Padding="6"
+                                                CornerRadius="14"
+                                                HorizontalOptions="End"
+                                                VerticalOptions="Start"
+                                                WidthRequest="40"
+                                                HeightRequest="40"/>
+                                    </Grid>
+                                    <Label Text="{Binding Name}" TextColor="#F0EBE3" FontFamily="BebasNeue" FontSize="16" HorizontalOptions="Center"/>
+                                </VerticalStackLayout>
+                            </Border>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+            </VerticalStackLayout>
 
             <VerticalStackLayout Spacing="10">
                 <Label Text="GIAN HÀNG NỔI BẬT" FontSize="18" FontFamily="BebasNeue" TextColor="#F0EBE3"/>
@@ -66,13 +96,55 @@
                                 <Border.StrokeShape>
                                     <RoundRectangle CornerRadius="15"/>
                                 </Border.StrokeShape>
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer
+                                        Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.OpenStallCommand}"
+                                        CommandParameter="{Binding .}"/>
+                                </Border.GestureRecognizers>
                                 <VerticalStackLayout Spacing="8">
-                                    <Label Text="{Binding CoverEmoji}" FontSize="45" HorizontalOptions="Center" Margin="0,10"/>
+                                    <Grid HeightRequest="100" HorizontalOptions="Fill">
+                                        <controls:NetworkImageView Url="{Binding CoverImageUrl}"
+                                                                   Placeholder="{Binding CoverEmoji}"
+                                                                   HeightRequest="100"/>
+                                        <Button Text="{Binding FavoriteIcon}"
+                                                Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.ToggleFavoriteCommand}"
+                                                CommandParameter="{Binding .}"
+                                                BackgroundColor="#80000000"
+                                                TextColor="White"
+                                                FontSize="16"
+                                                Padding="6"
+                                                CornerRadius="14"
+                                                HorizontalOptions="End"
+                                                VerticalOptions="Start"
+                                                WidthRequest="40"
+                                                HeightRequest="40"/>
+                                    </Grid>
                                     <Label Text="{Binding Name}" TextColor="#F0EBE3" FontFamily="BebasNeue" FontSize="16" HorizontalOptions="Center"/>
                                     <HorizontalStackLayout HorizontalOptions="Center" Spacing="5">
                                         <Label Text="{Binding Rating, StringFormat='⭐ {0:0.0}'}" TextColor="#E8A020" FontSize="11"/>
                                         <Label Text="{Binding ReviewCount, StringFormat='({0})'}" TextColor="#8A8078" FontSize="11"/>
                                     </HorizontalStackLayout>
+                                </VerticalStackLayout>
+                            </Border>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+            </VerticalStackLayout>
+
+            <VerticalStackLayout Spacing="10">
+                <Label Text="BÌNH LUẬN GẦN ĐÂY" FontSize="18" FontFamily="BebasNeue" TextColor="#F0EBE3"/>
+                <CollectionView ItemsSource="{Binding RecentReviews}">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate x:DataType="dto:ReviewListItemDto">
+                            <Border BackgroundColor="#1A1818" Stroke="#2E2A2A" Padding="12" Margin="0,0,0,10">
+                                <Border.StrokeShape>
+                                    <RoundRectangle CornerRadius="12"/>
+                                </Border.StrokeShape>
+                                <VerticalStackLayout Spacing="4">
+                                    <Label Text="{Binding PoiName}" FontFamily="BebasNeue" FontSize="16" TextColor="#E8A020"/>
+                                    <Label Text="{Binding Rating, StringFormat='⭐ {0}/5'}" FontSize="12" TextColor="#F0EBE3"/>
+                                    <Label Text="{Binding Comment}" TextColor="#F0EBE3" LineBreakMode="WordWrap"/>
+                                    <Label Text="{Binding CreatedAt, StringFormat='{0:dd/MM/yyyy HH:mm}'}" FontSize="11" TextColor="#8A8078"/>
                                 </VerticalStackLayout>
                             </Border>
                         </DataTemplate>

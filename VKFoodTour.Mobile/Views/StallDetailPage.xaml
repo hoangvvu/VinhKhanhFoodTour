@@ -2,58 +2,75 @@
 <ContentPage x:Class="VKFoodTour.Mobile.Views.StallDetailPage"
              xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-             xmlns:vm="clr-namespace:VKFoodTour.Mobile.ViewModels"
              xmlns:dto="clr-namespace:VKFoodTour.Shared.DTOs;assembly=VKFoodTour.Shared"
+             xmlns:controls="clr-namespace:VKFoodTour.Mobile.Controls"
+             xmlns:vm="clr-namespace:VKFoodTour.Mobile.ViewModels"
              x:DataType="vm:StallDetailViewModel"
-             Title="Chi tiết gian hàng">
+             Title="Chi tiết gian hàng"
+             BackgroundColor="#0F0E0E">
     <ScrollView>
         <VerticalStackLayout Padding="16" Spacing="12">
-            <Label Text="{Binding Name}" FontSize="28" FontFamily="BebasNeue"/>
-            <Label Text="{Binding Address}" FontSize="13" TextColor="#777777"/>
+            <Grid ColumnDefinitions="*, Auto">
+                <VerticalStackLayout Grid.Column="0">
+                    <Label Text="{Binding Name}" FontSize="28" FontFamily="BebasNeue" TextColor="#F0EBE3"/>
+                    <Label Text="{Binding Address}" FontSize="13" TextColor="#8A8078"/>
+                </VerticalStackLayout>
+                <Button Grid.Column="1"
+                        Text="{Binding FavoriteIcon}"
+                        Command="{Binding ToggleFavoriteCommand}"
+                        BackgroundColor="#2E2A2A"
+                        TextColor="#E8A020"
+                        FontSize="22"
+                        WidthRequest="48"
+                        HeightRequest="48"
+                        CornerRadius="24"
+                        VerticalOptions="Start"/>
+            </Grid>
 
-            <Image Source="{Binding CoverImageUrl}" HeightRequest="220" Aspect="AspectFill"/>
-            <Label Text="{Binding Description}" />
+            <controls:NetworkImageView Url="{Binding CoverImageUrl}" Placeholder="{Binding CoverEmoji}" HeightRequest="220"/>
 
-            <Label Text="Hình ảnh quán" FontAttributes="Bold"/>
+            <Label Text="{Binding Description}" TextColor="#F0EBE3"/>
+
+            <Label Text="Hình ảnh quán" FontAttributes="Bold" TextColor="#F0EBE3"/>
             <CollectionView ItemsSource="{Binding GalleryImages}" HeightRequest="120">
                 <CollectionView.ItemsLayout>
                     <LinearItemsLayout Orientation="Horizontal" ItemSpacing="8"/>
                 </CollectionView.ItemsLayout>
                 <CollectionView.ItemTemplate>
                     <DataTemplate x:DataType="dto:ImageItemDto">
-                        <Image Source="{Binding Url}" WidthRequest="120" HeightRequest="100" Aspect="AspectFill"/>
+                        <controls:NetworkImageView Url="{Binding Url}" WidthRequest="120" HeightRequest="100"/>
                     </DataTemplate>
                 </CollectionView.ItemTemplate>
             </CollectionView>
 
-            <Label Text="Thực đơn" FontAttributes="Bold"/>
+            <Label Text="Thực đơn" FontAttributes="Bold" TextColor="#F0EBE3"/>
             <CollectionView ItemsSource="{Binding MenuItems}">
                 <CollectionView.ItemTemplate>
                     <DataTemplate x:DataType="dto:MenuItemDto">
-                        <Border Padding="10" Margin="0,0,0,8" Stroke="#DDDDDD">
+                        <Border Padding="10" Margin="0,0,0,8" Stroke="#2E2A2A" BackgroundColor="#1A1818">
                             <VerticalStackLayout>
-                                <Label Text="{Binding Name}" FontAttributes="Bold"/>
-                                <Image Source="{Binding ImageUrl}" HeightRequest="90" Aspect="AspectFill"/>
-                                <Label Text="{Binding Description}" FontSize="12"/>
-                                <Label Text="{Binding Price, StringFormat='{0:N0} đ'}" TextColor="#C8372D"/>
+                                <Label Text="{Binding Name}" FontAttributes="Bold" TextColor="#F0EBE3"/>
+                                <controls:NetworkImageView Url="{Binding ImageUrl}" HeightRequest="90"/>
+                                <Label Text="{Binding Description}" FontSize="12" TextColor="#8A8078"/>
+                                <Label Text="{Binding Price, StringFormat='{0:N0} đ'}" TextColor="#E8A020"/>
                             </VerticalStackLayout>
                         </Border>
                     </DataTemplate>
                 </CollectionView.ItemTemplate>
             </CollectionView>
 
-            <Label Text="Audio của quán" FontAttributes="Bold"/>
+            <Label Text="Audio của quán" FontAttributes="Bold" TextColor="#F0EBE3"/>
             <CollectionView ItemsSource="{Binding AudioItems}">
                 <CollectionView.ItemTemplate>
                     <DataTemplate x:DataType="dto:AudioItemDto">
                         <Grid ColumnDefinitions="*,Auto" Padding="8">
                             <VerticalStackLayout>
-                                <Label Text="{Binding Title}" FontAttributes="Bold"/>
-                                <Label Text="{Binding SourceType}" FontSize="11" TextColor="#888888"/>
+                                <Label Text="{Binding Title}" FontAttributes="Bold" TextColor="#F0EBE3"/>
+                                <Label Text="{Binding SourceType}" FontSize="11" TextColor="#8A8078"/>
                             </VerticalStackLayout>
                             <Button Grid.Column="1"
                                     Text="Nghe"
-                                    Command="{Binding Source={RelativeSource AncestorType={x:Type vm:StallDetailViewModel}}, Path=OpenAudioCommand}"
+                                    Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.OpenAudioCommand}"
                                     CommandParameter="{Binding Url}"
                                     BackgroundColor="#E8A020"
                                     TextColor="#111111"/>
@@ -61,6 +78,34 @@
                     </DataTemplate>
                 </CollectionView.ItemTemplate>
             </CollectionView>
+
+            <Label Text="Bình luận" FontAttributes="Bold" TextColor="#F0EBE3"/>
+            <CollectionView ItemsSource="{Binding PoiReviews}">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="dto:ReviewListItemDto">
+                        <Border BackgroundColor="#1A1818" Stroke="#2E2A2A" Padding="10" Margin="0,0,0,8">
+                            <Border.StrokeShape>
+                                <RoundRectangle CornerRadius="8"/>
+                            </Border.StrokeShape>
+                            <VerticalStackLayout Spacing="4">
+                                <Label Text="{Binding Rating, StringFormat='⭐ {0}/5'}" TextColor="#E8A020"/>
+                                <Label Text="{Binding Comment}" TextColor="#F0EBE3" LineBreakMode="WordWrap"/>
+                                <Label Text="{Binding CreatedAt, StringFormat='{0:dd/MM/yyyy HH:mm}'}" FontSize="11" TextColor="#8A8078"/>
+                            </VerticalStackLayout>
+                        </Border>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+
+            <Label Text="Thêm bình luận" FontAttributes="Bold" TextColor="#F0EBE3"/>
+            <Label Text="{Binding ReviewStatus}" FontSize="12" TextColor="#8A8078"/>
+            <Label Text="{Binding NewRating, StringFormat='Điểm: {0:0}/5'}" TextColor="#F0EBE3"/>
+            <Slider Minimum="1" Maximum="5" Value="{Binding NewRating}"/>
+            <Editor Placeholder="Viết cảm nhận…" Text="{Binding NewComment}" TextColor="#F0EBE3" HeightRequest="80"/>
+            <Button Text="Gửi bình luận"
+                    Command="{Binding SubmitReviewCommand}"
+                    BackgroundColor="#C8372D"
+                    TextColor="White"/>
         </VerticalStackLayout>
     </ScrollView>
 </ContentPage>

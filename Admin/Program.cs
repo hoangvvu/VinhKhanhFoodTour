@@ -58,7 +58,17 @@ if (!string.IsNullOrWhiteSpace(googleClientId) && !string.IsNullOrWhiteSpace(goo
 
             using var scope = ctx.HttpContext.RequestServices.CreateScope();
             var authService = scope.ServiceProvider.GetRequiredService<AuthService>();
-            var user = await authService.FindOrCreateUserFromGoogleAsync(email, displayName);
+            VKFoodTour.Infrastructure.Entities.User user;
+            try
+            {
+                user = await authService.FindOrCreateUserFromGoogleAsync(email, displayName);
+            }
+            catch (InvalidOperationException ex) when (ex.Message == "ACCOUNT_DISABLED")
+            {
+                ctx.HandleResponse();
+                ctx.Response.Redirect("/login?error=disabled");
+                return;
+            }
 
             var claims = new List<Claim>
             {

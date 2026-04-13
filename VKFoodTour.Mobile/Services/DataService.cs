@@ -17,6 +17,8 @@ public class DataService : IDataService
         _deviceId = GetOrCreateDeviceId();
     }
 
+    public string DeviceId => _deviceId;
+
     private string ApiRoot => _settings.ApiBaseUrl.Trim().TrimEnd('/');
 
     public async Task<List<Poi>> GetPoisAsync(CancellationToken cancellationToken = default)
@@ -94,15 +96,7 @@ public class DataService : IDataService
         {
             var response = await _http.PostAsJsonAsync($"{ApiRoot}/api/Auth/login",
                 new LoginRequestDto { Email = email, Password = password }, cancellationToken);
-            var payload = await response.Content.ReadFromJsonAsync<AuthResponseDto>(cancellationToken: cancellationToken);
-            if (payload is not null)
-                return payload;
-
-            return new AuthResponseDto
-            {
-                Success = false,
-                Message = $"Máy chủ trả về mã {(int)response.StatusCode} nhưng không có nội dung phản hồi."
-            };
+            return await ParseAuthResponseAsync(response, cancellationToken);
         }
         catch (Exception ex)
         {
@@ -120,15 +114,7 @@ public class DataService : IDataService
         {
             var response = await _http.PostAsJsonAsync($"{ApiRoot}/api/Auth/register",
                 new RegisterRequestDto { Name = name, Email = email, Password = password }, cancellationToken);
-            var payload = await response.Content.ReadFromJsonAsync<AuthResponseDto>(cancellationToken: cancellationToken);
-            if (payload is not null)
-                return payload;
-
-            return new AuthResponseDto
-            {
-                Success = false,
-                Message = $"Máy chủ trả về mã {(int)response.StatusCode} nhưng không có nội dung phản hồi."
-            };
+            return await ParseAuthResponseAsync(response, cancellationToken);
         }
         catch (Exception ex)
         {
@@ -137,6 +123,60 @@ public class DataService : IDataService
                 Success = false,
                 Message = $"Không kết nối được máy chủ ({ApiRoot}). Chi tiết: {ex.Message}"
             };
+        }
+    }
+
+    public async Task<List<ReviewListItemDto>> GetRecentReviewsAsync(int take = 30, CancellationToken cancellationToken = default)
+    {
+        take = Math.Clamp(take, 1, 100);
+        try
+        {
+            var response = await _http.GetAsync($"{ApiRoot}/api/Reviews/recent?take={take}", cancellationToken);
+            if (!response.IsSuccessStatusCode)
+                return new List<ReviewListItemDto>();
+
+            var list = await response.Content.ReadFromJsonAsync<List<ReviewListItemDto>>(cancellationToken: cancellationToken);
+            return list ?? new List<ReviewListItemDto>();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"API GetRecentReviews: {ex.Message}");
+            return new List<ReviewListItemDto>();
+        }
+    }
+
+    public async Task<List<ReviewListItemDto>> GetPoiReviewsAsync(int poiId, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var response = await _http.GetAsync($"{ApiRoot}/api/Reviews/poi/{poiId}", cancellationToken);
+            if (!response.IsSuccessStatusCode)
+                return new List<ReviewListItemDto>();
+
+            var list = await response.Content.ReadFromJsonAsync<List<ReviewListItemDto>>(cancellationToken: cancellationToken);
+            return list ?? new List<ReviewListItemDto>();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"API GetPoiReviews: {ex.Message}");
+            return new List<ReviewListItemDto>();
+        }
+    }
+
+    public async Task<ReviewListItemDto?> PostReviewAsync(CreateReviewDto dto, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var response = await _http.PostAsJsonAsync($"{ApiRoot}/api/Reviews", dto, cancellationToken);
+            if (!response.IsSuccessStatusCode)
+                return null;
+
+            return await response.Content.ReadFromJsonAsync<ReviewListItemDto>(cancellationToken: cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"API PostReview: {ex.Message}");
+            return null;
         }
     }
 
@@ -180,11 +220,8 @@ public class DataService : IDataService
             if (dto is null)
                 return null;
 
-            if (!string.IsNullOrWhiteSpace(dto.AudioUrl)
-                && Uri.TryCreate(dto.AudioUrl, UriKind.Relative, out _))
-            {
-                dto.AudioUrl = $"{ApiRoot}{dto.AudioUrl}";
-            }
+            if (!string.IsNullOrWhiteSpace(dto.AudioUrl))
+                dto.AudioUrl = MediaUrlNormalizer.ToAbsolute(dto.AudioUrl, ApiRoot);
 
             return dto;
         }
@@ -201,20 +238,50 @@ public class DataService : IDataService
             return string.Empty;
 
         var t = raw.Trim();
-        if (Uri.TryCreate(t, UriKind.Absolute, out var uri) && !string.IsNullOrWhiteSpace(uri.Query))
+
+        if (Uri.TryCreate(t, UriKind.Absolute, out var absUri))
         {
-            var query = uri.Query.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries);
-            foreach (var part in query)
+            if (!string.IsNullOrWhiteSpace(absUri.Query))
             {
-                var pieces = part.Split('=', 2);
-                if (pieces.Length == 2 && pieces[0].Equals("data", StringComparison.OrdinalIgnoreCase))
+                var query = absUri.Query.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries);
+                foreach (var part in query)
                 {
-                    t = Uri.UnescapeDataString(pieces[1]).Trim();
-                    break;
+                    var pieces = part.Split('=', 2);
+                    if (pieces.Length != 2)
+                        continue;
+                    if (pieces[0].Equals("data", StringComparison.OrdinalIgnoreCase)
+                        || pieces[0].Equals("token", StringComparison.OrdinalIgnoreCase))
+                    {
+                        t = Uri.UnescapeDataString(pieces[1]).Trim();
+                        return NormalizeSchemeToken(t);
+                    }
                 }
+            }
+
+            var path = absUri.AbsolutePath;
+            var resolveIdx = path.IndexOf("/resolve/", StringComparison.OrdinalIgnoreCase);
+            if (resolveIdx >= 0)
+            {
+                var after = path[(resolveIdx + "/resolve/".Length)..];
+                var seg = after.Split('/', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
+                if (!string.IsNullOrWhiteSpace(seg))
+                    return Uri.UnescapeDataString(seg).Trim();
+            }
+
+            var segments = absUri.AbsolutePath.TrimEnd('/').Split('/', StringSplitOptions.RemoveEmptyEntries);
+            if (segments.Length > 0)
+            {
+                var last = segments[^1];
+                if (last.StartsWith("VK-", StringComparison.OrdinalIgnoreCase))
+                    return Uri.UnescapeDataString(last).Trim();
             }
         }
 
+        return NormalizeSchemeToken(t);
+    }
+
+    private static string NormalizeSchemeToken(string t)
+    {
         if (t.StartsWith("vkfoodtour://", StringComparison.OrdinalIgnoreCase))
             return t["vkfoodtour://".Length..].Trim();
 
@@ -228,14 +295,42 @@ public class DataService : IDataService
         return t;
     }
 
-    private string? NormalizeMediaUrl(string? url)
+    private static async Task<AuthResponseDto> ParseAuthResponseAsync(HttpResponseMessage response, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(url))
-            return url;
-        if (Uri.TryCreate(url, UriKind.Absolute, out _))
-            return url;
-        return $"{ApiRoot}{url}";
+        var raw = await response.Content.ReadAsStringAsync(cancellationToken);
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return new AuthResponseDto
+            {
+                Success = false,
+                Message = $"Máy chủ trả về mã {(int)response.StatusCode} nhưng không có nội dung phản hồi."
+            };
+        }
+
+        try
+        {
+            var payload = System.Text.Json.JsonSerializer.Deserialize<AuthResponseDto>(raw, new System.Text.Json.JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            });
+            if (payload is not null)
+                return payload;
+        }
+        catch
+        {
+            // Fall through and show raw snippet below.
+        }
+
+        var snippet = raw.Length > 180 ? raw[..180] + "..." : raw;
+        return new AuthResponseDto
+        {
+            Success = false,
+            Message = $"Máy chủ trả về nội dung không hợp lệ (HTTP {(int)response.StatusCode}). {snippet}"
+        };
     }
+
+    private string? NormalizeMediaUrl(string? url) =>
+        MediaUrlNormalizer.ToAbsolute(url, ApiRoot);
 
     private static string GetOrCreateDeviceId()
     {
@@ -249,7 +344,7 @@ public class DataService : IDataService
         return id;
     }
 
-    private static Poi MapToMobile(PoiDto d) =>
+    private Poi MapToMobile(PoiDto d) =>
         new()
         {
             PoiId = d.PoiId,
@@ -259,7 +354,8 @@ public class DataService : IDataService
             Longitude = (double)d.Longitude,
             Radius = d.Radius,
             Priority = d.Priority,
-            CoverEmoji = StallEmoji(d.Name)
+            CoverEmoji = StallEmoji(d.Name),
+            CoverImageUrl = NormalizeMediaUrl(d.ImageUrl)
         };
 
     private static string StallEmoji(string name)

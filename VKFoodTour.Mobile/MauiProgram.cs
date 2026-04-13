@@ -1,5 +1,6 @@
 ﻿using CommunityToolkit.Maui;
 using Microsoft.Extensions.Logging;
+using Plugin.Maui.Audio;
 using VKFoodTour.Mobile.Services;
 using VKFoodTour.Mobile.ViewModels;
 using VKFoodTour.Mobile.Views;
@@ -17,6 +18,7 @@ public static class MauiProgram
             .UseBarcodeReader()
             .UseMauiCommunityToolkit()
             .UseMauiMaps()
+            .AddAudio()
             .ConfigureFonts(fonts =>
             {
                 fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
@@ -29,10 +31,10 @@ public static class MauiProgram
         builder.Services.AddSingleton<ISettingsService, SettingsService>();
         builder.Services.AddSingleton<IStallNarrationState, StallNarrationState>();
         builder.Services.AddSingleton<IAuthSessionService, AuthSessionService>();
-        builder.Services.AddHttpClient<IDataService, DataService>(client =>
-        {
-            client.Timeout = TimeSpan.FromSeconds(25);
-        });
+        builder.Services.AddSingleton<IFavoriteService, FavoriteService>();
+        builder.Services.AddHttpClient<IHttpImageService, HttpImageService>((_, client) => client.ConfigureVkMediaClient());
+        builder.Services.AddHttpClient<IDataService, DataService>((_, client) => client.ConfigureVkApiClient());
+        builder.Services.AddHttpClient<IAudioPlaybackService, AudioPlaybackService>((_, client) => client.ConfigureVkMediaClient());
 
         builder.Services.AddSingleton<AppShell>();
         builder.Services.AddSingleton<App>();

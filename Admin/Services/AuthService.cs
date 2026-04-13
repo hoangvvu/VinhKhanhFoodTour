@@ -90,6 +90,18 @@ public class AuthService
             && u.UserId != excludeId);
     }
 
+    /// <summary>Ẩn / kích hoạt tài khoản (Admin).</summary>
+    public async Task SetUserActiveAsync(int userId, bool isActive)
+    {
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.UserId == userId);
+        if (user is null)
+            return;
+
+        user.IsActive = isActive;
+        user.UpdatedAt = DateTime.Now;
+        await _db.SaveChangesAsync();
+    }
+
     public async Task<User?> GetUserByEmailAsync(string email) =>
         await _db.Users
             .AsNoTracking()
@@ -105,6 +117,9 @@ public class AuthService
 
         if (user is not null)
         {
+            if (!user.IsActive)
+                throw new InvalidOperationException("ACCOUNT_DISABLED");
+
             if (!string.IsNullOrWhiteSpace(displayName) && user.Name != displayName)
             {
                 user.Name = displayName.Trim();

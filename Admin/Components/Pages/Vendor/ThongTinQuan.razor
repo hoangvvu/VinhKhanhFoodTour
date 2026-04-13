@@ -45,13 +45,14 @@
                     <div class="mb-3">
                         <label class="form-label text-muted small fw-bold">TÊN GIAN HÀNG</label>
                         <input type="text" class="form-control bg-dark border-secondary text-white p-3"
-                               @bind="poiName" placeholder="VD: Ốc Oanh Vĩnh Khánh...">
+                               @bind="poiName" @bind:event="oninput" placeholder="VD: Ốc Oanh Vĩnh Khánh...">
                     </div>
 
                     <div class="mb-3">
                         <label class="form-label text-muted small fw-bold">MÔ TẢ (dùng cho thuyết minh tự động &amp; app)</label>
                         <textarea class="form-control bg-dark border-secondary text-white p-3" rows="5"
-                                  @bind="poiDescription" placeholder="Giới thiệu quán — nội dung này sẽ dùng khi tạo giọng đọc FPT..."></textarea>
+                                  @bind="poiDescription" @bind:event="oninput"
+                                  placeholder="Giới thiệu quán — nội dung này sẽ dùng khi tạo giọng đọc FPT..."></textarea>
                     </div>
 
                     <div class="mb-3">
@@ -134,7 +135,10 @@
             <div class="card bg-dark-card border-0 shadow-sm mb-4" style="border-radius: 16px;">
                 <div class="card-body p-4">
                     <h5 class="text-white mb-3"><i class="bi bi-qr-code me-2 text-danger"></i>Mã QR quán</h5>
-                    <p class="text-muted small">Tạo mã để in/dán tại quán — dữ liệu <code class="text-info">vkfoodtour://TOKEN</code> (app mobile quét).</p>
+                    <p class="text-muted small">
+                        Mã QR chứa <strong>token gắn với mô tả</strong> (đổi mô tả → nên bấm “Cập nhật mã QR theo mô tả”).
+                        App mobile quét token này để mở quán và phát audio.
+                    </p>
                     <div class="p-3 bg-dark rounded border border-secondary text-center mb-3">
                         <span class="text-danger fw-bold fs-5">@qrCode</span>
                     </div>
@@ -147,13 +151,19 @@
                     @if (string.IsNullOrEmpty(activeQrToken))
                     {
                         <button type="button" class="btn btn-outline-danger w-100 rounded-pill" @onclick="CreateQrAsync" disabled="@isSaving">
-                            Tạo mã QR cho quán
+                            Tạo mã QR (token ngẫu nhiên)
+                        </button>
+                        <button type="button" class="btn btn-outline-light w-100 rounded-pill mt-2" @onclick="RegenerateQrFromDescriptionOnlyAsync" disabled="@isSaving">
+                            Tạo mã QR từ mô tả hiện tại
                         </button>
                     }
                     else
                     {
                         <p class="text-muted small mb-0">Quán đã có mã QR. In hoặc tải ảnh mã phía trên.</p>
-                        <button type="button" class="btn btn-outline-light w-100 rounded-pill mt-3" @onclick="DeleteQrAsync" disabled="@isSaving">
+                        <button type="button" class="btn btn-outline-danger w-100 rounded-pill mt-3" @onclick="RegenerateQrFromDescriptionOnlyAsync" disabled="@isSaving">
+                            Cập nhật mã QR theo mô tả hiện tại
+                        </button>
+                        <button type="button" class="btn btn-outline-light w-100 rounded-pill mt-2" @onclick="DeleteQrAsync" disabled="@isSaving">
                             Xóa mã QR hiện tại để tạo lại
                         </button>
                     }
@@ -283,7 +293,8 @@
 
     private static string GetQrImageUrl(string token)
     {
-        var qrData = Uri.EscapeDataString($"vkfoodtour://{token}");
+        // Encode token thuần để tránh camera ngoài app tự mở URL/web.
+        var qrData = Uri.EscapeDataString(token);
         return $"https://api.qrserver.com/v1/create-qr-code/?size=200x200&data={qrData}";
     }
 
@@ -338,6 +349,60 @@
             activeQrToken = "";
             qrCode = "Chưa tạo mã QR";
             statusMessage = "Đã xóa mã QR hiện tại. Bạn có thể tạo lại mã mới.";
+            isError = false;
+        }
+        catch (Exception ex)
+        {
+            statusMessage = ex.Message;
+            isError = true;
+        }
+        finally
+        {
+            isSaving = false;
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>Tạo lại token QR từ mô tả (không cần TTS / lưu riêng).</summary>
+    private async Task RegenerateQrFromDescriptionOnlyAsync()
+    {
+        if (currentPoiId == 0)
+            return;
+
+        if (string.IsNullOrWhiteSpace(poiDescription))
+        {
+            statusMessage = "Nhập mô tả quán trước khi cập nhật mã QR.";
+            isError = true;
+            StateHasChanged();
+            return;
+        }
+
+        isSaving = true;
+        statusMessage = null;
+        try
+        {
+            await PoiService.UpdateStallInfoAsync(
+                currentPoiId,
+                poiName,
+                poiDescription,
+                poiAddress,
+                latitude,
+                longitude,
+                mainImageUrl);
+
+            var token = await PoiService.RegenerateQrFromDescriptionAsync(
+                currentPoiId,
+                currentUserId,
+                poiDescription,
+                "Tại quán (mô tả)");
+
+            if (!string.IsNullOrWhiteSpace(token))
+            {
+                activeQrToken = token;
+                qrCode = token;
+            }
+
+            statusMessage = "Đã cập nhật mã QR theo mô tả hiện tại.";
             isError = false;
         }
         catch (Exception ex)

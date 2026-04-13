@@ -1,8 +1,10 @@
 @page "/nguoi-dung"
 @using Microsoft.AspNetCore.Authorization
-@attribute [Authorize]
+@using System.Security.Claims
+@attribute [Authorize(Roles = "Admin")]
 @rendermode InteractiveServer
 @inject AuthService AuthService
+@inject AuthenticationStateProvider AuthStateProvider
 
 <div class="container-fluid p-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
@@ -32,7 +34,7 @@
                                 <div class="bg-danger rounded-circle d-flex justify-content-center align-items-center me-3 text-white fw-bold shadow" style="width: 50px; height: 50px; font-size: 1.2rem;">
                                     @(string.IsNullOrWhiteSpace(user.Name) ? "U" : user.Name.Substring(0, 1).ToUpper())
                                 </div>
-                                <div>
+                                <div class="flex-grow-1">
                                     <h6 class="text-white mb-1 fw-bold">@user.Name</h6>
                                     <small class="text-muted d-block mb-2">@user.Email</small>
                                     <div>
@@ -43,10 +45,27 @@
                                         }
                                         else
                                         {
-                                            <span class="badge bg-secondary ms-1">Đã khóa</span>
+                                            <span class="badge bg-secondary ms-1">Đã ẩn</span>
                                         }
                                     </div>
                                 </div>
+                            </div>
+                            <div class="mt-3 pt-3 border-top border-secondary">
+                                <button type="button"
+                                        class="btn btn-sm w-100 rounded-pill @(user.IsActive ? "btn-outline-warning" : "btn-outline-success")"
+                                        disabled="@(user.UserId == currentUserId || togglingId == user.UserId)"
+                                        @onclick="() => ToggleUserAsync(user)">
+                                    @if (togglingId == user.UserId)
+                                    {
+                                        <span class="spinner-border spinner-border-sm me-1"></span>
+                                    }
+                                    <i class="bi @(user.IsActive ? "bi-eye-slash" : "bi-eye") me-1"></i>
+                                    @(user.IsActive ? "Ẩn tài khoản" : "Kích hoạt lại")
+                                </button>
+                                @if (user.UserId == currentUserId)
+                                {
+                                    <small class="text-muted d-block mt-2 text-center">Không thể ẩn chính mình.</small>
+                                }
                             </div>
                         </div>
                     </div>
@@ -112,7 +131,9 @@
 
 @code {
     private List<User>? users;
-    
+    private int? currentUserId;
+    private int? togglingId;
+
     // Các biến trạng thái Modal
     private bool isShowModal = false;
     private bool isSaving = false;
@@ -126,7 +147,29 @@
 
     protected override async Task OnInitializedAsync()
     {
+        var auth = await AuthStateProvider.GetAuthenticationStateAsync();
+        var idStr = auth.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (int.TryParse(idStr, out var me))
+            currentUserId = me;
+
         await LoadUsers();
+    }
+
+    private async Task ToggleUserAsync(User user)
+    {
+        if (user.UserId == currentUserId)
+            return;
+
+        togglingId = user.UserId;
+        try
+        {
+            await AuthService.SetUserActiveAsync(user.UserId, !user.IsActive);
+            await LoadUsers();
+        }
+        finally
+        {
+            togglingId = null;
+        }
     }
 
     private async Task LoadUsers()

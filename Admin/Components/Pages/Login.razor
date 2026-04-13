@@ -105,9 +105,15 @@
     protected override void OnInitialized()
     {
         var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
-        if (QueryHelpers.ParseQuery(uri.Query).TryGetValue("error", out var err) && err == "noemail")
-            errorMessage = "Google không cấp email công khai. Hãy thử tài khoản Google khác hoặc đăng nhập bằng mật khẩu.";
-    }
+        var q = QueryHelpers.ParseQuery(uri.Query);
+        if (q.TryGetValue("error", out var err))
+        {
+            if (err == "noemail")
+                errorMessage = "Google không cấp email công khai. Hãy thử tài khoản Google khác hoặc đăng nhập bằng mật khẩu.";
+            else if (err == "disabled")
+                errorMessage = "Tài khoản đã bị ẩn / tạm khóa. Liên hệ quản trị viên.";
+        }
+   }
 
     private async Task HandleLogin()
     {

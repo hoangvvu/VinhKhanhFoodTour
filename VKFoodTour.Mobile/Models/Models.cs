@@ -1,10 +1,11 @@
-﻿using SQLite;
+﻿using System.ComponentModel;
+using SQLite;
 
 namespace VKFoodTour.Mobile.Models;
 
 // ── POI — Gian hàng ───────────────────────────────────────────
 [Table("POIS")]
-public class Poi
+public class Poi : INotifyPropertyChanged
 {
     [PrimaryKey, AutoIncrement]
     public int PoiId { get; set; }
@@ -18,6 +19,32 @@ public class Poi
     public int ReviewCount { get; set; } = 0; // Số lượng đánh giá
 
     [Ignore] public string CoverEmoji { get; set; } = "🍜";
+
+    /// <summary>Ảnh bìa từ API (đã là URL tuyệt đối sau khi map).</summary>
+    [Ignore] public string? CoverImageUrl { get; set; }
+
+    [Ignore] public bool HasCoverImage => !string.IsNullOrWhiteSpace(CoverImageUrl);
+
+    [Ignore] public bool ShowEmojiFallback => string.IsNullOrWhiteSpace(CoverImageUrl);
+
+    private bool _isFavorite;
+    [Ignore]
+    public bool IsFavorite
+    {
+        get => _isFavorite;
+        set
+        {
+            if (_isFavorite == value)
+                return;
+            _isFavorite = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsFavorite)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(FavoriteIcon)));
+        }
+    }
+
+    [Ignore] public string FavoriteIcon => IsFavorite ? "♥" : "♡";
+
+    public event PropertyChangedEventHandler? PropertyChanged;
 }
 
 // ── Narration — Nội dung thuyết minh ─────────────────────────
