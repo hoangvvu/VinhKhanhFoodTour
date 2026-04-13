@@ -475,14 +475,12 @@
                 qrCode = refreshedToken;
             }
 
-            statusMessage = tts.IsFallbackRemoteUrl
-                ? "Đã tạo thuyết minh theo mô tả và cập nhật mã QR. Ghi chú: file local chưa tải kịp, đang dùng link audio trực tiếp từ FPT."
-                : "Đã lưu thuyết minh và cập nhật mã QR theo mô tả.";
+            statusMessage = "Đã lưu file MP3 trên máy chủ (/uploads) và cập nhật mã QR theo mô tả.";
             isError = false;
         }
         catch (Exception ex)
         {
-            statusMessage = ex.Message;
+            statusMessage = FormatSaveException(ex);
             isError = true;
         }
         finally
@@ -490,6 +488,20 @@
             isTtsBusy = false;
             StateHasChanged();
         }
+    }
+
+    private static string FormatSaveException(Exception ex)
+    {
+        var cur = ex;
+        var parts = new List<string>();
+        while (cur is not null && parts.Count < 4)
+        {
+            if (!string.IsNullOrWhiteSpace(cur.Message))
+                parts.Add(cur.Message.Trim());
+            cur = cur.InnerException;
+        }
+
+        return parts.Count == 0 ? "Lỗi không xác định." : string.Join(" → ", parts);
     }
 
     private async Task HandleNarrationAudioUpload(InputFileChangeEventArgs e)

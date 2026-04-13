@@ -129,6 +129,13 @@
                                    class="form-control bg-dark border-secondary text-white rounded-3"
                                    placeholder="vd: en-US-Standard-A" />
                         </div>
+                        <div class="col-12">
+                            <label class="form-label text-muted small fw-bold">TÊN HIỂN THỊ (THỦ CÔNG)</label>
+                            <input type="text" @bind="newLangDisplayName" @bind:event="oninput"
+                                   class="form-control bg-dark border-secondary text-white rounded-3"
+                                   placeholder="Bắt buộc nếu chưa cấu hình Google API; hoặc ghi đè tên khi Google không nhận mã." />
+                            <div class="form-text text-muted small">Dùng khi không có Google Translate hoặc cần tên tùy chỉnh (vd: English, 日本語).</div>
+                        </div>
                     </div>
 
                     @if (previewLangName != null)
@@ -312,6 +319,7 @@
     // ── Form thêm ngôn ngữ ──
     private string newLangCode = "";
     private string newTtsVoice = "";
+    private string newLangDisplayName = "";
     private string? previewLangName;
     private string? previewError;
     private bool isCheckingCode;
@@ -374,7 +382,7 @@
                 .ToListAsync();
 
             // Mặc định ngôn ngữ nguồn = "vi" nếu có
-            var viLang = languages.FirstOrDefault(l => l.Code == "vi");
+            var viLang = languages.FirstOrDefault(l => l.Code.Equals("vi", StringComparison.OrdinalIgnoreCase));
             if (viLang != null) sourceLanguageId = viLang.LanguageId;
             else if (languages.Any()) sourceLanguageId = languages.First().LanguageId;
         }
@@ -411,6 +419,19 @@
             return;
         }
 
+        if (!TranslateService.IsConfigured)
+        {
+            var manual = newLangDisplayName?.Trim();
+            if (string.IsNullOrEmpty(manual))
+            {
+                previewError = "Chưa cấu GoogleTranslate:ApiKey — nhập tên hiển thị thủ công (ô bên dưới) rồi nhấn Thêm hoặc tra cứu lại.";
+                return;
+            }
+
+            previewLangName = manual;
+            return;
+        }
+
         isCheckingCode = true;
         StateHasChanged();
 
@@ -423,7 +444,11 @@
             }
             else
             {
-                previewError = $"Mã \"{code}\" không phải mã ngôn ngữ hợp lệ trên Google Translate.";
+                var manual = newLangDisplayName?.Trim();
+                if (!string.IsNullOrEmpty(manual))
+                    previewLangName = manual;
+                else
+                    previewError = $"Mã \"{code}\" không phải mã ngôn ngữ hợp lệ trên Google Translate. Nhập tên hiển thị thủ công hoặc sửa mã.";
             }
         }
         catch (Exception ex)
@@ -441,14 +466,21 @@
     // ══════════════════════════════════════════
     private async Task AddLanguage()
     {
-        // Nếu chưa kiểm tra mã → tự động kiểm tra trước
+        var manual = newLangDisplayName?.Trim();
+        if (previewLangName == null && !string.IsNullOrEmpty(manual))
+            previewLangName = manual;
+
         if (previewLangName == null)
         {
             await CheckLanguageCode();
             StateHasChanged();
-
-            // Nếu kiểm tra thất bại → dừng
-            if (previewLangName == null) return;
+            if (previewLangName == null && !string.IsNullOrEmpty(newLangDisplayName?.Trim()))
+                previewLangName = newLangDisplayName.Trim();
+            if (previewLangName == null)
+            {
+                ShowAlert("Cần tên ngôn ngữ: tra cứu mã thành công hoặc nhập tên hiển thị thủ công.", "warning");
+                return;
+            }
         }
 
         isAddingLanguage = true;
@@ -456,9 +488,8 @@
 
         try
         {
-            // Double-check DB
-            var code = newLangCode.Trim().ToLower();
-            var duplicate = await Db.Languages.AnyAsync(l => l.Code == code);
+            var code = newLangCode.Trim().ToLowerInvariant();
+            var duplicate = await Db.Languages.AnyAsync(l => l.Code.ToLower() == code);
             if (duplicate)
             {
                 ShowAlert($"Mã ngôn ngữ \"{code}\" đã tồn tại!", "warning");
@@ -479,6 +510,7 @@
             // Reset form
             newLangCode = "";
             newTtsVoice = "";
+            newLangDisplayName = "";
             previewLangName = null;
             previewError = null;
 

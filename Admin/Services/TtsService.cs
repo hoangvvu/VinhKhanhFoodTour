@@ -1,7 +1,8 @@
-﻿using System.Text;
+﻿using System.Net;
+using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Hosting;
-using System.Net;
+using Microsoft.Extensions.Configuration;
 
 namespace Admin.Services;
 
@@ -9,120 +10,205 @@ public class TtsResult
 {
     public string? Url { get; set; }
     public string? ErrorMessage { get; set; }
-    public bool IsFallbackRemoteUrl { get; set; }
 }
 
+/// <summary>
+/// TTS qua FPT.AI: gọi API tạo URL, sau đó tải MP3 về UploadsData (không lưu URL FPT vào DB — link thường ngắn hạn).
+/// </summary>
 public class TtsService
 {
-    private readonly HttpClient _httpClient;
+    public const string HttpClientFptApi = "FptTtsApi";
+    public const string HttpClientFptDownload = "FptTtsDownload";
+
+    private readonly IHttpClientFactory _httpFactory;
     private readonly IWebHostEnvironment _env;
+    private readonly string _apiKey;
 
-    // Dán mã API Key của FPT.AI mà bạn vừa copy vào đây
-    private readonly string _apiKey = "PtJ2wolAlCHog4FgK48FsaJOAtwxNHeG";
-
-    public TtsService(HttpClient httpClient, IWebHostEnvironment env)
+    public TtsService(IHttpClientFactory httpFactory, IWebHostEnvironment env, IConfiguration configuration)
     {
-        _httpClient = httpClient;
+        _httpFactory = httpFactory;
         _env = env;
+        _apiKey = configuration["FptAi:Tts:ApiKey"]
+                  ?? Environment.GetEnvironmentVariable("FPT_AI_TTS_API_KEY")
+                  ?? string.Empty;
     }
 
-    public async Task<TtsResult> GenerateAudioAsync(string text, string voiceCode)
+    public async Task<TtsResult> GenerateAudioAsync(string text, string voiceCode, CancellationToken cancellationToken = default)
     {
+        if (string.IsNullOrWhiteSpace(_apiKey))
+            return new TtsResult
+            {
+                ErrorMessage = "Chưa cấu hình FPT TTS: thêm FptAi:Tts:ApiKey trong User Secrets / appsettings hoặc biến môi trường FPT_AI_TTS_API_KEY."
+            };
+
         if (string.IsNullOrWhiteSpace(text))
             return new TtsResult { ErrorMessage = "Nội dung mô tả đang trống." };
 
-        // voiceCode của FPT: banmai (nữ miền Nam), lannhi (nữ miền Nam), thuquynh (nữ miền Bắc)...
+        var client = _httpFactory.CreateClient(HttpClientFptApi);
         var request = new HttpRequestMessage(HttpMethod.Post, "https://api.fpt.ai/hmi/tts/v5");
-        request.Headers.Add("api-key", _apiKey);
-        request.Headers.Add("voice", voiceCode);
-
-        // FPT yêu cầu gửi text trực tiếp trong Body
+        request.Headers.TryAddWithoutValidation("api-key", _apiKey);
+        request.Headers.TryAddWithoutValidation("voice", voiceCode);
         request.Content = new StringContent(text, Encoding.UTF8, "text/plain");
 
-        var response = await _httpClient.SendAsync(request);
+        using var response = await client.SendAsync(request, cancellationToken);
+        var jsonString = await response.Content.ReadAsStringAsync(cancellationToken);
 
-        if (response.IsSuccessStatusCode)
+        if (!response.IsSuccessStatusCode)
         {
-            var jsonString = await response.Content.ReadAsStringAsync();
-            var audioUrl = TryExtractAudioUrl(jsonString);
-            if (string.IsNullOrWhiteSpace(audioUrl))
-            {
-                Console.WriteLine($"[TTS] Không đọc được audio url từ phản hồi FPT: {jsonString}");
-                return new TtsResult
-                {
-                    ErrorMessage = "FPT trả về thành công nhưng không có đường dẫn audio hợp lệ."
-                };
-            }
-
-            // FPT cần khoảng 1-3 giây để sinh file trên server của họ
-            // Mình delay nhẹ 2 giây để đảm bảo khi hiện lên giao diện là phát được ngay
-            await Task.Delay(2000);
-
-            return new TtsResult { Url = audioUrl };
+            Console.WriteLine($"[TTS] FPT API HTTP {(int)response.StatusCode}: {jsonString}");
+            return new TtsResult { ErrorMessage = string.IsNullOrWhiteSpace(jsonString) ? $"FPT API lỗi {(int)response.StatusCode}." : jsonString };
         }
-        else
+
+        var audioUrl = TryExtractAudioUrl(jsonString);
+        if (string.IsNullOrWhiteSpace(audioUrl))
         {
-            var error = await response.Content.ReadAsStringAsync();
-            Console.WriteLine($"Lỗi API FPT: {error}");
-            return new TtsResult { ErrorMessage = error };
+            Console.WriteLine($"[TTS] Không đọc được audio url từ FPT: {jsonString}");
+            return new TtsResult { ErrorMessage = "FPT trả về thành công nhưng không có đường dẫn audio hợp lệ." };
         }
+
+        return new TtsResult { Url = audioUrl };
     }
 
-    /// <summary>Gọi FPT TTS rồi tải file về thư mục UploadsData/narration để lưu lâu dài.</summary>
-    public async Task<TtsResult> GenerateAndPersistLocalAsync(string text, string voiceCode, string fileNameStem)
+    /// <summary>Gọi FPT TTS rồi tải file về thư mục UploadsData/narration. Chỉ trả về URL /uploads/... khi đã có file trên đĩa.</summary>
+    public async Task<TtsResult> GenerateAndPersistLocalAsync(string text, string voiceCode, string fileNameStem, CancellationToken cancellationToken = default)
     {
-        var remote = await GenerateAudioAsync(text, voiceCode);
-        if (!string.IsNullOrEmpty(remote.ErrorMessage) || string.IsNullOrEmpty(remote.Url))
+        var remote = await GenerateAudioAsync(text, voiceCode, cancellationToken);
+        if (!string.IsNullOrEmpty(remote.ErrorMessage) || string.IsNullOrWhiteSpace(remote.Url))
             return remote;
+
+        // FPT thường cần vài giây (đôi khi 10–20s) mới phục vụ file ổn định trên CDN.
+        await Task.Delay(TimeSpan.FromSeconds(4), cancellationToken);
+
+        byte[] bytes;
+        try
+        {
+            bytes = await DownloadAudioWithRetryAsync(remote.Url!, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[TTS] Tải MP3 từ FPT thất bại: {ex}");
+            return new TtsResult
+            {
+                ErrorMessage =
+                    "Không tải được file âm thanh từ FPT sau nhiều lần thử (file có thể chưa sẵn sàng hoặc mạng/CDN chặn). " +
+                    "Hãy bấm tạo lại sau 15–30 giây. Chi tiết: " + ex.Message
+            };
+        }
 
         try
         {
-            var bytes = await DownloadAudioWithRetryAsync(remote.Url);
             var dir = Path.GetFullPath(Path.Combine(_env.ContentRootPath, "..", "UploadsData", "narration"));
             Directory.CreateDirectory(dir);
             var safeStem = string.Join("_", fileNameStem.Split(Path.GetInvalidFileNameChars()));
             var fn = $"{safeStem}_{Guid.NewGuid():N}.mp3";
-            await File.WriteAllBytesAsync(Path.Combine(dir, fn), bytes);
+            var fullPath = Path.Combine(dir, fn);
+            await File.WriteAllBytesAsync(fullPath, bytes, cancellationToken);
             return new TtsResult { Url = $"/uploads/narration/{fn}" };
         }
         catch (Exception ex)
         {
-            // Fallback: vẫn dùng URL FPT để hệ thống nghe được ngay, không chặn luồng nghiệp vụ.
-            Console.WriteLine($"[TTS] Lưu local thất bại, fallback URL FPT: {ex.Message}");
-            return new TtsResult
-            {
-                Url = remote.Url,
-                IsFallbackRemoteUrl = true
-            };
+            Console.WriteLine($"[TTS] Ghi file local thất bại: {ex}");
+            return new TtsResult { ErrorMessage = $"Không ghi được file trên máy chủ: {ex.Message}" };
         }
     }
 
-    private async Task<byte[]> DownloadAudioWithRetryAsync(string remoteUrl)
+    private async Task<byte[]> DownloadAudioWithRetryAsync(string remoteUrl, CancellationToken cancellationToken)
     {
-        const int maxAttempts = 12;
+        var client = _httpFactory.CreateClient(HttpClientFptDownload);
+        const int maxAttempts = 28;
+
         for (var attempt = 1; attempt <= maxAttempts; attempt++)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             try
             {
-                return await _httpClient.GetByteArrayAsync(remoteUrl);
+                using var request = new HttpRequestMessage(HttpMethod.Get, remoteUrl);
+                using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+
+                if (response.StatusCode == HttpStatusCode.NotFound ||
+                    response.StatusCode == HttpStatusCode.RequestTimeout ||
+                    (int)response.StatusCode == 429)
+                {
+                    await DelayBeforeRetryAsync(attempt, cancellationToken);
+                    continue;
+                }
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var body = await response.Content.ReadAsStringAsync(cancellationToken);
+                    if (attempt >= maxAttempts - 2)
+                        throw new HttpRequestException($"HTTP {(int)response.StatusCode} khi tải audio: {body.AsSpan(0, Math.Min(200, body.Length))}…");
+
+                    await DelayBeforeRetryAsync(attempt, cancellationToken);
+                    continue;
+                }
+
+                await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+                await using var ms = new MemoryStream();
+                await stream.CopyToAsync(ms, cancellationToken);
+                var bytes = ms.ToArray();
+
+                if (bytes.Length < 128)
+                {
+                    await DelayBeforeRetryAsync(attempt, cancellationToken);
+                    continue;
+                }
+
+                if (!LooksLikeMp3OrBinaryAudio(bytes))
+                {
+                    await DelayBeforeRetryAsync(attempt, cancellationToken);
+                    continue;
+                }
+
+                return bytes;
             }
-            catch (HttpRequestException ex)
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
-                var status = ex.StatusCode;
-                var transient = status == HttpStatusCode.NotFound ||
-                                status == HttpStatusCode.Forbidden ||
-                                status == HttpStatusCode.TooManyRequests ||
-                                status == null;
+                throw;
+            }
+            catch (OperationCanceledException)
+            {
+                await DelayBeforeRetryAsync(attempt, cancellationToken);
+            }
+            catch (HttpRequestException)
+            {
                 if (attempt == maxAttempts)
                     throw;
-                if (!transient)
-                    throw;
-
-                await Task.Delay(1200 * attempt);
+                await DelayBeforeRetryAsync(attempt, cancellationToken);
             }
         }
 
-        throw new InvalidOperationException("Không thể tải file audio từ FPT sau nhiều lần thử.");
+        throw new IOException($"Không tải được file audio từ FPT sau {maxAttempts} lần thử.");
+    }
+
+    private static async Task DelayBeforeRetryAsync(int attempt, CancellationToken cancellationToken)
+    {
+        // 2s, 3s, 4s … tối đa ~14s mỗi lần — tổng thời gian chờ đủ cho CDN FPT.
+        var seconds = Math.Min(2 + attempt, 14);
+        await Task.Delay(TimeSpan.FromSeconds(seconds), cancellationToken);
+    }
+
+    private static bool LooksLikeMp3OrBinaryAudio(ReadOnlySpan<byte> b)
+    {
+        if (b.Length >= 3 && b[0] == (byte)'I' && b[1] == (byte)'D' && b[2] == (byte)'3')
+            return true;
+        if (b.Length >= 2 && b[0] == 0xFF && (b[1] & 0xE0) == 0xE0)
+            return true;
+
+        var start = 0;
+        while (start < b.Length && start < 32 && b[start] is (byte)' ' or (byte)'\r' or (byte)'\n' or (byte)'\t')
+            start++;
+        if (start >= b.Length)
+            return false;
+
+        var take = Math.Min(b.Length - start, 256);
+        var head = Encoding.ASCII.GetString(b.Slice(start, take));
+        if (head.Contains("<!DOCTYPE", StringComparison.OrdinalIgnoreCase) ||
+            head.Contains("<html", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        return true;
     }
 
     private static string? TryExtractAudioUrl(string jsonString)

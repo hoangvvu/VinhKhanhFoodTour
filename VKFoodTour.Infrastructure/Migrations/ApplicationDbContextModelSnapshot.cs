@@ -257,9 +257,19 @@ namespace VKFoodTour.Infrastructure.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("NarrationId"));
 
                     b.Property<string>("AudioUrl")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)")
+                        .HasMaxLength(2048)
+                        .HasColumnType("nvarchar(2048)")
                         .HasColumnName("audio_url");
+
+                    b.Property<string>("AudioUrlAuto")
+                        .HasMaxLength(2048)
+                        .HasColumnType("nvarchar(2048)")
+                        .HasColumnName("audio_url_auto");
+
+                    b.Property<string>("AudioUrlQr")
+                        .HasMaxLength(2048)
+                        .HasColumnType("nvarchar(2048)")
+                        .HasColumnName("audio_url_qr");
 
                     b.Property<string>("Content")
                         .IsRequired()
@@ -299,7 +309,7 @@ namespace VKFoodTour.Infrastructure.Migrations
 
                     b.HasIndex("PoiId", "LanguageId")
                         .IsUnique()
-                        .HasDatabaseName("idx_narrations_poi_lang");
+                        .HasDatabaseName("uq_narration_poi_lang");
 
                     b.ToTable("NARRATIONS", (string)null);
                 });

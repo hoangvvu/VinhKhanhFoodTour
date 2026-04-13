@@ -5,20 +5,20 @@
        Shell.NavBarIsVisible="False">
 
     <TabBar>
-        <Tab Title="Khám phá" Icon="icon_map.png">
+        <Tab x:Name="TabHome" Title="Khám phá" Icon="icon_map.png">
             <ShellContent ContentTemplate="{DataTemplate pages:HomePage}" Route="home" />
         </Tab>
-        <Tab Title="Bản đồ" Icon="icon_map_big.png">
+        <Tab x:Name="TabMap" Title="Bản đồ" Icon="icon_map_big.png">
             <ShellContent ContentTemplate="{DataTemplate pages:FullMapPage}" Route="fullmap" />
         </Tab>
-        <Tab Title="Gian hàng" Icon="icon_stall.png">
+        <Tab x:Name="TabStalls" Title="Gian hàng" Icon="icon_stall.png">
             <ShellContent ContentTemplate="{DataTemplate pages:StallListPage}" Route="stalls" />
         </Tab>
-        <Tab Title="Quét QR">
+        <Tab x:Name="TabQr" Title="Quét QR">
             <ShellContent ContentTemplate="{DataTemplate pages:QrScanPage}" Route="qrscan" />
         </Tab>
 
-        <Tab Title="Hồ sơ" Icon="icon_profile.png">
+        <Tab x:Name="TabProfile" Title="Hồ sơ" Icon="icon_profile.png">
             <ShellContent ContentTemplate="{DataTemplate pages:ProfilePage}" Route="profile" />
         </Tab>
     </TabBar>

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.FileProviders;
 using VKFoodTour.Infrastructure.Data;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -45,11 +46,20 @@ using (var scope = app.Services.CreateScope())
     {
         var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         await db.Database.ExecuteSqlRawAsync("""
+IF COL_LENGTH('NARRATIONS', 'audio_url') IS NULL
+    ALTER TABLE NARRATIONS ADD audio_url NVARCHAR(2048) NULL;
+ELSE
+    ALTER TABLE NARRATIONS ALTER COLUMN audio_url NVARCHAR(2048) NULL;
+
 IF COL_LENGTH('NARRATIONS', 'audio_url_auto') IS NULL
-    ALTER TABLE NARRATIONS ADD audio_url_auto NVARCHAR(500) NULL;
+    ALTER TABLE NARRATIONS ADD audio_url_auto NVARCHAR(2048) NULL;
+ELSE
+    ALTER TABLE NARRATIONS ALTER COLUMN audio_url_auto NVARCHAR(2048) NULL;
 
 IF COL_LENGTH('NARRATIONS', 'audio_url_qr') IS NULL
-    ALTER TABLE NARRATIONS ADD audio_url_qr NVARCHAR(500) NULL;
+    ALTER TABLE NARRATIONS ADD audio_url_qr NVARCHAR(2048) NULL;
+ELSE
+    ALTER TABLE NARRATIONS ALTER COLUMN audio_url_qr NVARCHAR(2048) NULL;
 """);
     }
     catch (Exception ex)
@@ -78,6 +88,22 @@ if (!app.Environment.IsDevelopment())
 
 // c. Áp dụng chính sách CORS đã cấu hình ở trên
 app.UseCors("AllowAll");
+
+// c2. Ảnh / audio upload (cùng thư mục với Admin) — mobile ghép ApiBaseUrl + /uploads/...
+var uploadsPath = Path.GetFullPath(Path.Combine(app.Environment.ContentRootPath, "..", "UploadsData"));
+if (!Directory.Exists(uploadsPath))
+{
+    Directory.CreateDirectory(Path.Combine(uploadsPath, "poi"));
+    Directory.CreateDirectory(Path.Combine(uploadsPath, "menu"));
+}
+
+Directory.CreateDirectory(Path.Combine(uploadsPath, "narration"));
+
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(uploadsPath),
+    RequestPath = "/uploads"
+});
 
 // d. Xác thực (Authentication - Đăng nhập) và Phân quyền (Authorization)
 // app.UseAuthentication(); // (Sẽ mở comment dòng này khi bạn cấu hình JWT Token)

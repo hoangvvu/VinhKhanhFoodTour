@@ -5,7 +5,7 @@
              xmlns:maps="clr-namespace:Microsoft.Maui.Controls.Maps;assembly=Microsoft.Maui.Controls.Maps"
              xmlns:vm="clr-namespace:VKFoodTour.Mobile.ViewModels"
              x:DataType="vm:HomeViewModel"
-             Title="Bản đồ chỉ dẫn">
+             Title="{Binding MapPageTitle}">
 
     <Grid>
         <maps:Map x:Name="bigMap" 

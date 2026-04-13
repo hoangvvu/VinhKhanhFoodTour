@@ -1,13 +1,29 @@
-﻿using VKFoodTour.Mobile.Views;
+﻿using VKFoodTour.Mobile.Services;
+using VKFoodTour.Mobile.Views;
 
 namespace VKFoodTour.Mobile
 {
     public partial class AppShell : Shell
     {
-        public AppShell()
+        private readonly ILocalizationService _localization;
+
+        public AppShell(ILocalizationService localization)
         {
             InitializeComponent();
+            _localization = localization;
+            ApplyTabTitles();
+            _localization.LanguageChanged += (_, _) =>
+                MainThread.BeginInvokeOnMainThread(ApplyTabTitles);
             Routing.RegisterRoute(nameof(StallDetailPage), typeof(StallDetailPage));
+        }
+
+        private void ApplyTabTitles()
+        {
+            TabHome.Title = _localization.GetString("Shell_Home");
+            TabMap.Title = _localization.GetString("Shell_Map");
+            TabStalls.Title = _localization.GetString("Shell_Stalls");
+            TabQr.Title = _localization.GetString("Shell_Qr");
+            TabProfile.Title = _localization.GetString("Shell_Profile");
         }
     }
 }

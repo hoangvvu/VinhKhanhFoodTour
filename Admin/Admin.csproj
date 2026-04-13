@@ -5,6 +5,7 @@
 		<Nullable>enable</Nullable>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
+		<UserSecretsId>VKFoodTour-Admin-FptTts-9E1C4B2A-8D7F-4E6C-A5B4-3210FEDCBA98</UserSecretsId>
 	</PropertyGroup>
 
 	<ItemGroup>

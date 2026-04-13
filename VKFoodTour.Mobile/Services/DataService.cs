@@ -203,6 +203,31 @@ public class DataService : IDataService
         }
     }
 
+    public async Task<List<LanguageListItemDto>> GetLanguagesAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var response = await _http.GetAsync($"{ApiRoot}/api/Languages", cancellationToken);
+            if (!response.IsSuccessStatusCode)
+                return FallbackLanguages();
+
+            var list = await response.Content.ReadFromJsonAsync<List<LanguageListItemDto>>(cancellationToken: cancellationToken);
+            return list is { Count: > 0 } ? list : FallbackLanguages();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"API GetLanguages: {ex.Message}");
+            return FallbackLanguages();
+        }
+    }
+
+    private static List<LanguageListItemDto> FallbackLanguages() =>
+        new()
+        {
+            new LanguageListItemDto { Code = "vi", Name = "Tiếng Việt" },
+            new LanguageListItemDto { Code = "en", Name = "English" }
+        };
+
     public async Task<QrResolveDto?> ResolveQrAsync(string scannedPayload, CancellationToken cancellationToken = default)
     {
         var token = ExtractQrToken(scannedPayload);

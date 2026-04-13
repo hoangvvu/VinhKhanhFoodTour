@@ -15,14 +15,14 @@
 
             <Grid ColumnDefinitions="*, Auto">
                 <VerticalStackLayout Grid.Column="0">
-                    <Label Text="XIN CHÀO! 👋" FontSize="12" TextColor="#8A8078"/>
-                    <Label Text="KHÁM PHÁ VĨNH KHÁNH" FontSize="26" FontFamily="BebasNeue" TextColor="#F0EBE3"/>
+                    <Label Text="{Binding UiGreeting}" FontSize="12" TextColor="#8A8078"/>
+                    <Label Text="{Binding UiTitle}" FontSize="26" FontFamily="BebasNeue" TextColor="#F0EBE3"/>
                 </VerticalStackLayout>
                 <Border Grid.Column="1" WidthRequest="45" HeightRequest="45" BackgroundColor="#1A1818" Stroke="#2E2A2A">
                     <Border.StrokeShape>
                         <RoundRectangle CornerRadius="22.5"/>
                     </Border.StrokeShape>
-                    <Label Text="🇻🇳" HorizontalOptions="Center" VerticalOptions="Center" FontSize="20"/>
+                    <Label Text="{Binding LangFlagEmoji}" HorizontalOptions="Center" VerticalOptions="Center" FontSize="20"/>
                 </Border>
             </Grid>
 
@@ -33,15 +33,15 @@
                 <Grid ColumnDefinitions="Auto, *">
                     <Label Text="🎙️" FontSize="24" VerticalOptions="Center"/>
                     <VerticalStackLayout Grid.Column="1" Margin="15,0,0,0">
-                        <Label Text="THUYẾT MINH TỰ ĐỘNG" FontSize="11" TextColor="White" Opacity="0.8"/>
-                        <Label Text="{Binding NowPlayingText, FallbackValue='Sẵn sàng khi bạn đến gần quán ăn...'}"
+                        <Label Text="{Binding UiAutoNarration}" FontSize="11" TextColor="White" Opacity="0.8"/>
+                        <Label Text="{Binding NowPlayingText}"
                                TextColor="White" FontSize="14" MaxLines="2" LineBreakMode="WordWrap"/>
                     </VerticalStackLayout>
                 </Grid>
             </Border>
 
             <VerticalStackLayout Spacing="10" IsVisible="{Binding HasFavoritePois}">
-                <Label Text="YÊU THÍCH" FontSize="18" FontFamily="BebasNeue" TextColor="#F0EBE3"/>
+                <Label Text="{Binding UiFavoritesSection}" FontSize="18" FontFamily="BebasNeue" TextColor="#F0EBE3"/>
                 <CollectionView ItemsSource="{Binding FavoritePois}" HeightRequest="200">
                     <CollectionView.ItemsLayout>
                         <LinearItemsLayout Orientation="Horizontal" ItemSpacing="15"/>
@@ -84,7 +84,7 @@
             </VerticalStackLayout>
 
             <VerticalStackLayout Spacing="10">
-                <Label Text="GIAN HÀNG NỔI BẬT" FontSize="18" FontFamily="BebasNeue" TextColor="#F0EBE3"/>
+                <Label Text="{Binding UiFeaturedSection}" FontSize="18" FontFamily="BebasNeue" TextColor="#F0EBE3"/>
 
                 <CollectionView ItemsSource="{Binding Pois}" HeightRequest="200">
                     <CollectionView.ItemsLayout>
@@ -132,7 +132,7 @@
             </VerticalStackLayout>
 
             <VerticalStackLayout Spacing="10">
-                <Label Text="BÌNH LUẬN GẦN ĐÂY" FontSize="18" FontFamily="BebasNeue" TextColor="#F0EBE3"/>
+                <Label Text="{Binding UiRecentReviews}" FontSize="18" FontFamily="BebasNeue" TextColor="#F0EBE3"/>
                 <CollectionView ItemsSource="{Binding RecentReviews}">
                     <CollectionView.ItemTemplate>
                         <DataTemplate x:DataType="dto:ReviewListItemDto">

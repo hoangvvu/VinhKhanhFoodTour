@@ -6,6 +6,8 @@ using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
+using System.Net;
+using System.Net.Http;
 using System.Security.Claims;
 using VKFoodTour.Infrastructure.Data;
 
@@ -101,7 +103,29 @@ if (!string.IsNullOrWhiteSpace(googleClientId) && !string.IsNullOrWhiteSpace(goo
 
 builder.Services.AddAuthorization();
 builder.Services.AddCascadingAuthenticationState();
-builder.Services.AddHttpClient<TtsService>();
+builder.Services.AddHttpClient(TtsService.HttpClientFptApi, client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(120);
+    client.DefaultRequestHeaders.UserAgent.ParseAdd(
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36");
+}).ConfigurePrimaryHttpMessageHandler(static () => new SocketsHttpHandler
+{
+    AutomaticDecompression = DecompressionMethods.All,
+});
+
+builder.Services.AddHttpClient(TtsService.HttpClientFptDownload, client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(300);
+    client.DefaultRequestHeaders.UserAgent.ParseAdd(
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36");
+}).ConfigurePrimaryHttpMessageHandler(static () => new SocketsHttpHandler
+{
+    AutomaticDecompression = DecompressionMethods.All,
+    AllowAutoRedirect = true,
+    MaxAutomaticRedirections = 16,
+});
+
+builder.Services.AddTransient<TtsService>();
 builder.Services.AddHttpClient<GoogleTranslateService>();
 
 builder.Services.AddScoped<PoiService>();
@@ -117,11 +141,20 @@ using (var scope = app.Services.CreateScope())
         var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         await db.Database.MigrateAsync();
         await db.Database.ExecuteSqlRawAsync("""
+IF COL_LENGTH('NARRATIONS', 'audio_url') IS NULL
+    ALTER TABLE NARRATIONS ADD audio_url NVARCHAR(2048) NULL;
+ELSE
+    ALTER TABLE NARRATIONS ALTER COLUMN audio_url NVARCHAR(2048) NULL;
+
 IF COL_LENGTH('NARRATIONS', 'audio_url_auto') IS NULL
-    ALTER TABLE NARRATIONS ADD audio_url_auto NVARCHAR(500) NULL;
+    ALTER TABLE NARRATIONS ADD audio_url_auto NVARCHAR(2048) NULL;
+ELSE
+    ALTER TABLE NARRATIONS ALTER COLUMN audio_url_auto NVARCHAR(2048) NULL;
 
 IF COL_LENGTH('NARRATIONS', 'audio_url_qr') IS NULL
-    ALTER TABLE NARRATIONS ADD audio_url_qr NVARCHAR(500) NULL;
+    ALTER TABLE NARRATIONS ADD audio_url_qr NVARCHAR(2048) NULL;
+ELSE
+    ALTER TABLE NARRATIONS ALTER COLUMN audio_url_qr NVARCHAR(2048) NULL;
 """);
         await SeedData.InitializeAsync(db);
     }

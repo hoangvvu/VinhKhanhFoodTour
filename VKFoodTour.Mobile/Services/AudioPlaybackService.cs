@@ -19,22 +19,37 @@ public sealed class AudioPlaybackService : IAudioPlaybackService
 
     public bool IsPlaying => _player?.IsPlaying ?? false;
 
-    public async Task PlayAsync(string? url, CancellationToken cancellationToken = default)
+    public async Task<bool> PlayAsync(string? url, CancellationToken cancellationToken = default)
     {
         Stop();
         if (string.IsNullOrWhiteSpace(url))
-            return;
+            return false;
 
         var full = NormalizeUrl(url.Trim());
-        using var response = await _http.GetAsync(full, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-        response.EnsureSuccessStatusCode();
-        await using var remote = await response.Content.ReadAsStreamAsync(cancellationToken);
-        var ms = new MemoryStream();
-        await remote.CopyToAsync(ms, cancellationToken);
-        ms.Position = 0;
-        _playbackBuffer = ms;
-        _player = _audioManager.CreatePlayer(ms);
-        _player.Play();
+        try
+        {
+            using var response = await _http.GetAsync(full, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+            if (!response.IsSuccessStatusCode)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Audio] HTTP {(int)response.StatusCode} for {full}");
+                return false;
+            }
+
+            await using var remote = await response.Content.ReadAsStreamAsync(cancellationToken);
+            var ms = new MemoryStream();
+            await remote.CopyToAsync(ms, cancellationToken);
+            ms.Position = 0;
+            _playbackBuffer = ms;
+            _player = _audioManager.CreatePlayer(ms);
+            _player.Play();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Audio] {full}: {ex.Message}");
+            Stop();
+            return false;
+        }
     }
 
     public void Stop()

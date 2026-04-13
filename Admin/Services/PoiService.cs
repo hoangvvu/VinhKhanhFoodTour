@@ -181,7 +181,8 @@ public class PoiService
         var tokenBase = $"VK-{poiId:D3}-{descHash}";
         var token = tokenBase;
         var suffix = 1;
-        while (await _db.QrCodes.AnyAsync(q => q.QrToken == token && q.PoiId != poiId))
+        // UNIQUE trên qr_token là toàn bảng — gồm cả bản ghi cũ IsActive=0 của chính POI này.
+        while (await _db.QrCodes.AnyAsync(q => q.QrToken == token))
         {
             token = $"{tokenBase}-{suffix++:D2}";
         }
@@ -220,6 +221,11 @@ public class PoiService
 
     public async Task UpsertNarrationAutoAsync(int poiId, int languageId, string title, string content, string? ttsVoice, string? autoAudioUrl)
     {
+        title = TruncateForDb(string.IsNullOrWhiteSpace(title) ? $"Gian hàng #{poiId}" : title, 200);
+        content = string.IsNullOrWhiteSpace(content) ? " " : content;
+        ttsVoice = string.IsNullOrWhiteSpace(ttsVoice) ? null : TruncateForDb(ttsVoice, 100);
+        autoAudioUrl = string.IsNullOrWhiteSpace(autoAudioUrl) ? null : TruncateForDb(autoAudioUrl, 2048);
+
         var existing = await _db.Narrations.FirstOrDefaultAsync(n => n.PoiId == poiId && n.LanguageId == languageId);
         if (existing is not null)
         {
@@ -252,6 +258,10 @@ public class PoiService
 
     public async Task UpsertNarrationQrAsync(int poiId, int languageId, string title, string content, string? qrAudioUrl)
     {
+        title = TruncateForDb(string.IsNullOrWhiteSpace(title) ? $"Gian hàng #{poiId}" : title, 200);
+        content = string.IsNullOrWhiteSpace(content) ? " " : content;
+        qrAudioUrl = string.IsNullOrWhiteSpace(qrAudioUrl) ? null : TruncateForDb(qrAudioUrl, 2048);
+
         var existing = await _db.Narrations.FirstOrDefaultAsync(n => n.PoiId == poiId && n.LanguageId == languageId);
         if (existing is not null)
         {
@@ -402,5 +412,14 @@ public class PoiService
         using var sha = SHA256.Create();
         var bytes = sha.ComputeHash(Encoding.UTF8.GetBytes(input));
         return Convert.ToHexString(bytes)[..8];
+    }
+
+    /// <summary>Tránh lỗi SQL “string truncation” khi URL FPT hoặc tiêu đề vượt MaxLength.</summary>
+    private static string TruncateForDb(string? value, int maxLen)
+    {
+        if (string.IsNullOrEmpty(value))
+            return string.Empty;
+        var t = value.Trim();
+        return t.Length <= maxLen ? t : t[..maxLen];
     }
 }

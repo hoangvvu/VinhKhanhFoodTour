@@ -10,7 +10,7 @@
 
     <Grid RowDefinitions="Auto, *, Auto" Padding="20" RowSpacing="16">
         <Label Grid.Row="0"
-               Text="QUÉT QR QUÁN"
+               Text="{Binding UiTitle}"
                FontSize="28"
                FontFamily="BebasNeue"
                TextColor="#F0EBE3"/>
@@ -31,9 +31,9 @@
                     <RoundRectangle CornerRadius="14"/>
                 </Border.StrokeShape>
                 <VerticalStackLayout Spacing="12">
-                    <Label Text="Nhập mã (dev / Windows)" TextColor="#8A8078" FontSize="12"/>
-                    <Entry Text="{Binding ManualCode}" Placeholder="vkfoodtour://VK-XXXX" TextColor="#F0EBE3" PlaceholderColor="#5C5650"/>
-                    <Button Text="Tra cứu và nghe mô tả" Command="{Binding ResolveManualCommand}" BackgroundColor="#C8372D" TextColor="White"/>
+                    <Label Text="{Binding UiManualLabel}" TextColor="#8A8078" FontSize="12"/>
+                    <Entry Text="{Binding ManualCode}" Placeholder="{Binding UiManualPlaceholder}" TextColor="#F0EBE3" PlaceholderColor="#5C5650"/>
+                    <Button Text="{Binding UiManualButton}" Command="{Binding ResolveManualCommand}" BackgroundColor="#C8372D" TextColor="White"/>
                 </VerticalStackLayout>
             </Border>
         </Grid>

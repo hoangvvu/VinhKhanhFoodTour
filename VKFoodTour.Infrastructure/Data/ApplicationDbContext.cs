@@ -75,13 +75,10 @@ public class ApplicationDbContext : DbContext
             entity.ToTable("NARRATIONS");
             entity.HasKey(e => e.NarrationId);
 
-            // Unique: 1 POI + 1 Language = 1 Narration
+            // Unique: 1 POI + 1 Language = 1 Narration (trùng index gây lỗi/mơ hồ trên một số bản SQL)
             entity.HasIndex(e => new { e.PoiId, e.LanguageId })
                   .IsUnique()
                   .HasDatabaseName("uq_narration_poi_lang");
-
-            entity.HasIndex(e => new { e.PoiId, e.LanguageId })
-                  .HasDatabaseName("idx_narrations_poi_lang");
         });
 
         // ── FOOD ────────────────────────────────────

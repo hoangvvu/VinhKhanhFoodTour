@@ -11,7 +11,7 @@
 
     <Grid RowDefinitions="Auto, *">
         <Label Grid.Row="0" 
-               Text="CÁC GIAN HÀNG" 
+               Text="{Binding UiPageTitle}" 
                FontSize="32" 
                FontFamily="BebasNeue" 
                TextColor="#F0EBE3" 
@@ -57,7 +57,7 @@
                                        LineBreakMode="TailTruncation"/>
 
                                 <HorizontalStackLayout Spacing="5" Margin="0,5,0,0">
-                                    <Label Text="Ưu tiên:"
+                                    <Label Text="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.UiPriorityLabel}"
                                            FontSize="11"
                                            TextColor="#8A8078"/>
                                     <Label Text="{Binding Priority}"

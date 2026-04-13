@@ -29,6 +29,7 @@ public static class MauiProgram
 
         // Đăng ký Services
         builder.Services.AddSingleton<ISettingsService, SettingsService>();
+        builder.Services.AddSingleton<ILocalizationService, LocalizationService>();
         builder.Services.AddSingleton<IStallNarrationState, StallNarrationState>();
         builder.Services.AddSingleton<IAuthSessionService, AuthSessionService>();
         builder.Services.AddSingleton<IFavoriteService, FavoriteService>();
@@ -40,7 +41,8 @@ public static class MauiProgram
         builder.Services.AddSingleton<App>();
 
         // Đăng ký ViewModels
-        builder.Services.AddTransient<HomeViewModel>();
+        // Dùng chung cho Home + Bản đồ để danh sách POI và trạng thái tải đồng bộ.
+        builder.Services.AddSingleton<HomeViewModel>();
         builder.Services.AddTransient<StallListViewModel>();
         builder.Services.AddTransient<PlayerViewModel>();
         builder.Services.AddTransient<ProfileViewModel>();

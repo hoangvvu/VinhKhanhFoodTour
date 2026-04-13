@@ -12,9 +12,10 @@ public partial class HomeViewModel : ObservableObject
 {
     private readonly IDataService _dataService;
     private readonly IFavoriteService _favorites;
+    private readonly ILocalizationService _localization;
 
     // Các biến dùng [ObservableProperty] PHẢI viết thường chữ cái đầu (camelCase)
-    // Thư viện sẽ tự tạo ra bản chữ HOA (Pois, NearestPoi, CurrentLang...)
+    // Thư viện sẽ tự tạo ra bản chữ HOA (Pois, NearestPoi, UiTitle...)
 
     [ObservableProperty]
     private ObservableCollection<Poi> pois = new();
@@ -32,10 +33,31 @@ public partial class HomeViewModel : ObservableObject
     private Poi? nearestPoi;
 
     [ObservableProperty]
-    private string currentLang = "vi";
+    private string uiGreeting = string.Empty;
 
     [ObservableProperty]
-    private string nowPlayingText = "Sẵn sàng thuyết minh...";
+    private string uiTitle = string.Empty;
+
+    [ObservableProperty]
+    private string uiAutoNarration = string.Empty;
+
+    [ObservableProperty]
+    private string uiFavoritesSection = string.Empty;
+
+    [ObservableProperty]
+    private string uiFeaturedSection = string.Empty;
+
+    [ObservableProperty]
+    private string uiRecentReviews = string.Empty;
+
+    [ObservableProperty]
+    private string langFlagEmoji = "🇻🇳";
+
+    [ObservableProperty]
+    private string mapPageTitle = string.Empty;
+
+    [ObservableProperty]
+    private string nowPlayingText = string.Empty;
 
     [ObservableProperty]
     private bool isAutoPlayEnabled = true;
@@ -43,13 +65,39 @@ public partial class HomeViewModel : ObservableObject
     [ObservableProperty]
     private bool isBusy;
 
-    public HomeViewModel(IDataService dataService, IFavoriteService favorites)
+    public HomeViewModel(IDataService dataService, IFavoriteService favorites, ILocalizationService localization)
     {
         _dataService = dataService;
         _favorites = favorites;
+        _localization = localization;
+
+        _localization.LanguageChanged += (_, _) =>
+            MainThread.BeginInvokeOnMainThread(RefreshHomeUiStrings);
+
+        RefreshHomeUiStrings();
+        NowPlayingText = _localization.GetString("Home_AutoNarrationFallback");
 
         // Gọi hàm load dữ liệu khi khởi động
         _ = LoadDataAsync();
+    }
+
+    private void RefreshHomeUiStrings()
+    {
+        UiGreeting = _localization.GetString("Home_Greeting");
+        UiTitle = _localization.GetString("Home_Title");
+        UiAutoNarration = _localization.GetString("Home_AutoNarration");
+        UiFavoritesSection = _localization.GetString("Home_Favorites");
+        UiFeaturedSection = _localization.GetString("Home_Featured");
+        UiRecentReviews = _localization.GetString("Home_RecentReviews");
+        MapPageTitle = _localization.GetString("Map_Title");
+        LangFlagEmoji = _localization.CurrentLanguageCode.ToLowerInvariant() switch
+        {
+            "en" => "🇬🇧",
+            "zh" or "zh-cn" or "zh-tw" => "🇨🇳",
+            "ja" => "🇯🇵",
+            "ko" => "🇰🇷",
+            _ => "🇻🇳"
+        };
     }
 
     [RelayCommand]
@@ -83,13 +131,11 @@ public partial class HomeViewModel : ObservableObject
 
                 // 3. Cập nhật trạng thái Audio đang phát (nếu có)
                 if (NearestPoi != null)
-                {
-                    NowPlayingText = $"Đã tìm thấy {Pois.Count} gian hàng quanh bạn.";
-                }
+                    NowPlayingText = _localization.GetString("Home_LoadedStallsFmt", Pois.Count);
             }
             else
             {
-                NowPlayingText = "Không tìm thấy gian hàng nào gần đây.";
+                NowPlayingText = _localization.GetString("Home_NoStalls");
             }
 
             var reviews = await _dataService.GetRecentReviewsAsync(25, cancellationToken);
@@ -98,7 +144,7 @@ public partial class HomeViewModel : ObservableObject
         catch (Exception ex)
         {
             // Ghi log lỗi và thông báo lên UI
-            NowPlayingText = "Lỗi tải dữ liệu: Kiểm tra kết nối mạng.";
+            NowPlayingText = _localization.GetString("Home_LoadError");
             System.Diagnostics.Debug.WriteLine($"Error: {ex.Message}");
         }
         finally
@@ -145,28 +191,12 @@ public partial class HomeViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void ChangeLanguage()
-    {
-        // Logic đổi vòng: vi -> en -> zh -> vi
-        CurrentLang = CurrentLang switch
-        {
-            "vi" => "en",
-            "en" => "zh",
-            _ => "vi"
-        };
-
-        // Thông báo cho người dùng biết đã đổi ngôn ngữ
-        var langName = CurrentLang == "vi" ? "Tiếng Việt" : (CurrentLang == "en" ? "English" : "中文");
-        NowPlayingText = $"Đã chuyển sang: {langName}";
-    }
-
-    [RelayCommand]
     private void ToggleAutoPlay()
     {
         IsAutoPlayEnabled = !IsAutoPlayEnabled;
         NowPlayingText = IsAutoPlayEnabled
-            ? "Chế độ tự động đang bật"
-            : "Chế độ tự động đã tắt";
+            ? _localization.GetString("Home_AutoOn")
+            : _localization.GetString("Home_AutoOff");
     }
 
     [RelayCommand]
@@ -193,15 +223,32 @@ public partial class StallListViewModel : ObservableObject
 {
     private readonly IDataService _dataService;
     private readonly IFavoriteService _favorites;
+    private readonly ILocalizationService _localization;
 
     [ObservableProperty]
     private ObservableCollection<Poi> pois = new();
 
-    public StallListViewModel(IDataService dataService, IFavoriteService favorites)
+    [ObservableProperty]
+    private string uiPageTitle = string.Empty;
+
+    [ObservableProperty]
+    private string uiPriorityLabel = string.Empty;
+
+    public StallListViewModel(IDataService dataService, IFavoriteService favorites, ILocalizationService localization)
     {
         _dataService = dataService;
         _favorites = favorites;
+        _localization = localization;
+        _localization.LanguageChanged += (_, _) =>
+            MainThread.BeginInvokeOnMainThread(RefreshStallListUiStrings);
+        RefreshStallListUiStrings();
         _ = LoadPoisAsync();
+    }
+
+    private void RefreshStallListUiStrings()
+    {
+        UiPageTitle = _localization.GetString("StallList_Title");
+        UiPriorityLabel = _localization.GetString("StallList_Priority");
     }
 
     [RelayCommand]
@@ -229,15 +276,13 @@ public partial class StallListViewModel : ObservableObject
 public partial class PlayerViewModel : ObservableObject
 {
     private readonly IAudioPlaybackService _audio;
+    private readonly ILocalizationService _localization;
 
     [ObservableProperty]
-    private string nowPlayingName = "Chưa phát";
+    private string nowPlayingName = string.Empty;
 
     [ObservableProperty]
-    private string nowPlayingText = "Chọn một quán để nghe thuyết minh";
-
-    [ObservableProperty]
-    private string selectedLang = "vi";
+    private string nowPlayingText = string.Empty;
 
     [ObservableProperty]
     private string? audioUrl;
@@ -246,20 +291,46 @@ public partial class PlayerViewModel : ObservableObject
     private bool hasAudio;
 
     [ObservableProperty]
-    private string audioHint = "Chưa có file âm thanh cho gian hàng này.";
+    private string audioHint = string.Empty;
 
-    public PlayerViewModel(IAudioPlaybackService audio)
+    [ObservableProperty]
+    private string uiPlayAudio = string.Empty;
+
+    [ObservableProperty]
+    private string uiStop = string.Empty;
+
+    public PlayerViewModel(IAudioPlaybackService audio, ILocalizationService localization)
     {
         _audio = audio;
+        _localization = localization;
+        _localization.LanguageChanged += (_, _) =>
+            MainThread.BeginInvokeOnMainThread(RefreshPlayerUiStrings);
+        RefreshPlayerUiStrings();
+        ApplyIdleState();
+    }
+
+    private void RefreshPlayerUiStrings()
+    {
+        UiPlayAudio = _localization.GetString("Player_Play");
+        UiStop = _localization.GetString("Player_Stop");
+    }
+
+    private void ApplyIdleState()
+    {
+        NowPlayingName = _localization.GetString("Player_DefaultName");
+        NowPlayingText = _localization.GetString("Player_DefaultBody");
+        AudioUrl = null;
+        HasAudio = false;
+        AudioHint = _localization.GetString("Player_NoAudioHint");
     }
 
     public void ApplyStall(string name)
     {
         NowPlayingName = name;
-        NowPlayingText = "Thuyết minh sẽ lấy từ dữ liệu Admin/API khi có file âm thanh.";
+        NowPlayingText = _localization.GetString("Player_ApplyStallBody");
         AudioUrl = null;
         HasAudio = false;
-        AudioHint = "Chưa có file âm thanh cho gian hàng này.";
+        AudioHint = _localization.GetString("Player_NoAudioHint");
     }
 
     public void ApplyFromQr(QrResolveDto dto)
@@ -275,10 +346,10 @@ public partial class PlayerViewModel : ObservableObject
         AudioUrl = dto.AudioUrl;
         HasAudio = !string.IsNullOrWhiteSpace(dto.AudioUrl);
         AudioHint = HasAudio
-            ? "Nhấn NGHE ÂM THANH để phát trong ứng dụng."
-            : "Chưa có file âm thanh cho gian hàng này.";
+            ? _localization.GetString("Player_PlayHint")
+            : _localization.GetString("Player_NoAudioHint");
         NowPlayingText = string.IsNullOrWhiteSpace(body)
-            ? "Chưa có nội dung mô tả cho quán này trong hệ thống."
+            ? _localization.GetString("Player_NoDesc")
             : body;
     }
 
@@ -288,26 +359,17 @@ public partial class PlayerViewModel : ObservableObject
         if (string.IsNullOrWhiteSpace(AudioUrl))
             return;
 
-        try
-        {
-            await _audio.PlayAsync(AudioUrl);
-            AudioHint = "Đang phát trong ứng dụng.";
-        }
-        catch
-        {
-            AudioHint = "Không phát được âm thanh. Kiểm tra lại API URL và mạng.";
-        }
+        var ok = await _audio.PlayAsync(AudioUrl);
+        AudioHint = ok
+            ? _localization.GetString("Player_PlayingOk")
+            : _localization.GetString("Player_PlayFail");
     }
 
     [RelayCommand]
     private void Stop()
     {
         _audio.Stop();
-        NowPlayingName = "Chưa phát";
-        NowPlayingText = "Chọn một quán để nghe thuyết minh";
-        AudioUrl = null;
-        HasAudio = false;
-        AudioHint = "Chưa có file âm thanh cho gian hàng này.";
+        ApplyIdleState();
     }
 }
 
@@ -319,6 +381,7 @@ public partial class ProfileViewModel : ObservableObject
     private readonly ISettingsService _settings;
     private readonly IDataService _data;
     private readonly IFavoriteService _favorites;
+    private readonly ILocalizationService _localization;
 
     [ObservableProperty]
     private int listenCount = 5;
@@ -327,21 +390,82 @@ public partial class ProfileViewModel : ObservableObject
     private int favoriteCount;
 
     [ObservableProperty]
-    private string selectedLang = "Tiếng Việt";
-
-    [ObservableProperty]
     private string apiBaseUrl = string.Empty;
 
     [ObservableProperty]
     private string connectionStatus = string.Empty;
 
-    public ProfileViewModel(ISettingsService settings, IDataService data, IFavoriteService favorites)
+    [ObservableProperty]
+    private ObservableCollection<LanguagePickerItem> languageOptions = new();
+
+    [ObservableProperty]
+    private LanguagePickerItem? selectedLanguageItem;
+
+    [ObservableProperty]
+    private string uiTitle = string.Empty;
+
+    [ObservableProperty]
+    private string uiTourist = string.Empty;
+
+    [ObservableProperty]
+    private string uiIdLabel = string.Empty;
+
+    [ObservableProperty]
+    private string uiListened = string.Empty;
+
+    [ObservableProperty]
+    private string uiFavorites = string.Empty;
+
+    [ObservableProperty]
+    private string uiLogout = string.Empty;
+
+    [ObservableProperty]
+    private string uiLanguageLabel = string.Empty;
+
+    [ObservableProperty]
+    private string uiApiHint = string.Empty;
+
+    [ObservableProperty]
+    private string uiSaveApi = string.Empty;
+
+    [ObservableProperty]
+    private string uiTestApi = string.Empty;
+
+    public ProfileViewModel(ISettingsService settings, IDataService data, IFavoriteService favorites, ILocalizationService localization)
     {
         _settings = settings;
         _data = data;
         _favorites = favorites;
+        _localization = localization;
+        _localization.LanguageChanged += (_, _) =>
+            MainThread.BeginInvokeOnMainThread(RefreshProfileUiStrings);
         ApiBaseUrl = _settings.ApiBaseUrl;
         FavoriteCount = _favorites.Count;
+        RefreshProfileUiStrings();
+    }
+
+    partial void OnSelectedLanguageItemChanged(LanguagePickerItem? value)
+    {
+        if (value is null)
+            return;
+        _localization.SetLanguageCode(value.Code);
+    }
+
+    public async Task LoadLanguageOptionsAsync(CancellationToken cancellationToken = default)
+    {
+        var list = await _data.GetLanguagesAsync(cancellationToken);
+        var items = list
+            .Select(l => new LanguagePickerItem(l.Code, string.IsNullOrWhiteSpace(l.Name) ? l.Code : l.Name))
+            .ToList();
+
+        var cur = _localization.CurrentLanguageCode;
+        if (!items.Any(i => i.Code.Equals(cur, StringComparison.OrdinalIgnoreCase)))
+            items.Insert(0, new LanguagePickerItem(cur, cur));
+
+        LanguageOptions = new ObservableCollection<LanguagePickerItem>(items);
+
+        SelectedLanguageItem = items.FirstOrDefault(i => i.Code.Equals(cur, StringComparison.OrdinalIgnoreCase))
+                               ?? items[0];
     }
 
     public void SyncApiUrlFromSettings()
@@ -350,11 +474,25 @@ public partial class ProfileViewModel : ObservableObject
         FavoriteCount = _favorites.Count;
     }
 
+    private void RefreshProfileUiStrings()
+    {
+        UiTitle = _localization.GetString("Profile_Title");
+        UiTourist = _localization.GetString("Profile_Tourist");
+        UiIdLabel = _localization.GetString("Profile_IdLabel");
+        UiListened = _localization.GetString("Profile_Listened");
+        UiFavorites = _localization.GetString("Profile_Favorites");
+        UiLogout = _localization.GetString("Profile_Logout");
+        UiLanguageLabel = _localization.GetString("Profile_Language");
+        UiApiHint = _localization.GetString("Profile_ApiHint");
+        UiSaveApi = _localization.GetString("Profile_SaveApi");
+        UiTestApi = _localization.GetString("Profile_TestApi");
+    }
+
     [RelayCommand]
     private void SaveApiUrl()
     {
         _settings.ApiBaseUrl = ApiBaseUrl;
-        ConnectionStatus = "Đã lưu địa chỉ API.";
+        ConnectionStatus = _localization.GetString("Profile_ConnSaved");
     }
 
     [RelayCommand]
@@ -364,11 +502,24 @@ public partial class ProfileViewModel : ObservableObject
         try
         {
             var list = await _data.GetPoisAsync();
-            ConnectionStatus = $"Kết nối OK — nhận được {list.Count} gian hàng.";
+            ConnectionStatus = _localization.GetString("Profile_ConnOkFmt", list.Count);
         }
         catch (Exception ex)
         {
-            ConnectionStatus = $"Lỗi: {ex.Message}";
+            ConnectionStatus = _localization.GetString("Profile_ConnErrFmt", ex.Message);
         }
     }
+}
+
+/// <summary>Mục trong Picker chọn ngôn ngữ giao diện.</summary>
+public sealed class LanguagePickerItem
+{
+    public LanguagePickerItem(string code, string displayName)
+    {
+        Code = code;
+        DisplayName = displayName;
+    }
+
+    public string Code { get; }
+    public string DisplayName { get; }
 }

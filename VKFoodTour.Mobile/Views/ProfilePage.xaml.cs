@@ -20,7 +20,10 @@ public partial class ProfilePage : ContentPage
     {
         base.OnAppearing();
         if (BindingContext is ProfileViewModel vm)
+        {
             vm.SyncApiUrlFromSettings();
+            _ = vm.LoadLanguageOptionsAsync();
+        }
     }
 
     private void OnLogoutClicked(object? sender, EventArgs e)

@@ -7,14 +7,40 @@ public partial class LoginPage : ContentPage
     private readonly IDataService _dataService;
     private readonly IAuthSessionService _session;
     private readonly AppShell _shell;
+    private readonly ILocalizationService _localization;
     private bool _isRegisterMode;
 
-    public LoginPage(IDataService dataService, IAuthSessionService session, AppShell shell)
+    public LoginPage(IDataService dataService, IAuthSessionService session, AppShell shell, ILocalizationService localization)
     {
         InitializeComponent();
         _dataService = dataService;
         _session = session;
         _shell = shell;
+        _localization = localization;
+        _localization.LanguageChanged += (_, _) =>
+            MainThread.BeginInvokeOnMainThread(ApplyUiStrings);
+        ApplyUiStrings();
+    }
+
+    private void ApplyUiStrings()
+    {
+        BrandLabel.Text = _localization.GetString("Login_Brand");
+        NameEntry.Placeholder = _localization.GetString("Login_NamePh");
+        EmailEntry.Placeholder = _localization.GetString("Login_EmailPh");
+        PasswordEntry.Placeholder = _localization.GetString("Login_PasswordPh");
+        ConfirmPasswordEntry.Placeholder = _localization.GetString("Login_ConfirmPh");
+        if (!_isRegisterMode)
+        {
+            ModeLabel.Text = _localization.GetString("Login_ModeLogin");
+            SubmitButton.Text = _localization.GetString("Login_SubmitLogin");
+            ToggleButton.Text = _localization.GetString("Login_ToggleToRegister");
+        }
+        else
+        {
+            ModeLabel.Text = _localization.GetString("Login_ModeRegister");
+            SubmitButton.Text = _localization.GetString("Login_SubmitRegister");
+            ToggleButton.Text = _localization.GetString("Login_ToggleToLogin");
+        }
     }
 
     private void OnToggleMode(object? sender, EventArgs e)
@@ -22,9 +48,7 @@ public partial class LoginPage : ContentPage
         _isRegisterMode = !_isRegisterMode;
         NameEntry.IsVisible = _isRegisterMode;
         ConfirmPasswordEntry.IsVisible = _isRegisterMode;
-        SubmitButton.Text = _isRegisterMode ? "Đăng ký" : "Đăng nhập";
-        ModeLabel.Text = _isRegisterMode ? "Tạo tài khoản mới để sử dụng ứng dụng" : "Đăng nhập để sử dụng ứng dụng";
-        ToggleButton.Text = _isRegisterMode ? "Đã có tài khoản? Đăng nhập" : "Chưa có tài khoản? Đăng ký";
+        ApplyUiStrings();
         StatusLabel.Text = string.Empty;
     }
 
@@ -34,12 +58,12 @@ public partial class LoginPage : ContentPage
         var password = PasswordEntry.Text ?? string.Empty;
         if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
         {
-            StatusLabel.Text = "Vui lòng nhập email và mật khẩu.";
+            StatusLabel.Text = _localization.GetString("Login_ErrEmailPassword");
             return;
         }
 
         SubmitButton.IsEnabled = false;
-        StatusLabel.Text = "Đang xử lý...";
+        StatusLabel.Text = _localization.GetString("Login_Processing");
         try
         {
             VKFoodTour.Shared.DTOs.AuthResponseDto? response;
@@ -49,13 +73,13 @@ public partial class LoginPage : ContentPage
                 var confirmPassword = ConfirmPasswordEntry.Text ?? string.Empty;
                 if (string.IsNullOrWhiteSpace(name))
                 {
-                    StatusLabel.Text = "Vui lòng nhập họ tên.";
+                    StatusLabel.Text = _localization.GetString("Login_ErrName");
                     return;
                 }
 
                 if (!string.Equals(password, confirmPassword, StringComparison.Ordinal))
                 {
-                    StatusLabel.Text = "Mật khẩu xác nhận không khớp.";
+                    StatusLabel.Text = _localization.GetString("Login_ErrPasswordMatch");
                     return;
                 }
 
@@ -73,7 +97,7 @@ public partial class LoginPage : ContentPage
                 return;
             }
 
-            StatusLabel.Text = response?.Message ?? "Không kết nối được máy chủ.";
+            StatusLabel.Text = response?.Message ?? _localization.GetString("Login_ServerError");
         }
         finally
         {

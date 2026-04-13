@@ -4,9 +4,10 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:dto="clr-namespace:VKFoodTour.Shared.DTOs;assembly=VKFoodTour.Shared"
              xmlns:controls="clr-namespace:VKFoodTour.Mobile.Controls"
+             xmlns:conv="clr-namespace:VKFoodTour.Mobile.Converters"
              xmlns:vm="clr-namespace:VKFoodTour.Mobile.ViewModels"
              x:DataType="vm:StallDetailViewModel"
-             Title="Chi tiết gian hàng"
+             Title="{Binding UiPageTitle}"
              BackgroundColor="#0F0E0E">
     <ScrollView>
         <VerticalStackLayout Padding="16" Spacing="12">
@@ -31,7 +32,7 @@
 
             <Label Text="{Binding Description}" TextColor="#F0EBE3"/>
 
-            <Label Text="Hình ảnh quán" FontAttributes="Bold" TextColor="#F0EBE3"/>
+            <Label Text="{Binding UiGallery}" FontAttributes="Bold" TextColor="#F0EBE3"/>
             <CollectionView ItemsSource="{Binding GalleryImages}" HeightRequest="120">
                 <CollectionView.ItemsLayout>
                     <LinearItemsLayout Orientation="Horizontal" ItemSpacing="8"/>
@@ -43,7 +44,7 @@
                 </CollectionView.ItemTemplate>
             </CollectionView>
 
-            <Label Text="Thực đơn" FontAttributes="Bold" TextColor="#F0EBE3"/>
+            <Label Text="{Binding UiMenu}" FontAttributes="Bold" TextColor="#F0EBE3"/>
             <CollectionView ItemsSource="{Binding MenuItems}">
                 <CollectionView.ItemTemplate>
                     <DataTemplate x:DataType="dto:MenuItemDto">
@@ -59,7 +60,12 @@
                 </CollectionView.ItemTemplate>
             </CollectionView>
 
-            <Label Text="Audio của quán" FontAttributes="Bold" TextColor="#F0EBE3"/>
+            <Label Text="{Binding UiAudio}" FontAttributes="Bold" TextColor="#F0EBE3"/>
+            <Label Text="{Binding PlaybackStatus}"
+                   FontSize="12"
+                   TextColor="#E8A020"
+                   LineBreakMode="WordWrap"
+                   IsVisible="{Binding PlaybackStatus, Converter={x:Static conv:StringNotNullOrEmptyConverter.Instance}}"/>
             <CollectionView ItemsSource="{Binding AudioItems}">
                 <CollectionView.ItemTemplate>
                     <DataTemplate x:DataType="dto:AudioItemDto">
@@ -69,7 +75,7 @@
                                 <Label Text="{Binding SourceType}" FontSize="11" TextColor="#8A8078"/>
                             </VerticalStackLayout>
                             <Button Grid.Column="1"
-                                    Text="Nghe"
+                                    Text="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.UiListen}"
                                     Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.OpenAudioCommand}"
                                     CommandParameter="{Binding Url}"
                                     BackgroundColor="#E8A020"
@@ -79,7 +85,7 @@
                 </CollectionView.ItemTemplate>
             </CollectionView>
 
-            <Label Text="Bình luận" FontAttributes="Bold" TextColor="#F0EBE3"/>
+            <Label Text="{Binding UiReviews}" FontAttributes="Bold" TextColor="#F0EBE3"/>
             <CollectionView ItemsSource="{Binding PoiReviews}">
                 <CollectionView.ItemTemplate>
                     <DataTemplate x:DataType="dto:ReviewListItemDto">
@@ -97,12 +103,12 @@
                 </CollectionView.ItemTemplate>
             </CollectionView>
 
-            <Label Text="Thêm bình luận" FontAttributes="Bold" TextColor="#F0EBE3"/>
+            <Label Text="{Binding UiAddReview}" FontAttributes="Bold" TextColor="#F0EBE3"/>
             <Label Text="{Binding ReviewStatus}" FontSize="12" TextColor="#8A8078"/>
-            <Label Text="{Binding NewRating, StringFormat='Điểm: {0:0}/5'}" TextColor="#F0EBE3"/>
+            <Label Text="{Binding RatingLabel}" TextColor="#F0EBE3"/>
             <Slider Minimum="1" Maximum="5" Value="{Binding NewRating}"/>
-            <Editor Placeholder="Viết cảm nhận…" Text="{Binding NewComment}" TextColor="#F0EBE3" HeightRequest="80"/>
-            <Button Text="Gửi bình luận"
+            <Editor Placeholder="{Binding UiReviewPlaceholder}" Text="{Binding NewComment}" TextColor="#F0EBE3" HeightRequest="80"/>
+            <Button Text="{Binding UiSubmitReview}"
                     Command="{Binding SubmitReviewCommand}"
                     BackgroundColor="#C8372D"
                     TextColor="White"/>

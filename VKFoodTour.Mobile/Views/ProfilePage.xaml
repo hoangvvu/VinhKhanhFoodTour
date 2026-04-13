@@ -7,32 +7,51 @@
              BackgroundColor="#0F0E0E">
     <ScrollView>
         <VerticalStackLayout Padding="25" Spacing="20">
-            <Label Text="CÁ NHÂN" FontSize="32" FontFamily="BebasNeue" TextColor="#F0EBE3"/>
+            <Label Text="{Binding UiTitle}" FontSize="32" FontFamily="BebasNeue" TextColor="#F0EBE3"/>
             <Border BackgroundColor="#1A1818" Padding="20" StrokeShape="RoundRectangle 15">
                 <HorizontalStackLayout Spacing="20">
                     <Label Text="👤" FontSize="40"/>
                     <VerticalStackLayout VerticalOptions="Center">
-                        <Label Text="Khách du lịch" FontSize="18" TextColor="#F0EBE3" FontFamily="OpenSansSemibold"/>
-                        <Label Text="ID: #2026-VK" FontSize="12" TextColor="#8A8078"/>
+                        <Label Text="{Binding UiTourist}" FontSize="18" TextColor="#F0EBE3" FontFamily="OpenSansSemibold"/>
+                        <Label Text="{Binding UiIdLabel}" FontSize="12" TextColor="#8A8078"/>
                     </VerticalStackLayout>
                 </HorizontalStackLayout>
             </Border>
             <Grid ColumnDefinitions="*, *" ColumnSpacing="15">
                 <Border Grid.Column="0" BackgroundColor="#1A1818" Padding="15" StrokeShape="RoundRectangle 12">
                     <VerticalStackLayout>
-                        <Label Text="ĐÃ NGHE" FontSize="10" TextColor="#8A8078"/>
+                        <Label Text="{Binding UiListened}" FontSize="10" TextColor="#8A8078"/>
                         <Label Text="{Binding ListenCount}" FontSize="24" TextColor="#E8A020" FontFamily="BebasNeue"/>
                     </VerticalStackLayout>
                 </Border>
                 <Border Grid.Column="1" BackgroundColor="#1A1818" Padding="15" StrokeShape="RoundRectangle 12">
                     <VerticalStackLayout>
-                        <Label Text="YÊU THÍCH" FontSize="10" TextColor="#8A8078"/>
+                        <Label Text="{Binding UiFavorites}" FontSize="10" TextColor="#8A8078"/>
                         <Label Text="{Binding FavoriteCount}" FontSize="24" TextColor="#C8372D" FontFamily="BebasNeue"/>
                     </VerticalStackLayout>
                 </Border>
             </Grid>
 
-            <Button Text="Đăng xuất"
+            <VerticalStackLayout Spacing="8">
+                <Label Text="{Binding UiLanguageLabel}" FontSize="12" TextColor="#8A8078"/>
+                <Picker ItemsSource="{Binding LanguageOptions}"
+                        ItemDisplayBinding="{Binding DisplayName}"
+                        SelectedItem="{Binding SelectedLanguageItem}"
+                        TextColor="#F0EBE3"
+                        BackgroundColor="#1A1818"/>
+            </VerticalStackLayout>
+
+            <VerticalStackLayout Spacing="8">
+                <Label Text="{Binding UiApiHint}" FontSize="12" TextColor="#8A8078"/>
+                <Entry Text="{Binding ApiBaseUrl}" TextColor="#F0EBE3" PlaceholderColor="#5C5650"/>
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                    <Button Grid.Column="0" Text="{Binding UiSaveApi}" Command="{Binding SaveApiUrlCommand}" BackgroundColor="#2E2A2A" TextColor="#F0EBE3"/>
+                    <Button Grid.Column="1" Text="{Binding UiTestApi}" Command="{Binding TestConnectionCommand}" BackgroundColor="#E8A020" TextColor="#111111"/>
+                </Grid>
+                <Label Text="{Binding ConnectionStatus}" FontSize="12" TextColor="#8A8078" LineBreakMode="WordWrap"/>
+            </VerticalStackLayout>
+
+            <Button Text="{Binding UiLogout}"
                     Clicked="OnLogoutClicked"
                     BackgroundColor="#8B1E1E"
                     TextColor="White"

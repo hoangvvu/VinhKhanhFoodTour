@@ -11,13 +11,17 @@ public class GoogleTranslateService
     public GoogleTranslateService(HttpClient httpClient, IConfiguration configuration)
     {
         _httpClient = httpClient;
-        _apiKey = configuration["GoogleTranslate:ApiKey"]
-            ?? throw new InvalidOperationException("Chưa cấu hình GoogleTranslate:ApiKey trong appsettings.json");
+        _apiKey = configuration["GoogleTranslate:ApiKey"]?.Trim() ?? string.Empty;
     }
+
+    public bool IsConfigured => !string.IsNullOrWhiteSpace(_apiKey);
 
     /// <summary>Dịch văn bản từ ngôn ngữ nguồn sang ngôn ngữ đích.</summary>
     public async Task<string> TranslateAsync(string text, string sourceLang, string targetLang)
     {
+        if (!IsConfigured)
+            throw new InvalidOperationException("Chưa cấu GoogleTranslate:ApiKey trong appsettings — không thể dịch tự động.");
+
         var url = $"https://translation.googleapis.com/language/translate/v2?key={_apiKey}";
 
         var body = new
@@ -54,6 +58,9 @@ public class GoogleTranslateService
     /// <summary>Lấy tên bản địa của ngôn ngữ theo mã code. Trả null nếu mã không hợp lệ.</summary>
     public async Task<string?> GetLanguageNameAsync(string languageCode, string displayLang = "vi")
     {
+        if (!IsConfigured)
+            return null;
+
         var url = $"https://translation.googleapis.com/language/translate/v2/languages?key={_apiKey}&target={displayLang}";
 
         var response = await _httpClient.GetAsync(url);

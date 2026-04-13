@@ -19,4 +19,7 @@ public interface IDataService
 
     /// <summary>Chuỗi quét được (vd vkfoodtour://VK-XXX hoặc chỉ token).</summary>
     Task<QrResolveDto?> ResolveQrAsync(string scannedPayload, CancellationToken cancellationToken = default);
+
+    /// <summary>Ngôn ngữ đang bật trên máy chủ (picker giao diện).</summary>
+    Task<List<LanguageListItemDto>> GetLanguagesAsync(CancellationToken cancellationToken = default);
 }
