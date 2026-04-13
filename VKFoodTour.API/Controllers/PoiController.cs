@@ -66,5 +66,82 @@ namespace VKFoodTour.Api.Controllers
 
             return Ok(dto);
         }
+
+        [HttpGet("{id:int}/detail")]
+        public async Task<ActionResult<PoiDetailDto>> GetPoiDetail(int id)
+        {
+            var poi = await _context.Pois
+                .AsNoTracking()
+                .FirstOrDefaultAsync(p => p.PoiId == id && p.IsActive);
+            if (poi is null)
+                return NotFound();
+
+            var gallery = await _context.Images
+                .AsNoTracking()
+                .Where(i => i.PoiId == id && i.FoodId == null && !i.IsCover)
+                .OrderBy(i => i.SortOrder)
+                .Select(i => new ImageItemDto
+                {
+                    ImageId = i.ImageId,
+                    Url = i.ImageUrl,
+                    AltText = i.AltText
+                })
+                .ToListAsync();
+
+            var menuItems = await _context.MenuItems
+                .AsNoTracking()
+                .Where(m => m.PoiId == id && m.Status == "AVAILABLE")
+                .OrderBy(m => m.Category)
+                .ThenBy(m => m.Name)
+                .Select(m => new MenuItemDto
+                {
+                    ItemId = m.ItemId,
+                    Name = m.Name,
+                    Category = m.Category,
+                    Price = m.Price,
+                    Description = m.Description,
+                    ImageUrl = m.ImageUrl,
+                    AudioUrl = m.AudioUrl
+                })
+                .ToListAsync();
+
+            var narrations = await _context.Narrations
+                .AsNoTracking()
+                .Include(n => n.Language)
+                .Where(n => n.PoiId == id && n.IsActive && n.AudioUrl != null && n.AudioUrl != "")
+                .OrderBy(n => n.LanguageId)
+                .Select(n => new AudioItemDto
+                {
+                    Title = n.Title,
+                    LanguageCode = n.Language != null ? n.Language.Code : null,
+                    Url = n.AudioUrl!,
+                    SourceType = "narration"
+                })
+                .ToListAsync();
+
+            var menuAudios = menuItems
+                .Where(m => !string.IsNullOrWhiteSpace(m.AudioUrl))
+                .Select(m => new AudioItemDto
+                {
+                    Title = m.Name,
+                    LanguageCode = null,
+                    Url = m.AudioUrl!,
+                    SourceType = "menu"
+                });
+
+            var dto = new PoiDetailDto
+            {
+                PoiId = poi.PoiId,
+                Name = poi.Name,
+                Address = poi.Address,
+                Description = poi.Description,
+                CoverImageUrl = poi.ImageUrl,
+                GalleryImages = gallery,
+                MenuItems = menuItems,
+                AudioItems = narrations.Concat(menuAudios).ToList()
+            };
+
+            return Ok(dto);
+        }
     }
 }

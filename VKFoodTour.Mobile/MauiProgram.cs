@@ -28,6 +28,7 @@ public static class MauiProgram
         // Đăng ký Services
         builder.Services.AddSingleton<ISettingsService, SettingsService>();
         builder.Services.AddSingleton<IStallNarrationState, StallNarrationState>();
+        builder.Services.AddSingleton<IAuthSessionService, AuthSessionService>();
         builder.Services.AddHttpClient<IDataService, DataService>(client =>
         {
             client.Timeout = TimeSpan.FromSeconds(25);
@@ -42,14 +43,17 @@ public static class MauiProgram
         builder.Services.AddTransient<PlayerViewModel>();
         builder.Services.AddTransient<ProfileViewModel>();
         builder.Services.AddTransient<QrScanViewModel>();
+        builder.Services.AddTransient<StallDetailViewModel>();
 
         // Đăng ký Pages (Views)
+        builder.Services.AddTransient<LoginPage>();
         builder.Services.AddTransient<HomePage>();
         builder.Services.AddTransient<StallListPage>();
         builder.Services.AddTransient<PlayerPage>();
         builder.Services.AddTransient<ProfilePage>();
         builder.Services.AddTransient<FullMapPage>();
         builder.Services.AddTransient<QrScanPage>();
+        builder.Services.AddTransient<StallDetailPage>();
 
         return builder.Build();
     }

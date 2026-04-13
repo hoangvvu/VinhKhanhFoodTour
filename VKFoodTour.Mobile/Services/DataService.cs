@@ -55,6 +55,65 @@ public class DataService : IDataService
         }
     }
 
+    public async Task<PoiDetailDto?> GetPoiDetailAsync(int poiId, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var response = await _http.GetAsync($"{ApiRoot}/api/Poi/{poiId}/detail", cancellationToken);
+            if (!response.IsSuccessStatusCode)
+                return null;
+
+            var dto = await response.Content.ReadFromJsonAsync<PoiDetailDto>(cancellationToken: cancellationToken);
+            if (dto is null)
+                return null;
+
+            dto.CoverImageUrl = NormalizeMediaUrl(dto.CoverImageUrl);
+            foreach (var g in dto.GalleryImages)
+                g.Url = NormalizeMediaUrl(g.Url) ?? g.Url;
+            foreach (var m in dto.MenuItems)
+            {
+                m.ImageUrl = NormalizeMediaUrl(m.ImageUrl);
+                m.AudioUrl = NormalizeMediaUrl(m.AudioUrl);
+            }
+            foreach (var a in dto.AudioItems)
+                a.Url = NormalizeMediaUrl(a.Url) ?? a.Url;
+
+            return dto;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    public async Task<AuthResponseDto?> LoginAsync(string email, string password, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var response = await _http.PostAsJsonAsync($"{ApiRoot}/api/Auth/login",
+                new LoginRequestDto { Email = email, Password = password }, cancellationToken);
+            return await response.Content.ReadFromJsonAsync<AuthResponseDto>(cancellationToken: cancellationToken);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    public async Task<AuthResponseDto?> RegisterAsync(string name, string email, string password, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var response = await _http.PostAsJsonAsync($"{ApiRoot}/api/Auth/register",
+                new RegisterRequestDto { Name = name, Email = email, Password = password }, cancellationToken);
+            return await response.Content.ReadFromJsonAsync<AuthResponseDto>(cancellationToken: cancellationToken);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     public async Task<QrResolveDto?> ResolveQrAsync(string scannedPayload, CancellationToken cancellationToken = default)
     {
         var token = ExtractQrToken(scannedPayload);
@@ -68,7 +127,17 @@ public class DataService : IDataService
             if (!response.IsSuccessStatusCode)
                 return null;
 
-            return await response.Content.ReadFromJsonAsync<QrResolveDto>(cancellationToken: cancellationToken);
+            var dto = await response.Content.ReadFromJsonAsync<QrResolveDto>(cancellationToken: cancellationToken);
+            if (dto is null)
+                return null;
+
+            if (!string.IsNullOrWhiteSpace(dto.AudioUrl)
+                && Uri.TryCreate(dto.AudioUrl, UriKind.Relative, out _))
+            {
+                dto.AudioUrl = $"{ApiRoot}{dto.AudioUrl}";
+            }
+
+            return dto;
         }
         catch (Exception ex)
         {
@@ -83,6 +152,20 @@ public class DataService : IDataService
             return string.Empty;
 
         var t = raw.Trim();
+        if (Uri.TryCreate(t, UriKind.Absolute, out var uri) && !string.IsNullOrWhiteSpace(uri.Query))
+        {
+            var query = uri.Query.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries);
+            foreach (var part in query)
+            {
+                var pieces = part.Split('=', 2);
+                if (pieces.Length == 2 && pieces[0].Equals("data", StringComparison.OrdinalIgnoreCase))
+                {
+                    t = Uri.UnescapeDataString(pieces[1]).Trim();
+                    break;
+                }
+            }
+        }
+
         if (t.StartsWith("vkfoodtour://", StringComparison.OrdinalIgnoreCase))
             return t["vkfoodtour://".Length..].Trim();
 
@@ -94,6 +177,15 @@ public class DataService : IDataService
         }
 
         return t;
+    }
+
+    private string? NormalizeMediaUrl(string? url)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+            return url;
+        if (Uri.TryCreate(url, UriKind.Absolute, out _))
+            return url;
+        return $"{ApiRoot}{url}";
     }
 
     private static Poi MapToMobile(PoiDto d) =>

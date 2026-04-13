@@ -9,5 +9,6 @@ public class QrResolveDto
     public string? Description { get; set; }
     public string? NarrationTitle { get; set; }
     public string? NarrationContent { get; set; }
+    public string? AudioUrl { get; set; }
     public string? LanguageCode { get; set; }
 }

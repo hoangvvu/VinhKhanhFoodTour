@@ -15,7 +15,7 @@
 
     <div class="alert alert-secondary border-0 mb-4" style="border-radius: 12px; background-color: #1A1818; color: #F0EBE3;">
         <i class="bi bi-info-circle me-2 text-warning"></i>
-        Mã QR được <strong>chủ gian hàng tạo</strong> tại trang <strong>Mô tả &amp; hình ảnh</strong>. Tại đây admin chỉ xem, tải và bật/tắt mã.
+        Mã QR được <strong>chủ gian hàng tạo</strong> tại trang <strong>Mô tả &amp; hình ảnh</strong>. Danh sách này chỉ hiển thị QR từ gian hàng đã gán chủ quán.
     </div>
 
     @if (!string.IsNullOrEmpty(pageMessage))
@@ -127,6 +127,7 @@
             join p in Db.Pois.AsNoTracking() on q.PoiId equals p.PoiId
             join u in Db.Users.AsNoTracking() on p.OwnerId equals u.UserId into uj
             from u in uj.DefaultIfEmpty()
+            where p.OwnerId != null
             orderby p.Name, q.QrToken
             select new QrDisplayItem
             {

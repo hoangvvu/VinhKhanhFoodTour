@@ -27,6 +27,6 @@ public partial class StallListPage : ContentPage
             return;
 
         cv.SelectedItem = null;
-        await Shell.Current.GoToAsync($"//player?name={Uri.EscapeDataString(poi.Name)}");
+        await Shell.Current.GoToAsync($"{nameof(StallDetailPage)}?poiId={poi.PoiId}");
     }
 }

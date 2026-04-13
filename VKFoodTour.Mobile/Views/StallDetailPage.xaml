@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage x:Class="VKFoodTour.Mobile.Views.StallDetailPage"
+             xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:VKFoodTour.Mobile.ViewModels"
+             xmlns:dto="clr-namespace:VKFoodTour.Shared.DTOs;assembly=VKFoodTour.Shared"
+             x:DataType="vm:StallDetailViewModel"
+             Title="Chi tiết gian hàng">
+    <ScrollView>
+        <VerticalStackLayout Padding="16" Spacing="12">
+            <Label Text="{Binding Name}" FontSize="28" FontFamily="BebasNeue"/>
+            <Label Text="{Binding Address}" FontSize="13" TextColor="#777777"/>
+
+            <Image Source="{Binding CoverImageUrl}" HeightRequest="220" Aspect="AspectFill"/>
+            <Label Text="{Binding Description}" />
+
+            <Label Text="Hình ảnh quán" FontAttributes="Bold"/>
+            <CollectionView ItemsSource="{Binding GalleryImages}" HeightRequest="120">
+                <CollectionView.ItemsLayout>
+                    <LinearItemsLayout Orientation="Horizontal" ItemSpacing="8"/>
+                </CollectionView.ItemsLayout>
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="dto:ImageItemDto">
+                        <Image Source="{Binding Url}" WidthRequest="120" HeightRequest="100" Aspect="AspectFill"/>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+
+            <Label Text="Thực đơn" FontAttributes="Bold"/>
+            <CollectionView ItemsSource="{Binding MenuItems}">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="dto:MenuItemDto">
+                        <Border Padding="10" Margin="0,0,0,8" Stroke="#DDDDDD">
+                            <VerticalStackLayout>
+                                <Label Text="{Binding Name}" FontAttributes="Bold"/>
+                                <Label Text="{Binding Description}" FontSize="12"/>
+                                <Label Text="{Binding Price, StringFormat='{0:N0} đ'}" TextColor="#C8372D"/>
+                            </VerticalStackLayout>
+                        </Border>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+
+            <Label Text="Audio của quán" FontAttributes="Bold"/>
+            <CollectionView ItemsSource="{Binding AudioItems}">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="dto:AudioItemDto">
+                        <Grid ColumnDefinitions="*,Auto" Padding="8">
+                            <VerticalStackLayout>
+                                <Label Text="{Binding Title}" FontAttributes="Bold"/>
+                                <Label Text="{Binding SourceType}" FontSize="11" TextColor="#888888"/>
+                            </VerticalStackLayout>
+                            <Button Grid.Column="1"
+                                    Text="Nghe"
+                                    Command="{Binding Source={RelativeSource AncestorType={x:Type vm:StallDetailViewModel}}, Path=OpenAudioCommand}"
+                                    CommandParameter="{Binding Url}"
+                                    BackgroundColor="#E8A020"
+                                    TextColor="#111111"/>
+                        </Grid>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

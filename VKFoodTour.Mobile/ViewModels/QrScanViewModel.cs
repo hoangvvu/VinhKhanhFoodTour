@@ -65,7 +65,8 @@ public partial class QrScanViewModel : ObservableObject
             _stallState.SetFromQr(dto);
             StatusMessage = $"Đã nhận: {dto.Name}";
             ManualCode = string.Empty;
-            await Shell.Current.GoToAsync("//player");
+            await Shell.Current.GoToAsync($"//stalls");
+            await Shell.Current.GoToAsync($"StallDetailPage?poiId={dto.PoiId}");
         }
         catch (Exception ex)
         {

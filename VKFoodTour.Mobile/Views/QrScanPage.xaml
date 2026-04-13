@@ -16,7 +16,7 @@
                TextColor="#F0EBE3"/>
 
         <Label Grid.Row="1"
-               Text="Quét mã do Admin tạo (vkfoodtour://…) — mở tab Nghe với mô tả quán."
+               Text="Quét mã do gian hàng tạo từ trang Mô tả (vkfoodtour://…) — mở tab Nghe với mô tả quán."
                FontSize="12"
                TextColor="#8A8078"
                LineBreakMode="WordWrap"/>

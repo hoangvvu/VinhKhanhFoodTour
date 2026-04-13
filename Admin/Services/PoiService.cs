@@ -22,6 +22,15 @@ public class PoiService
             .ToListAsync();
     }
 
+    public async Task<List<User>> GetActiveVendorsAsync()
+    {
+        return await _db.Users
+            .AsNoTracking()
+            .Where(u => u.IsActive && u.Role == "Vendor")
+            .OrderBy(u => u.Name)
+            .ToListAsync();
+    }
+
     /// <summary>
     /// Lấy danh sách POI theo owner
     /// </summary>

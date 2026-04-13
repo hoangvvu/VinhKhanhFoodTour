@@ -11,6 +11,14 @@
         </Border>
         <Label Text="{Binding NowPlayingName}" FontSize="28" FontFamily="BebasNeue" TextColor="#E8A020" HorizontalOptions="Center"/>
         <Label Text="{Binding NowPlayingText}" FontSize="14" TextColor="#F0EBE3" HorizontalOptions="Center" HorizontalTextAlignment="Center"/>
+        <Button Text="NGHE ÂM THANH"
+                Command="{Binding OpenAudioCommand}"
+                IsEnabled="{Binding HasAudio}"
+                BackgroundColor="#E8A020"
+                TextColor="#111111"
+                CornerRadius="25"
+                HeightRequest="50"/>
+        <Label Text="{Binding AudioHint}" FontSize="12" TextColor="#8A8078" HorizontalOptions="Center" HorizontalTextAlignment="Center"/>
         <Button Text="DỪNG PHÁT" Command="{Binding StopCommand}" BackgroundColor="#C8372D" CornerRadius="25" HeightRequest="50"/>
     </VerticalStackLayout>
 </ContentPage>

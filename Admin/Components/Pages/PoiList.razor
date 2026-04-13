@@ -1,5 +1,6 @@
 @page "/admin/pois"
 @using Microsoft.AspNetCore.Authorization
+@using VKFoodTour.Infrastructure.Entities
 @attribute [Authorize(Roles = "Admin")]
 @rendermode InteractiveServer
 @inject PoiService PoiService
@@ -85,6 +86,7 @@
                         <thead>
                             <tr>
                                 <th class="ps-4">GIAN HÀNG</th>
+                                <th>CHỦ &amp; GMAIL</th>
                                 <th>ĐỊA CHỈ</th>
                                 <th>TỌA ĐỘ</th>
                                 <th>BÁN KÍNH</th>
@@ -100,6 +102,9 @@
                                     <td class="ps-4">
                                         <strong>@item.Name</strong><br />
                                         <small class="text-muted">@item.Phone</small>
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">@GetOwnerLabel(item.OwnerId)</small>
                                     </td>
                                     <td>@item.Address</td>
                                     <td>
@@ -207,11 +212,15 @@
                                    @bind="editingPoi.Phone" />
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label text-uppercase small fw-bold text-muted">Chủ gian hàng (Owner ID)</label>
-                            <input type="number"
-                                   class="form-control rounded-pill bg-light border-0 ps-3 fs-5"
-                                   placeholder="Để trống nếu chưa gán"
-                                   @bind="editingPoi.OwnerId" />
+                            <label class="form-label text-uppercase small fw-bold text-muted">Chủ gian hàng</label>
+                            <select class="form-select rounded-pill bg-light border-0 ps-3 fs-5"
+                                    @bind="editingOwnerIdText">
+                                <option value="">Chưa gán chủ gian hàng</option>
+                                @foreach (var owner in vendorUsers)
+                                {
+                                    <option value="@owner.UserId">@owner.Name (@owner.Email)</option>
+                                }
+                            </select>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label text-uppercase small fw-bold text-muted">Vĩ độ (Latitude)</label>
@@ -327,6 +336,8 @@
     private bool isSaving = false;
     private string errorMessage = string.Empty;
     private Poi editingPoi = new();
+    private List<User> vendorUsers = new();
+    private string editingOwnerIdText = string.Empty;
 
     // ── State: Modal Ẩn ────────────────────────────────
     private bool isHideConfirmVisible = false;
@@ -378,6 +389,7 @@
         try
         {
             allPois = await PoiService.GetAllAsync();
+            vendorUsers = await PoiService.GetActiveVendorsAsync();
         }
         catch (Exception ex)
         {
@@ -408,6 +420,7 @@
             Latitude = 10.76012345m,
             Longitude = 106.70298765m
         };
+        editingOwnerIdText = string.Empty;
 
         isModalVisible = true;
     }
@@ -433,6 +446,7 @@
             IsActive = poi.IsActive,
             CreatedAt = poi.CreatedAt
         };
+        editingOwnerIdText = poi.OwnerId?.ToString() ?? string.Empty;
 
         isModalVisible = true;
     }
@@ -452,6 +466,16 @@
         if (string.IsNullOrWhiteSpace(editingPoi.Name))
         {
             errorMessage = "Tên gian hàng không được để trống.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(editingOwnerIdText))
+            editingPoi.OwnerId = null;
+        else if (int.TryParse(editingOwnerIdText, out var ownerId))
+            editingPoi.OwnerId = ownerId;
+        else
+        {
+            errorMessage = "Chủ gian hàng không hợp lệ.";
             return;
         }
 
@@ -545,5 +569,14 @@
     {
         await PoiService.ToggleActiveAsync(poiId);
         await LoadData();
+    }
+
+    private string GetOwnerLabel(int? ownerId)
+    {
+        if (ownerId is null)
+            return "Chưa gán";
+
+        var owner = vendorUsers.FirstOrDefault(u => u.UserId == ownerId.Value);
+        return owner is null ? $"User #{ownerId}" : $"{owner.Name} ({owner.Email})";
     }
 }

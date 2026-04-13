@@ -47,8 +47,19 @@ public partial class FullMapPage : ContentPage
             {
                 Label = p.Name,
                 Address = p.Address,
-                Location = new Location(p.Latitude, p.Longitude)
+                Location = new Location(p.Latitude, p.Longitude),
+                BindingContext = p
             });
+            bigMap.Pins[^1].MarkerClicked += OnPinClicked;
+        }
+    }
+
+    private async void OnPinClicked(object? sender, PinClickedEventArgs e)
+    {
+        if (sender is Pin pin && pin.BindingContext is Poi poi)
+        {
+            e.HideInfoWindow = false;
+            await Shell.Current.GoToAsync($"{nameof(StallDetailPage)}?poiId={poi.PoiId}");
         }
     }
 }

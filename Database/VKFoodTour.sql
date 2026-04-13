@@ -308,19 +308,9 @@ INSERT INTO NARRATIONS (poi_id, language_id, title, content) VALUES
 GO
 
 -- ============================================================
---  SEED DATA — QR Codes mẫu
+--  SEED DATA — QR Codes
+--  Không seed QR mặc định; vendor tự tạo từ trang Mô tả & hình ảnh.
 -- ============================================================
-INSERT INTO QRCODES (poi_id, qr_token, location_note) VALUES
-(1, 'VK-POI-001-OC-OANH',     N'Tại gian hàng Ốc Oanh'),
-(2, 'VK-POI-002-OC-VU',       N'Tại gian hàng Ốc Vũ'),
-(3, 'VK-POI-003-SUSHI',       N'Tại gian hàng Sushi Viên'),
-(4, 'VK-POI-004-LANG-QUAN',   N'Tại gian hàng Lãng Quán'),
-(5, 'VK-POI-005-OT-XIEM',     N'Tại gian hàng Ớt Xiêm Quán'),
-(6, 'VK-POI-006-SAU-NO',      N'Tại gian hàng Ốc Sáu Nở'),
-(1, 'VK-BUS-KHANH-HOI-001',   N'Điểm xe buýt Khánh Hội'),
-(1, 'VK-BUS-VINH-HOI-001',    N'Điểm xe buýt Vĩnh Hội'),
-(1, 'VK-BUS-XOM-CHIEU-001',   N'Điểm xe buýt Xóm Chiếu')
-GO
 
 INSERT INTO USERS (name, email, password_hash, role, is_active)
 VALUES (
@@ -359,7 +349,7 @@ BEGIN
 END
 GO
 
--- DB cũ: nếu CHECK role chỉ cho phép Admin/Vendor, bỏ comment và chạy một lần:
--- ALTER TABLE USERS DROP CONSTRAINT chk_users_role;
--- ALTER TABLE USERS ADD CONSTRAINT chk_users_role CHECK (role IN ('Admin', 'Vendor', 'User'));
--- GO
+ALTER TABLE USERS DROP CONSTRAINT chk_users_role;
+ALTER TABLE USERS ADD CONSTRAINT chk_users_role CHECK (role IN ('Admin', 'Vendor', 'User'));
+GO
+

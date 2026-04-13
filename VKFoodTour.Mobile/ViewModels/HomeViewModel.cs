@@ -177,10 +177,22 @@ public partial class PlayerViewModel : ObservableObject
     [ObservableProperty]
     private string selectedLang = "vi";
 
+    [ObservableProperty]
+    private string? audioUrl;
+
+    [ObservableProperty]
+    private bool hasAudio;
+
+    [ObservableProperty]
+    private string audioHint = "Chưa có file âm thanh cho gian hàng này.";
+
     public void ApplyStall(string name)
     {
         NowPlayingName = name;
         NowPlayingText = "Thuyết minh sẽ lấy từ dữ liệu Admin/API khi có file âm thanh.";
+        AudioUrl = null;
+        HasAudio = false;
+        AudioHint = "Chưa có file âm thanh cho gian hàng này.";
     }
 
     public void ApplyFromQr(QrResolveDto dto)
@@ -193,9 +205,30 @@ public partial class PlayerViewModel : ObservableObject
             ? dto.NarrationContent
             : dto.Description;
 
+        AudioUrl = dto.AudioUrl;
+        HasAudio = !string.IsNullOrWhiteSpace(dto.AudioUrl);
+        AudioHint = HasAudio
+            ? "Nhấn nút NGHE ÂM THANH để mở trình phát."
+            : "Chưa có file âm thanh cho gian hàng này.";
         NowPlayingText = string.IsNullOrWhiteSpace(body)
             ? "Chưa có nội dung mô tả cho quán này trong hệ thống."
             : body;
+    }
+
+    [RelayCommand]
+    private async Task OpenAudio()
+    {
+        if (string.IsNullOrWhiteSpace(AudioUrl))
+            return;
+
+        try
+        {
+            await Launcher.OpenAsync(AudioUrl);
+        }
+        catch
+        {
+            AudioHint = "Không mở được file âm thanh. Kiểm tra lại API URL và mạng.";
+        }
     }
 
     [RelayCommand]
@@ -203,6 +236,9 @@ public partial class PlayerViewModel : ObservableObject
     {
         NowPlayingName = "Chưa phát";
         NowPlayingText = "Chọn một quán để nghe thuyết minh";
+        AudioUrl = null;
+        HasAudio = false;
+        AudioHint = "Chưa có file âm thanh cho gian hàng này.";
     }
 }
 

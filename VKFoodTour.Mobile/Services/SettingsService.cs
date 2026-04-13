@@ -13,7 +13,7 @@ public class SettingsService : ISettingsService
 {
     private static string DefaultApiBase() =>
 #if ANDROID
-        "http://10.0.2.2:5242";
+        "http://192.168.1.8:5242";
 #else
         "http://localhost:5242";
 #endif

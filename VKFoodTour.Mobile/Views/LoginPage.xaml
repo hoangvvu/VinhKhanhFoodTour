@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage x:Class="VKFoodTour.Mobile.Views.LoginPage"
+             xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             BackgroundColor="#0F0E0E"
+             Shell.NavBarIsVisible="False">
+    <ScrollView>
+        <VerticalStackLayout Padding="24" Spacing="14" VerticalOptions="Center">
+            <Label Text="VK FOOD TOUR" FontSize="34" TextColor="#F0EBE3" FontFamily="BebasNeue" HorizontalOptions="Center"/>
+            <Label x:Name="ModeLabel" Text="Đăng nhập để sử dụng ứng dụng" TextColor="White" HorizontalOptions="Center"/>
+            <Label Text="Địa chỉ API" TextColor="White" FontSize="12"/>
+            <Entry x:Name="ApiUrlEntry" Placeholder="http://10.0.2.2:5242" TextColor="White" PlaceholderColor="#A0A0A0"/>
+            <Label Text="Android Emulator dùng 10.0.2.2, máy thật dùng IP LAN của máy chạy API." TextColor="#BDBDBD" FontSize="11"/>
+
+            <Entry x:Name="NameEntry" Placeholder="Họ tên" IsVisible="False" TextColor="White" PlaceholderColor="#A0A0A0"/>
+            <Entry x:Name="EmailEntry" Placeholder="Email" Keyboard="Email" TextColor="White" PlaceholderColor="#A0A0A0"/>
+            <Entry x:Name="PasswordEntry" Placeholder="Mật khẩu" IsPassword="True" TextColor="White" PlaceholderColor="#A0A0A0"/>
+            <Entry x:Name="ConfirmPasswordEntry" Placeholder="Xác nhận mật khẩu" IsPassword="True" IsVisible="False" TextColor="White" PlaceholderColor="#A0A0A0"/>
+
+            <Button x:Name="SubmitButton" Text="Đăng nhập" Clicked="OnSubmit" BackgroundColor="#C8372D" TextColor="White"/>
+            <Button x:Name="ToggleButton" Text="Chưa có tài khoản? Đăng ký" Clicked="OnToggleMode" BackgroundColor="#1A1818" TextColor="#F0EBE3"/>
+            <Label x:Name="StatusLabel" TextColor="#E8A020"/>
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

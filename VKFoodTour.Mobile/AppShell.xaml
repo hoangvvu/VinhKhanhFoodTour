@@ -17,9 +17,6 @@
         <Tab Title="Quét QR">
             <ShellContent ContentTemplate="{DataTemplate pages:QrScanPage}" Route="qrscan" />
         </Tab>
-        <Tab Title="Nghe" Icon="icon_audio.png">
-            <ShellContent ContentTemplate="{DataTemplate pages:PlayerPage}" Route="player" />
-        </Tab>
 
         <Tab Title="Hồ sơ" Icon="icon_profile.png">
             <ShellContent ContentTemplate="{DataTemplate pages:ProfilePage}" Route="profile" />

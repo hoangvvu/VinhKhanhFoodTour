@@ -20,18 +20,7 @@ public class QrController : ControllerBase
     [HttpGet("resolve/{token}")]
     public async Task<ActionResult<QrResolveDto>> Resolve(string token)
     {
-        if (string.IsNullOrWhiteSpace(token))
-            return BadRequest();
-
-        var normalized = Uri.UnescapeDataString(token).Trim();
-        if (normalized.StartsWith("vkfoodtour://", StringComparison.OrdinalIgnoreCase))
-            normalized = normalized["vkfoodtour://".Length..].Trim();
-        else if (normalized.StartsWith("vkfoodtour:", StringComparison.OrdinalIgnoreCase))
-        {
-            var idx = normalized.IndexOf("//", StringComparison.Ordinal);
-            if (idx >= 0)
-                normalized = normalized[(idx + 2)..].Trim();
-        }
+        var normalized = NormalizeToken(token);
 
         if (string.IsNullOrEmpty(normalized))
             return BadRequest();
@@ -45,7 +34,7 @@ public class QrController : ControllerBase
 
         var poi = await _context.Pois
             .AsNoTracking()
-            .FirstOrDefaultAsync(p => p.PoiId == qr.PoiId && p.IsActive);
+            .FirstOrDefaultAsync(p => p.PoiId == qr.PoiId && p.IsActive && p.OwnerId != null);
 
         if (poi is null)
             return NotFound();
@@ -57,7 +46,8 @@ public class QrController : ControllerBase
             .ToListAsync();
 
         var pick = narrations
-            .OrderByDescending(n => string.Equals(n.Language?.Code, "vi", StringComparison.OrdinalIgnoreCase))
+            .OrderByDescending(n => !string.IsNullOrWhiteSpace(n.AudioUrl))
+            .ThenByDescending(n => string.Equals(n.Language?.Code, "vi", StringComparison.OrdinalIgnoreCase))
             .ThenBy(n => n.LanguageId)
             .FirstOrDefault();
 
@@ -69,7 +59,43 @@ public class QrController : ControllerBase
             Description = poi.Description,
             NarrationTitle = pick?.Title,
             NarrationContent = pick?.Content,
+            AudioUrl = pick?.AudioUrl,
             LanguageCode = pick?.Language?.Code
         });
+    }
+
+    private static string NormalizeToken(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+            return string.Empty;
+
+        var normalized = Uri.UnescapeDataString(raw).Trim();
+
+        // Allow users to pass a QR image URL from qrserver.com (contains `data=...`)
+        if (Uri.TryCreate(normalized, UriKind.Absolute, out var uri)
+            && !string.IsNullOrWhiteSpace(uri.Query))
+        {
+            var query = uri.Query.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries);
+            foreach (var part in query)
+            {
+                var pieces = part.Split('=', 2);
+                if (pieces.Length == 2 && pieces[0].Equals("data", StringComparison.OrdinalIgnoreCase))
+                {
+                    normalized = Uri.UnescapeDataString(pieces[1]).Trim();
+                    break;
+                }
+            }
+        }
+
+        if (normalized.StartsWith("vkfoodtour://", StringComparison.OrdinalIgnoreCase))
+            normalized = normalized["vkfoodtour://".Length..].Trim();
+        else if (normalized.StartsWith("vkfoodtour:", StringComparison.OrdinalIgnoreCase))
+        {
+            var idx = normalized.IndexOf("//", StringComparison.Ordinal);
+            if (idx >= 0)
+                normalized = normalized[(idx + 2)..].Trim();
+        }
+
+        return normalized;
     }
 }
