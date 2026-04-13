@@ -105,17 +105,32 @@ namespace VKFoodTour.Api.Controllers
                 })
                 .ToListAsync();
 
-            var narrations = await _context.Narrations
+            var autoNarrations = await _context.Narrations
                 .AsNoTracking()
                 .Include(n => n.Language)
-                .Where(n => n.PoiId == id && n.IsActive && n.AudioUrl != null && n.AudioUrl != "")
+                .Where(n => n.PoiId == id && n.IsActive &&
+                            ((!string.IsNullOrEmpty(n.AudioUrlAuto)) || (!string.IsNullOrEmpty(n.AudioUrl))))
                 .OrderBy(n => n.LanguageId)
                 .Select(n => new AudioItemDto
                 {
                     Title = n.Title,
                     LanguageCode = n.Language != null ? n.Language.Code : null,
-                    Url = n.AudioUrl!,
-                    SourceType = "narration"
+                    Url = n.AudioUrlAuto ?? n.AudioUrl!,
+                    SourceType = "auto_nearby"
+                })
+                .ToListAsync();
+
+            var qrNarrations = await _context.Narrations
+                .AsNoTracking()
+                .Include(n => n.Language)
+                .Where(n => n.PoiId == id && n.IsActive && !string.IsNullOrEmpty(n.AudioUrlQr))
+                .OrderBy(n => n.LanguageId)
+                .Select(n => new AudioItemDto
+                {
+                    Title = $"{n.Title} (QR)",
+                    LanguageCode = n.Language != null ? n.Language.Code : null,
+                    Url = n.AudioUrlQr!,
+                    SourceType = "qr_scan"
                 })
                 .ToListAsync();
 
@@ -144,7 +159,7 @@ namespace VKFoodTour.Api.Controllers
                         .FirstOrDefaultAsync(),
                 GalleryImages = gallery,
                 MenuItems = menuItems,
-                AudioItems = narrations.Concat(menuAudios).ToList()
+                AudioItems = autoNarrations.Concat(qrNarrations).Concat(menuAudios).ToList()
             };
 
             return Ok(dto);

@@ -1,4 +1,5 @@
 using VKFoodTour.Mobile.ViewModels;
+using VKFoodTour.Mobile.Services;
 
 namespace VKFoodTour.Mobile.Views;
 
@@ -7,13 +8,15 @@ namespace VKFoodTour.Mobile.Views;
 public partial class StallDetailPage : ContentPage
 {
     private readonly StallDetailViewModel _vm;
+    private readonly IStallNarrationState _stallState;
     private int _poiId;
     private bool _fromQr;
 
-    public StallDetailPage(StallDetailViewModel vm)
+    public StallDetailPage(StallDetailViewModel vm, IStallNarrationState stallState)
     {
         InitializeComponent();
         BindingContext = _vm = vm;
+        _stallState = stallState;
     }
 
     public string PoiId
@@ -35,7 +38,9 @@ public partial class StallDetailPage : ContentPage
         if (_fromQr)
         {
             _fromQr = false;
-            await _vm.PlayFirstAudioIfAnyAsync();
+            var fromQr = _stallState.Consume();
+            var qrAudio = fromQr?.PoiId == _poiId ? fromQr.AudioUrl : null;
+            await _vm.PlayPreferredAudioFromQrAsync(qrAudio);
         }
     }
 }

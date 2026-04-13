@@ -62,10 +62,24 @@ public partial class StallDetailViewModel : ObservableObject
 
     public async Task PlayFirstAudioIfAnyAsync()
     {
-        var first = AudioItems.FirstOrDefault();
+        var first = AudioItems
+            .FirstOrDefault(a => string.Equals(a.SourceType, "auto_nearby", StringComparison.OrdinalIgnoreCase))
+            ?? AudioItems.FirstOrDefault();
         if (first is null || string.IsNullOrWhiteSpace(first.Url))
             return;
         await _dataService.TrackEventAsync(PoiId, "listen_start");
         await Launcher.OpenAsync(first.Url);
+    }
+
+    public async Task PlayPreferredAudioFromQrAsync(string? qrAudioUrl)
+    {
+        if (!string.IsNullOrWhiteSpace(qrAudioUrl))
+        {
+            await _dataService.TrackEventAsync(PoiId, "listen_start");
+            await Launcher.OpenAsync(qrAudioUrl);
+            return;
+        }
+
+        await PlayFirstAudioIfAnyAsync();
     }
 }

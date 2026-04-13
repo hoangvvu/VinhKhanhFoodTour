@@ -34,6 +34,16 @@ public class Narration
     [Column("audio_url")]
     public string? AudioUrl { get; set; }
 
+    /// <summary>Audio tự động khi du khách tới gần POI (Geofence).</summary>
+    [MaxLength(500)]
+    [Column("audio_url_auto")]
+    public string? AudioUrlAuto { get; set; }
+
+    /// <summary>Audio ưu tiên khi quét mã QR tại điểm.</summary>
+    [MaxLength(500)]
+    [Column("audio_url_qr")]
+    public string? AudioUrlQr { get; set; }
+
     [Column("is_active")]
     public bool IsActive { get; set; } = true;
 

@@ -146,10 +146,20 @@
                                                 @onclick="() => ShowEditModal(item)">
                                             <span class="bi bi-pencil"></span> Sửa
                                         </button>
-                                        <button class="btn btn-sm btn-outline-warning rounded-pill"
-                                                @onclick="() => ShowHideConfirm(item)">
-                                            <span class="bi bi-eye-slash"></span> Ẩn
-                                        </button>
+                                        @if (item.IsActive)
+                                        {
+                                            <button class="btn btn-sm btn-outline-warning rounded-pill"
+                                                    @onclick="() => ShowHideConfirm(item)">
+                                                <span class="bi bi-eye-slash"></span> Ẩn
+                                            </button>
+                                        }
+                                        else
+                                        {
+                                            <button class="btn btn-sm btn-outline-success rounded-pill"
+                                                    @onclick="() => ToggleActive(item.PoiId)">
+                                                <span class="bi bi-eye"></span> Hiển thị lại
+                                            </button>
+                                        }
                                     </td>
                                 </tr>
                             }

@@ -39,6 +39,25 @@ builder.Services.AddSwaggerGen();
 var app = builder.Build();
 // Giữ DB theo script SQL thủ công: không auto chạy EF migration khi khởi động API.
 
+using (var scope = app.Services.CreateScope())
+{
+    try
+    {
+        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        await db.Database.ExecuteSqlRawAsync("""
+IF COL_LENGTH('NARRATIONS', 'audio_url_auto') IS NULL
+    ALTER TABLE NARRATIONS ADD audio_url_auto NVARCHAR(500) NULL;
+
+IF COL_LENGTH('NARRATIONS', 'audio_url_qr') IS NULL
+    ALTER TABLE NARRATIONS ADD audio_url_qr NVARCHAR(500) NULL;
+""");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[DB SCHEMA CHECK] {ex.Message}");
+    }
+}
+
 if (app.Environment.IsDevelopment() && string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("ASPNETCORE_URLS")))
 {
     // Mặc định mở cổng LAN để thiết bị Android thật truy cập được API.

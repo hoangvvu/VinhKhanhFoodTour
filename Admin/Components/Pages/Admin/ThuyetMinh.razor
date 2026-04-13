@@ -2,125 +2,16 @@
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize(Roles = "Admin")]
 @rendermode InteractiveServer
-@inject TtsService TtsService
 
 <div class="container-fluid p-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h3 class="text-white fw-bold mb-0">SOẠN THUYẾT MINH TỰ ĐỘNG (AI TTS)</h3>
-        <span class="badge bg-danger-subtle text-danger px-3 py-2 rounded-pill">
-            <i class="bi bi-magic me-1"></i> Text-to-Speech Engine
-        </span>
-    </div>
-
-    <div class="row g-4">
-        @* --- KHU VỰC NHẬP TEXT --- *@
-        <div class="col-lg-8">
-            <div class="card bg-dark-card border-0 p-4 shadow" style="border-radius: 16px;">
-                <div class="row g-3 mb-4">
-                    <div class="col-md-6">
-                        <label class="form-label text-muted small fw-bold">CHỌN GIAN HÀNG</label>
-                        <select class="form-select bg-dark border-secondary text-white rounded-3">
-                            <option>-- Chọn quán --</option>
-                            <option>Ốc Oanh</option>
-                            <option>Sushi Viên VK</option>
-                            <option>Lãng Quán</option>
-                        </select>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label text-muted small fw-bold">NGÔN NGỮ & GIỌNG ĐỌC</label>
-                        <select @bind="selectedVoice" class="form-select bg-dark border-secondary text-white">
-                            <option value="lannhi">🇻🇳 Nữ Miền Nam (Lan Nhi - Chuẩn)</option>
-                            <option value="banmai">🇻🇳 Nữ Miền Nam (Ban Mai - Trẻ trung)</option>
-                            <option value="minhquang">🇻🇳 Nam Miền Nam (Minh Quang)</option>
-                            <option value="thuquynh">🇻🇳 Nữ Miền Bắc (Thu Quỳnh)</option>
-                            <option value="leminh">🇻🇳 Nam Miền Bắc (Lê Minh)</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="mb-4">
-                    <div class="d-flex justify-content-between">
-                        <label class="form-label text-muted small fw-bold">NỘI DUNG MÔ TẢ (KỊCH BẢN)</label>
-                        <small class="text-muted">@inputText.Length / 1000 ký tự</small>
-                    </div>
-                    <textarea @bind="inputText" 
-                              class="form-control bg-dark border-secondary text-white rounded-3"
-                              rows="8"
-                              placeholder="Nhập câu chuyện, lịch sử hoặc mô tả món ăn đặc sắc của quán. Trí tuệ nhân tạo sẽ đọc văn bản này bằng giọng điệu tự nhiên nhất..."></textarea>
-                </div>
-
-                <div class="d-flex gap-3">
-                    <button @onclick="GenerateAudio" 
-                            disabled="@isGenerating"
-                            class="btn btn-danger rounded-pill px-4 fw-bold shadow-sm d-flex align-items-center gap-2">
-                        <i class="bi bi-soundwave"></i> @(isGenerating ? "ĐANG TẠO..." : "TẠO GIỌNG NÓI TỰ ĐỘNG")
-                    </button>
-                    <button class="btn btn-outline-light rounded-pill px-4">Lưu kịch bản</button>
-                </div>
-            </div>
-        </div>
-
-        @* --- KHU VỰC BẢN NGHE THỬ --- *@
-        <div class="col-lg-4">
-            <div class="card bg-dark-card border-0 p-4 shadow h-100" style="border-radius: 16px;">
-                <h6 class="text-white fw-bold mb-4 border-bottom border-secondary pb-3">BẢN NGHE THỬ</h6>
-                
-                @* Hiện khung báo lỗi MÀU ĐỎ nếu có lỗi *@
-                @if (!string.IsNullOrEmpty(errorMessage))
-                {
-                    <div class="alert alert-danger p-3 mb-3 small">
-                        <strong><i class="bi bi-exclamation-triangle"></i> Lỗi rồi:</strong><br />
-                        @errorMessage
-                    </div>
-                }
-
-                @if (string.IsNullOrEmpty(audioUrl))
-                {
-                    <div class="text-center py-5 text-muted">
-                        <i class="bi bi-mic-mute display-1 mb-3 opacity-25"></i>
-                        <p>Nhập nội dung và nhấn tạo giọng nói.</p>
-                    </div>
-                }
-                else
-                {
-                    <div class="bg-dark rounded-4 p-3 text-center border border-secondary">
-                        <div class="text-warning mb-3">Đã tạo thành công!</div>
-                        <audio controls class="w-100" src="@audioUrl" autoplay></audio>
-                        
-                        @* Bấm vào link này nếu audio không tự phát được *@
-                        <a href="@audioUrl" target="_blank" class=\"d-block mt-3 small text-info\">
-                            Link File (Mở tab mới nếu không nghe được)
-                        </a>
-                    </div>
-                }
-            </div>
-        </div>
+    <div class="card bg-dark-card border-0 shadow-sm p-4" style="border-radius: 16px;">
+        <h4 class="text-white fw-bold mb-3">THUYẾT MINH ĐÃ CHUYỂN CHO CHỦ GIAN HÀNG</h4>
+        <p class="text-muted mb-2">
+            Chức năng tạo thuyết minh TTS và tải lên file audio có sẵn hiện được thực hiện tại trang
+            <strong>Mô tả &amp; Hình ảnh</strong> của từng chủ gian hàng.
+        </p>
+        <p class="text-muted mb-0">
+            Admin chỉ quản lý tổng quan POI, QR, người dùng và thống kê.
+        </p>
     </div>
 </div>
-
-@code {
-    private string inputText = "Chào mừng bạn đến với phố ẩm thực Vĩnh Khánh.";
-    private string selectedVoice = "lannhi";
-    private string? audioUrl;
-    private string? errorMessage; // Thêm biến lưu lỗi
-    private bool isGenerating = false;
-
-    private async Task GenerateAudio()
-    {
-        if (string.IsNullOrWhiteSpace(inputText)) return;
-
-        isGenerating = true;
-        audioUrl = null;
-        errorMessage = null; // Xóa lỗi cũ
-        StateHasChanged();
-
-        // Gọi API và lấy cả 2 kết quả
-        var result = await TtsService.GenerateAudioAsync(inputText, selectedVoice);
-
-        audioUrl = result.Url;
-        errorMessage = result.ErrorMessage; // Gán lỗi vào UI nếu có
-
-        isGenerating = false;
-        StateHasChanged();
-    }
-}

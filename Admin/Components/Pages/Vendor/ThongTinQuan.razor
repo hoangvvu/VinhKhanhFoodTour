@@ -153,14 +153,17 @@
                     else
                     {
                         <p class="text-muted small mb-0">Quán đã có mã QR. In hoặc tải ảnh mã phía trên.</p>
+                        <button type="button" class="btn btn-outline-light w-100 rounded-pill mt-3" @onclick="DeleteQrAsync" disabled="@isSaving">
+                            Xóa mã QR hiện tại để tạo lại
+                        </button>
                     }
                 </div>
             </div>
 
             <div class="card bg-dark-card border-0 shadow-sm" style="border-radius: 16px;">
                 <div class="card-body p-4">
-                    <h5 class="text-white mb-3"><i class="bi bi-mic me-2 text-danger"></i>Thuyết minh tự động (TTS)</h5>
-                    <p class="text-muted small mb-3">Dùng nội dung ô <strong>Mô tả</strong> bên trái. File âm thanh lưu trên máy chủ; kịch bản lưu vào bảng <strong>NARRATIONS</strong> (tiếng Việt).</p>
+                    <h5 class="text-white mb-3"><i class="bi bi-mic me-2 text-danger"></i>Thuyết minh tự động khi tới gần POI (TTS)</h5>
+                    <p class="text-muted small mb-3">Dùng nội dung ô <strong>Mô tả</strong> bên trái để tạo audio tự động theo Geofence.</p>
                     <label class="form-label text-muted small fw-bold">GIỌNG ĐỌC</label>
                     <select class="form-select bg-dark border-secondary text-white mb-3" @bind="ttsVoice">
                         <option value="lannhi">Nữ Miền Nam (Lan Nhi)</option>
@@ -176,11 +179,25 @@
                         }
                         Tạo thuyết minh tự động từ mô tả
                     </button>
-                    @if (!string.IsNullOrEmpty(lastAudioUrl))
+                    @if (!string.IsNullOrEmpty(lastAutoAudioUrl))
                     {
                         <div class="mt-3 p-3 bg-black rounded border border-secondary">
-                            <div class="text-warning small mb-2">Đã lưu — nghe thử</div>
-                            <audio controls class="w-100" src="@lastAudioUrl"></audio>
+                            <div class="text-warning small mb-2">Audio tự động gần POI — nghe thử</div>
+                            <audio controls class="w-100" src="@lastAutoAudioUrl"></audio>
+                        </div>
+                    }
+
+                    <div class="my-3 border-top border-secondary pt-3">
+                        <h6 class="text-white mb-2"><i class="bi bi-qr-code-scan me-2 text-danger"></i>Audio riêng cho quét QR</h6>
+                        <label class="form-label text-muted small fw-bold">TẢI FILE AUDIO CHO QR</label>
+                        <InputFile OnChange="HandleNarrationAudioUpload" class="form-control bg-dark border-secondary text-white" accept="audio/*" />
+                        <div class="form-text text-muted">Hỗ trợ .mp3/.wav/.m4a. File này chỉ dùng khi người dùng quét QR.</div>
+                    </div>
+                    @if (!string.IsNullOrEmpty(lastQrAudioUrl))
+                    {
+                        <div class="mt-3 p-3 bg-black rounded border border-secondary">
+                            <div class="text-warning small mb-2">Audio quét QR — nghe thử</div>
+                            <audio controls class="w-100" src="@lastQrAudioUrl"></audio>
                         </div>
                     }
                 </div>
@@ -200,7 +217,8 @@
     private string mainImageUrl = "";
     private List<Image> galleryImages = new();
     private string ttsVoice = "lannhi";
-    private string? lastAudioUrl;
+    private string? lastAutoAudioUrl;
+    private string? lastQrAudioUrl;
     private int currentPoiId;
     private int currentUserId;
     private bool isSaving;
@@ -257,7 +275,8 @@
         galleryImages = await PoiService.GetStallGalleryAsync(poi.PoiId, userId);
 
         var viNarration = poi.Narrations?.FirstOrDefault(n => n.IsActive && n.Language != null && n.Language.Code.Equals("vi", StringComparison.OrdinalIgnoreCase));
-        lastAudioUrl = viNarration?.AudioUrl;
+        lastAutoAudioUrl = viNarration?.AudioUrlAuto ?? viNarration?.AudioUrl;
+        lastQrAudioUrl = viNarration?.AudioUrlQr;
 
         StateHasChanged();
     }
@@ -300,6 +319,39 @@
         }
     }
 
+    private async Task DeleteQrAsync()
+    {
+        if (currentPoiId == 0)
+            return;
+
+        isSaving = true;
+        try
+        {
+            var ok = await PoiService.DeleteActiveQrForVendorAsync(currentPoiId, currentUserId);
+            if (!ok)
+            {
+                statusMessage = "Không xóa được mã QR.";
+                isError = true;
+                return;
+            }
+
+            activeQrToken = "";
+            qrCode = "Chưa tạo mã QR";
+            statusMessage = "Đã xóa mã QR hiện tại. Bạn có thể tạo lại mã mới.";
+            isError = false;
+        }
+        catch (Exception ex)
+        {
+            statusMessage = ex.Message;
+            isError = true;
+        }
+        finally
+        {
+            isSaving = false;
+            StateHasChanged();
+        }
+    }
+
     private async Task GenerateTtsAsync()
     {
         if (string.IsNullOrWhiteSpace(poiDescription))
@@ -317,6 +369,17 @@
 
         try
         {
+            // Luôn đồng bộ mô tả hiện tại vào POI trước khi tạo TTS
+            // để đảm bảo thuyết minh được tạo đúng theo nội dung mới nhất.
+            await PoiService.UpdateStallInfoAsync(
+                currentPoiId,
+                poiName,
+                poiDescription,
+                poiAddress,
+                latitude,
+                longitude,
+                mainImageUrl);
+
             var langId = await PoiService.GetVietnameseLanguageIdAsync();
             var stem = $"poi{currentPoiId}_vi";
             var tts = await TtsService.GenerateAndPersistLocalAsync(poiDescription.Trim(), ttsVoice, stem);
@@ -327,8 +390,8 @@
                 return;
             }
 
-            lastAudioUrl = tts.Url;
-            await PoiService.UpsertNarrationAsync(
+            lastAutoAudioUrl = tts.Url;
+            await PoiService.UpsertNarrationAutoAsync(
                 currentPoiId,
                 langId,
                 poiName,
@@ -336,7 +399,20 @@
                 ttsVoice,
                 tts.Url);
 
-            statusMessage = "Đã lưu thuyết minh (NARRATIONS + file âm thanh).";
+            var refreshedToken = await PoiService.RegenerateQrFromDescriptionAsync(
+                currentPoiId,
+                currentUserId,
+                poiDescription,
+                "Tại quán (tạo từ mô tả)");
+            if (!string.IsNullOrWhiteSpace(refreshedToken))
+            {
+                activeQrToken = refreshedToken;
+                qrCode = refreshedToken;
+            }
+
+            statusMessage = tts.IsFallbackRemoteUrl
+                ? "Đã tạo thuyết minh theo mô tả và cập nhật mã QR. Ghi chú: file local chưa tải kịp, đang dùng link audio trực tiếp từ FPT."
+                : "Đã lưu thuyết minh và cập nhật mã QR theo mô tả.";
             isError = false;
         }
         catch (Exception ex)
@@ -347,6 +423,59 @@
         finally
         {
             isTtsBusy = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleNarrationAudioUpload(InputFileChangeEventArgs e)
+    {
+        if (e.FileCount == 0 || currentPoiId == 0)
+            return;
+
+        try
+        {
+            isSaving = true;
+            var file = e.File;
+            var ext = Path.GetExtension(file.Name).ToLowerInvariant();
+            var fileName = $"poi{currentPoiId}_manual_{Guid.NewGuid():N}{ext}";
+            var folder = Path.GetFullPath(Path.Combine(Env.ContentRootPath, "..", "UploadsData", "narration"));
+            Directory.CreateDirectory(folder);
+
+            await using var fs = new FileStream(Path.Combine(folder, fileName), FileMode.Create);
+            await file.OpenReadStream(30 * 1024 * 1024).CopyToAsync(fs);
+
+            var url = $"/uploads/narration/{fileName}";
+            var langId = await PoiService.GetVietnameseLanguageIdAsync();
+            await PoiService.UpsertNarrationQrAsync(
+                currentPoiId,
+                langId,
+                string.IsNullOrWhiteSpace(poiName) ? "Thuyết minh QR" : $"{poiName} (QR)",
+                string.IsNullOrWhiteSpace(poiDescription) ? $"Nội dung thuyết minh của {poiName}" : poiDescription.Trim(),
+                url);
+
+            var refreshedToken = await PoiService.RegenerateQrFromDescriptionAsync(
+                currentPoiId,
+                currentUserId,
+                poiDescription,
+                "Tại quán (tạo từ mô tả)");
+            if (!string.IsNullOrWhiteSpace(refreshedToken))
+            {
+                activeQrToken = refreshedToken;
+                qrCode = refreshedToken;
+            }
+
+            lastQrAudioUrl = url;
+            statusMessage = "Đã tải audio cho kịch bản quét QR và cập nhật mã QR theo mô tả.";
+            isError = false;
+        }
+        catch (Exception ex)
+        {
+            statusMessage = $"Lỗi upload audio: {ex.Message}";
+            isError = true;
+        }
+        finally
+        {
+            isSaving = false;
             StateHasChanged();
         }
     }

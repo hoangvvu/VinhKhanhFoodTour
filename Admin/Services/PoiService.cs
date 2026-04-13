@@ -1,4 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using System.Security.Cryptography;
+using System.Text;
 using VKFoodTour.Infrastructure.Data;
 using VKFoodTour.Infrastructure.Entities;
 
@@ -162,7 +164,61 @@ public class PoiService
         return token;
     }
 
-    public async Task UpsertNarrationAsync(int poiId, int languageId, string title, string content, string? ttsVoice, string? audioUrl)
+    /// <summary>
+    /// Tái tạo mã QR từ mô tả quán: mô tả thay đổi thì token đổi theo.
+    /// Chỉ giữ 1 mã active mới nhất cho mỗi quán.
+    /// </summary>
+    public async Task<string?> RegenerateQrFromDescriptionAsync(int poiId, int ownerUserId, string? description, string? locationNote = null)
+    {
+        var poi = await _db.Pois
+            .Include(p => p.QrCodes)
+            .FirstOrDefaultAsync(p => p.PoiId == poiId && p.OwnerId == ownerUserId);
+        if (poi is null)
+            return null;
+
+        var normalizedDesc = (description ?? string.Empty).Trim();
+        var descHash = ComputeShortHash(normalizedDesc);
+        var tokenBase = $"VK-{poiId:D3}-{descHash}";
+        var token = tokenBase;
+        var suffix = 1;
+        while (await _db.QrCodes.AnyAsync(q => q.QrToken == token && q.PoiId != poiId))
+        {
+            token = $"{tokenBase}-{suffix++:D2}";
+        }
+
+        foreach (var qr in poi.QrCodes.Where(q => q.IsActive))
+            qr.IsActive = false;
+
+        _db.QrCodes.Add(new QrCode
+        {
+            PoiId = poiId,
+            QrToken = token,
+            LocationNote = string.IsNullOrWhiteSpace(locationNote) ? "Tại quán (tạo từ mô tả)" : locationNote.Trim(),
+            IsActive = true
+        });
+
+        await _db.SaveChangesAsync();
+        return token;
+    }
+
+    public async Task<bool> DeleteActiveQrForVendorAsync(int poiId, int ownerUserId)
+    {
+        var poi = await _db.Pois
+            .Include(p => p.QrCodes)
+            .FirstOrDefaultAsync(p => p.PoiId == poiId && p.OwnerId == ownerUserId);
+        if (poi is null)
+            return false;
+
+        var activeList = poi.QrCodes.Where(q => q.IsActive).ToList();
+        if (!activeList.Any())
+            return true;
+
+        _db.QrCodes.RemoveRange(activeList);
+        await _db.SaveChangesAsync();
+        return true;
+    }
+
+    public async Task UpsertNarrationAutoAsync(int poiId, int languageId, string title, string content, string? ttsVoice, string? autoAudioUrl)
     {
         var existing = await _db.Narrations.FirstOrDefaultAsync(n => n.PoiId == poiId && n.LanguageId == languageId);
         if (existing is not null)
@@ -170,7 +226,9 @@ public class PoiService
             existing.Title = title;
             existing.Content = content;
             existing.TtsVoice = ttsVoice;
-            existing.AudioUrl = audioUrl;
+            existing.AudioUrlAuto = autoAudioUrl;
+            // Giữ tương thích ngược cho các màn hình/endpoint cũ.
+            existing.AudioUrl = autoAudioUrl;
             existing.UpdatedAt = DateTime.Now;
             existing.IsActive = true;
         }
@@ -183,7 +241,35 @@ public class PoiService
                 Title = title,
                 Content = content,
                 TtsVoice = ttsVoice,
-                AudioUrl = audioUrl,
+                AudioUrlAuto = autoAudioUrl,
+                AudioUrl = autoAudioUrl,
+                IsActive = true
+            });
+        }
+
+        await _db.SaveChangesAsync();
+    }
+
+    public async Task UpsertNarrationQrAsync(int poiId, int languageId, string title, string content, string? qrAudioUrl)
+    {
+        var existing = await _db.Narrations.FirstOrDefaultAsync(n => n.PoiId == poiId && n.LanguageId == languageId);
+        if (existing is not null)
+        {
+            existing.Title = title;
+            existing.Content = content;
+            existing.AudioUrlQr = qrAudioUrl;
+            existing.UpdatedAt = DateTime.Now;
+            existing.IsActive = true;
+        }
+        else
+        {
+            _db.Narrations.Add(new Narration
+            {
+                PoiId = poiId,
+                LanguageId = languageId,
+                Title = title,
+                Content = content,
+                AudioUrlQr = qrAudioUrl,
                 IsActive = true
             });
         }
@@ -309,5 +395,12 @@ public class PoiService
         if (lang is null)
             throw new InvalidOperationException("Thiếu ngôn ngữ 'vi' trong bảng LANGUAGES. Khởi động lại app để chạy Seed.");
         return lang.LanguageId;
+    }
+
+    private static string ComputeShortHash(string input)
+    {
+        using var sha = SHA256.Create();
+        var bytes = sha.ComputeHash(Encoding.UTF8.GetBytes(input));
+        return Convert.ToHexString(bytes)[..8];
     }
 }

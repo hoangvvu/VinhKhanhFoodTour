@@ -106,6 +106,13 @@ using (var scope = app.Services.CreateScope())
     {
         var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         await db.Database.MigrateAsync();
+        await db.Database.ExecuteSqlRawAsync("""
+IF COL_LENGTH('NARRATIONS', 'audio_url_auto') IS NULL
+    ALTER TABLE NARRATIONS ADD audio_url_auto NVARCHAR(500) NULL;
+
+IF COL_LENGTH('NARRATIONS', 'audio_url_qr') IS NULL
+    ALTER TABLE NARRATIONS ADD audio_url_qr NVARCHAR(500) NULL;
+""");
         await SeedData.InitializeAsync(db);
     }
     catch (Exception ex)

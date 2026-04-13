@@ -46,7 +46,8 @@ public class QrController : ControllerBase
             .ToListAsync();
 
         var pick = narrations
-            .OrderByDescending(n => !string.IsNullOrWhiteSpace(n.AudioUrl))
+            .OrderByDescending(n => !string.IsNullOrWhiteSpace(n.AudioUrlQr))
+            .ThenByDescending(n => !string.IsNullOrWhiteSpace(n.AudioUrl))
             .ThenByDescending(n => string.Equals(n.Language?.Code, "vi", StringComparison.OrdinalIgnoreCase))
             .ThenBy(n => n.LanguageId)
             .FirstOrDefault();
@@ -59,7 +60,7 @@ public class QrController : ControllerBase
             Description = poi.Description,
             NarrationTitle = pick?.Title,
             NarrationContent = pick?.Content,
-            AudioUrl = pick?.AudioUrl,
+            AudioUrl = pick?.AudioUrlQr ?? pick?.AudioUrl,
             LanguageCode = pick?.Language?.Code
         });
     }
