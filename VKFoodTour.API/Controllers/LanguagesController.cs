@@ -20,9 +20,16 @@ public class LanguagesController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<List<LanguageListItemDto>>> GetActive()
     {
+        var languageIdsWithNarrations = _context.Narrations
+            .AsNoTracking()
+            .Where(n => n.IsActive)
+            .Select(n => n.LanguageId)
+            .Distinct();
+
         var list = await _context.Languages
             .AsNoTracking()
             .Where(l => l.IsActive)
+            .Where(l => languageIdsWithNarrations.Contains(l.LanguageId))
             .OrderBy(l => l.Code)
             .Select(l => new LanguageListItemDto { Code = l.Code, Name = l.Name })
             .ToListAsync();

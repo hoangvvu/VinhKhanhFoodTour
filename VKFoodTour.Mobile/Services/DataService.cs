@@ -9,6 +9,8 @@ public class DataService : IDataService
     private readonly HttpClient _http;
     private readonly ISettingsService _settings;
     private readonly string _deviceId;
+    private readonly SemaphoreSlim _apiDetectLock = new(1, 1);
+    private bool _isApiBaseResolved;
 
     public DataService(HttpClient http, ISettingsService settings)
     {
@@ -21,8 +23,49 @@ public class DataService : IDataService
 
     private string ApiRoot => _settings.ApiBaseUrl.Trim().TrimEnd('/');
 
+    private async Task EnsureApiBaseResolvedAsync(CancellationToken cancellationToken = default)
+    {
+        if (_isApiBaseResolved)
+            return;
+
+        await _apiDetectLock.WaitAsync(cancellationToken);
+        try
+        {
+            if (_isApiBaseResolved)
+                return;
+
+            foreach (var candidate in _settings.GetApiBaseCandidates())
+            {
+                if (await CanReachApiAsync(candidate, cancellationToken))
+                {
+                    _settings.ApiBaseUrl = candidate;
+                    _isApiBaseResolved = true;
+                    return;
+                }
+            }
+        }
+        finally
+        {
+            _apiDetectLock.Release();
+        }
+    }
+
+    private async Task<bool> CanReachApiAsync(string baseUrl, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var response = await _http.GetAsync($"{baseUrl.TrimEnd('/')}/api/Languages", cancellationToken);
+            return response.IsSuccessStatusCode;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     public async Task<List<Poi>> GetPoisAsync(CancellationToken cancellationToken = default)
     {
+        await EnsureApiBaseResolvedAsync(cancellationToken);
         try
         {
             var response = await _http.GetAsync($"{ApiRoot}/api/Poi", cancellationToken);
@@ -44,6 +87,7 @@ public class DataService : IDataService
 
     public async Task<Poi?> GetPoiByIdAsync(int poiId, CancellationToken cancellationToken = default)
     {
+        await EnsureApiBaseResolvedAsync(cancellationToken);
         try
         {
             var response = await _http.GetAsync($"{ApiRoot}/api/Poi/{poiId}", cancellationToken);
@@ -61,6 +105,7 @@ public class DataService : IDataService
 
     public async Task<PoiDetailDto?> GetPoiDetailAsync(int poiId, CancellationToken cancellationToken = default)
     {
+        await EnsureApiBaseResolvedAsync(cancellationToken);
         try
         {
             var response = await _http.GetAsync($"{ApiRoot}/api/Poi/{poiId}/detail", cancellationToken);
@@ -92,6 +137,7 @@ public class DataService : IDataService
 
     public async Task<AuthResponseDto?> LoginAsync(string email, string password, CancellationToken cancellationToken = default)
     {
+        await EnsureApiBaseResolvedAsync(cancellationToken);
         try
         {
             var response = await _http.PostAsJsonAsync($"{ApiRoot}/api/Auth/login",
@@ -110,6 +156,7 @@ public class DataService : IDataService
 
     public async Task<AuthResponseDto?> RegisterAsync(string name, string email, string password, CancellationToken cancellationToken = default)
     {
+        await EnsureApiBaseResolvedAsync(cancellationToken);
         try
         {
             var response = await _http.PostAsJsonAsync($"{ApiRoot}/api/Auth/register",
@@ -128,6 +175,7 @@ public class DataService : IDataService
 
     public async Task<List<ReviewListItemDto>> GetRecentReviewsAsync(int take = 30, CancellationToken cancellationToken = default)
     {
+        await EnsureApiBaseResolvedAsync(cancellationToken);
         take = Math.Clamp(take, 1, 100);
         try
         {
@@ -147,6 +195,7 @@ public class DataService : IDataService
 
     public async Task<List<ReviewListItemDto>> GetPoiReviewsAsync(int poiId, CancellationToken cancellationToken = default)
     {
+        await EnsureApiBaseResolvedAsync(cancellationToken);
         try
         {
             var response = await _http.GetAsync($"{ApiRoot}/api/Reviews/poi/{poiId}", cancellationToken);
@@ -165,6 +214,7 @@ public class DataService : IDataService
 
     public async Task<ReviewListItemDto?> PostReviewAsync(CreateReviewDto dto, CancellationToken cancellationToken = default)
     {
+        await EnsureApiBaseResolvedAsync(cancellationToken);
         try
         {
             var response = await _http.PostAsJsonAsync($"{ApiRoot}/api/Reviews", dto, cancellationToken);
@@ -182,6 +232,7 @@ public class DataService : IDataService
 
     public async Task TrackEventAsync(int? poiId, string eventType, int? listenedDurationSec = null, string? languageCode = null, CancellationToken cancellationToken = default)
     {
+        await EnsureApiBaseResolvedAsync(cancellationToken);
         if (string.IsNullOrWhiteSpace(eventType))
             return;
 
@@ -205,6 +256,7 @@ public class DataService : IDataService
 
     public async Task<List<LanguageListItemDto>> GetLanguagesAsync(CancellationToken cancellationToken = default)
     {
+        await EnsureApiBaseResolvedAsync(cancellationToken);
         try
         {
             var response = await _http.GetAsync($"{ApiRoot}/api/Languages", cancellationToken);
@@ -230,6 +282,7 @@ public class DataService : IDataService
 
     public async Task<QrResolveDto?> ResolveQrAsync(string scannedPayload, CancellationToken cancellationToken = default)
     {
+        await EnsureApiBaseResolvedAsync(cancellationToken);
         var token = ExtractQrToken(scannedPayload);
         if (string.IsNullOrEmpty(token))
             return null;

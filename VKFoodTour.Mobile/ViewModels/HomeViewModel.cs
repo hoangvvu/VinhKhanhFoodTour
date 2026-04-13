@@ -1,6 +1,7 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using System.Collections.ObjectModel;
+using VKFoodTour.Mobile.Localization;
 using VKFoodTour.Mobile.Models;
 using VKFoodTour.Mobile.Services;
 using VKFoodTour.Mobile.Views;
@@ -204,7 +205,7 @@ public partial class HomeViewModel : ObservableObject
     {
         if (NearestPoi != null)
         {
-            NowPlayingText = $"Đang phát thuyết minh: {NearestPoi.Name}";
+            NowPlayingText = $"{_localization.GetString("Player_Play")} - {NearestPoi.Name}";
             // Sau này sẽ gọi Service phát Audio tại đây
         }
     }
@@ -212,7 +213,7 @@ public partial class HomeViewModel : ObservableObject
     [RelayCommand]
     private void Stop()
     {
-        NowPlayingText = string.Empty;
+        NowPlayingText = _localization.GetString("Home_AutoNarrationFallback");
     }
 }
 
@@ -378,7 +379,6 @@ public partial class PlayerViewModel : ObservableObject
 // ═══════════════════════════════════════════════════════
 public partial class ProfileViewModel : ObservableObject
 {
-    private readonly ISettingsService _settings;
     private readonly IDataService _data;
     private readonly IFavoriteService _favorites;
     private readonly ILocalizationService _localization;
@@ -388,12 +388,6 @@ public partial class ProfileViewModel : ObservableObject
 
     [ObservableProperty]
     private int favoriteCount;
-
-    [ObservableProperty]
-    private string apiBaseUrl = string.Empty;
-
-    [ObservableProperty]
-    private string connectionStatus = string.Empty;
 
     [ObservableProperty]
     private ObservableCollection<LanguagePickerItem> languageOptions = new();
@@ -422,24 +416,13 @@ public partial class ProfileViewModel : ObservableObject
     [ObservableProperty]
     private string uiLanguageLabel = string.Empty;
 
-    [ObservableProperty]
-    private string uiApiHint = string.Empty;
-
-    [ObservableProperty]
-    private string uiSaveApi = string.Empty;
-
-    [ObservableProperty]
-    private string uiTestApi = string.Empty;
-
-    public ProfileViewModel(ISettingsService settings, IDataService data, IFavoriteService favorites, ILocalizationService localization)
+    public ProfileViewModel(IDataService data, IFavoriteService favorites, ILocalizationService localization)
     {
-        _settings = settings;
         _data = data;
         _favorites = favorites;
         _localization = localization;
         _localization.LanguageChanged += (_, _) =>
             MainThread.BeginInvokeOnMainThread(RefreshProfileUiStrings);
-        ApiBaseUrl = _settings.ApiBaseUrl;
         FavoriteCount = _favorites.Count;
         RefreshProfileUiStrings();
     }
@@ -455,12 +438,13 @@ public partial class ProfileViewModel : ObservableObject
     {
         var list = await _data.GetLanguagesAsync(cancellationToken);
         var items = list
+            .Where(l => TranslationStrings.SupportsLanguage(l.Code))
             .Select(l => new LanguagePickerItem(l.Code, string.IsNullOrWhiteSpace(l.Name) ? l.Code : l.Name))
             .ToList();
 
         var cur = _localization.CurrentLanguageCode;
         if (!items.Any(i => i.Code.Equals(cur, StringComparison.OrdinalIgnoreCase)))
-            items.Insert(0, new LanguagePickerItem(cur, cur));
+            items.Insert(0, new LanguagePickerItem("vi", "Tiếng Việt"));
 
         LanguageOptions = new ObservableCollection<LanguagePickerItem>(items);
 
@@ -470,7 +454,6 @@ public partial class ProfileViewModel : ObservableObject
 
     public void SyncApiUrlFromSettings()
     {
-        ApiBaseUrl = _settings.ApiBaseUrl;
         FavoriteCount = _favorites.Count;
     }
 
@@ -483,31 +466,6 @@ public partial class ProfileViewModel : ObservableObject
         UiFavorites = _localization.GetString("Profile_Favorites");
         UiLogout = _localization.GetString("Profile_Logout");
         UiLanguageLabel = _localization.GetString("Profile_Language");
-        UiApiHint = _localization.GetString("Profile_ApiHint");
-        UiSaveApi = _localization.GetString("Profile_SaveApi");
-        UiTestApi = _localization.GetString("Profile_TestApi");
-    }
-
-    [RelayCommand]
-    private void SaveApiUrl()
-    {
-        _settings.ApiBaseUrl = ApiBaseUrl;
-        ConnectionStatus = _localization.GetString("Profile_ConnSaved");
-    }
-
-    [RelayCommand]
-    private async Task TestConnectionAsync()
-    {
-        _settings.ApiBaseUrl = ApiBaseUrl;
-        try
-        {
-            var list = await _data.GetPoisAsync();
-            ConnectionStatus = _localization.GetString("Profile_ConnOkFmt", list.Count);
-        }
-        catch (Exception ex)
-        {
-            ConnectionStatus = _localization.GetString("Profile_ConnErrFmt", ex.Message);
-        }
     }
 }
 

@@ -7,6 +7,9 @@ public interface ISettingsService
 
     /// <summary>Gốc API: chỉ scheme + host (+ port), không kèm đường dẫn. Ví dụ Dev Tunnel: https://abc-7105.region.devtunnels.ms</summary>
     string ApiBaseUrl { get; set; }
+
+    /// <summary>Danh sách endpoint API thử tự động kết nối (ưu tiên endpoint đã lưu).</summary>
+    IReadOnlyList<string> GetApiBaseCandidates();
 }
 
 public class SettingsService : ISettingsService
@@ -66,5 +69,29 @@ public class SettingsService : ISettingsService
             var normalized = NormalizeApiBase(value);
             Preferences.Default.Set(nameof(ApiBaseUrl), normalized);
         }
+    }
+
+    public IReadOnlyList<string> GetApiBaseCandidates()
+    {
+        var candidates = new List<string>();
+
+        void AddCandidate(string? value)
+        {
+            var normalized = NormalizeApiBase(value);
+            if (string.IsNullOrWhiteSpace(normalized))
+                return;
+            if (candidates.Any(x => x.Equals(normalized, StringComparison.OrdinalIgnoreCase)))
+                return;
+            candidates.Add(normalized);
+        }
+
+        AddCandidate(Preferences.Default.Get(nameof(ApiBaseUrl), string.Empty));
+        AddCandidate(DefaultApiBase());
+        AddCandidate(DevTunnelApiBase);
+        AddCandidate("http://localhost:5242");
+        AddCandidate("http://10.0.2.2:5242");
+        AddCandidate("http://127.0.0.1:5242");
+
+        return candidates;
     }
 }

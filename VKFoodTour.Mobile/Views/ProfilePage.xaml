@@ -41,16 +41,6 @@
                         BackgroundColor="#1A1818"/>
             </VerticalStackLayout>
 
-            <VerticalStackLayout Spacing="8">
-                <Label Text="{Binding UiApiHint}" FontSize="12" TextColor="#8A8078"/>
-                <Entry Text="{Binding ApiBaseUrl}" TextColor="#F0EBE3" PlaceholderColor="#5C5650"/>
-                <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
-                    <Button Grid.Column="0" Text="{Binding UiSaveApi}" Command="{Binding SaveApiUrlCommand}" BackgroundColor="#2E2A2A" TextColor="#F0EBE3"/>
-                    <Button Grid.Column="1" Text="{Binding UiTestApi}" Command="{Binding TestConnectionCommand}" BackgroundColor="#E8A020" TextColor="#111111"/>
-                </Grid>
-                <Label Text="{Binding ConnectionStatus}" FontSize="12" TextColor="#8A8078" LineBreakMode="WordWrap"/>
-            </VerticalStackLayout>
-
             <Button Text="{Binding UiLogout}"
                     Clicked="OnLogoutClicked"
                     BackgroundColor="#8B1E1E"
