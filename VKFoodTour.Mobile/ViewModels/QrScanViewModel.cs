@@ -63,6 +63,7 @@ public partial class QrScanViewModel : ObservableObject
             _lastHandledAt = DateTime.UtcNow;
 
             _stallState.SetFromQr(dto);
+            await _data.TrackEventAsync(dto.PoiId, "qr_scan");
             StatusMessage = $"Đã nhận: {dto.Name}";
             ManualCode = string.Empty;
             await Shell.Current.GoToAsync($"//stalls");

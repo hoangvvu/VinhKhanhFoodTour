@@ -56,6 +56,7 @@ public partial class StallDetailViewModel : ObservableObject
     {
         if (string.IsNullOrWhiteSpace(url))
             return;
+        await _dataService.TrackEventAsync(PoiId, "listen_start");
         await Launcher.OpenAsync(url);
     }
 
@@ -64,6 +65,7 @@ public partial class StallDetailViewModel : ObservableObject
         var first = AudioItems.FirstOrDefault();
         if (first is null || string.IsNullOrWhiteSpace(first.Url))
             return;
+        await _dataService.TrackEventAsync(PoiId, "listen_start");
         await Launcher.OpenAsync(first.Url);
     }
 }

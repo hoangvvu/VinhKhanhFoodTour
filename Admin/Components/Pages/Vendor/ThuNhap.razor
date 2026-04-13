@@ -168,13 +168,13 @@
         qrScanCount = await Db.TrackingLogs
             .AsNoTracking()
             .CountAsync(t => t.PoiId == currentPoiId
-                          && t.EventType == "QR_SCAN"
+                          && t.EventType == "qr_scan"
                           && t.CreatedAt >= today);
 
         audioPlayCount = await Db.TrackingLogs
             .AsNoTracking()
             .CountAsync(t => t.PoiId == currentPoiId
-                          && t.EventType == "AUDIO_PLAY"
+                          && t.EventType == "listen_start"
                           && t.CreatedAt >= today);
 
         // 5. Thống kê REVIEWS

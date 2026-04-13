@@ -8,11 +8,13 @@ public class DataService : IDataService
 {
     private readonly HttpClient _http;
     private readonly ISettingsService _settings;
+    private readonly string _deviceId;
 
     public DataService(HttpClient http, ISettingsService settings)
     {
         _http = http;
         _settings = settings;
+        _deviceId = GetOrCreateDeviceId();
     }
 
     private string ApiRoot => _settings.ApiBaseUrl.Trim().TrimEnd('/');
@@ -138,6 +140,29 @@ public class DataService : IDataService
         }
     }
 
+    public async Task TrackEventAsync(int? poiId, string eventType, int? listenedDurationSec = null, string? languageCode = null, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(eventType))
+            return;
+
+        try
+        {
+            await _http.PostAsJsonAsync($"{ApiRoot}/api/Tracking/log",
+                new TrackingLogRequestDto
+                {
+                    DeviceId = _deviceId,
+                    PoiId = poiId,
+                    EventType = eventType,
+                    ListenedDurationSec = listenedDurationSec,
+                    LanguageCode = languageCode
+                }, cancellationToken);
+        }
+        catch
+        {
+            // Tracking should not block UX flows
+        }
+    }
+
     public async Task<QrResolveDto?> ResolveQrAsync(string scannedPayload, CancellationToken cancellationToken = default)
     {
         var token = ExtractQrToken(scannedPayload);
@@ -210,6 +235,18 @@ public class DataService : IDataService
         if (Uri.TryCreate(url, UriKind.Absolute, out _))
             return url;
         return $"{ApiRoot}{url}";
+    }
+
+    private static string GetOrCreateDeviceId()
+    {
+        const string key = "TrackingDeviceId";
+        var id = Preferences.Default.Get(key, string.Empty);
+        if (!string.IsNullOrWhiteSpace(id))
+            return id;
+
+        id = $"vk-{Guid.NewGuid():N}";
+        Preferences.Default.Set(key, id);
+        return id;
     }
 
     private static Poi MapToMobile(PoiDto d) =>
