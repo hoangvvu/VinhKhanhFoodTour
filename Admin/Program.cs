@@ -92,6 +92,7 @@ if (!string.IsNullOrWhiteSpace(googleClientId) && !string.IsNullOrWhiteSpace(goo
 builder.Services.AddAuthorization();
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddHttpClient<TtsService>();
+builder.Services.AddHttpClient<GoogleTranslateService>();
 
 builder.Services.AddScoped<PoiService>();
 builder.Services.AddScoped<MenuService>();

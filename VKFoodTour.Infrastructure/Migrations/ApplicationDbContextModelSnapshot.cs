@@ -207,8 +207,10 @@ namespace VKFoodTour.Infrastructure.Migrations
                         .HasColumnName("category");
 
                     b.Property<DateTime?>("CreatedAt")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
-                        .HasColumnName("created_at");
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("GETDATE()");
 
                     b.Property<string>("Description")
                         .HasMaxLength(500)
@@ -242,7 +244,7 @@ namespace VKFoodTour.Infrastructure.Migrations
 
                     b.HasKey("ItemId");
 
-                    b.ToTable("MENU_ITEMS");
+                    b.ToTable("MENU_ITEMS", (string)null);
                 });
 
             modelBuilder.Entity("VKFoodTour.Infrastructure.Entities.Narration", b =>
@@ -253,6 +255,11 @@ namespace VKFoodTour.Infrastructure.Migrations
                         .HasColumnName("narration_id");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("NarrationId"));
+
+                    b.Property<string>("AudioUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("audio_url");
 
                     b.Property<string>("Content")
                         .IsRequired()
@@ -281,11 +288,6 @@ namespace VKFoodTour.Infrastructure.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)")
                         .HasColumnName("tts_voice");
-
-                    b.Property<string>("AudioUrl")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)")
-                        .HasColumnName("audio_url");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2")
@@ -628,8 +630,9 @@ namespace VKFoodTour.Infrastructure.Migrations
                         .HasForeignKey("FoodId");
 
                     b.HasOne("VKFoodTour.Infrastructure.Entities.Poi", "Poi")
-                        .WithMany()
-                        .HasForeignKey("PoiId");
+                        .WithMany("Images")
+                        .HasForeignKey("PoiId")
+                        .OnDelete(DeleteBehavior.Cascade);
 
                     b.Navigation("Food");
 
@@ -708,6 +711,8 @@ namespace VKFoodTour.Infrastructure.Migrations
 
             modelBuilder.Entity("VKFoodTour.Infrastructure.Entities.Poi", b =>
                 {
+                    b.Navigation("Images");
+
                     b.Navigation("Narrations");
 
                     b.Navigation("QrCodes");
