@@ -11,6 +11,10 @@ public class DataService : IDataService
     private readonly string _deviceId;
     private readonly SemaphoreSlim _apiDetectLock = new(1, 1);
     private bool _isApiBaseResolved;
+    private static readonly HashSet<string> AllowedEventTypes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "move", "enter", "exit", "qr_scan", "listen_start", "listen_end"
+    };
 
     public DataService(HttpClient http, ISettingsService settings)
     {
@@ -233,8 +237,7 @@ public class DataService : IDataService
     public async Task TrackEventAsync(int? poiId, string eventType, int? listenedDurationSec = null, string? languageCode = null, CancellationToken cancellationToken = default)
     {
         await EnsureApiBaseResolvedAsync(cancellationToken);
-        if (string.IsNullOrWhiteSpace(eventType))
-            return;
+        var normalizedEventType = NormalizeEventType(eventType);
 
         try
         {
@@ -243,7 +246,7 @@ public class DataService : IDataService
                 {
                     DeviceId = _deviceId,
                     PoiId = poiId,
-                    EventType = eventType,
+                    EventType = normalizedEventType,
                     ListenedDurationSec = listenedDurationSec,
                     LanguageCode = languageCode
                 }, cancellationToken);
@@ -420,6 +423,20 @@ public class DataService : IDataService
         id = $"vk-{Guid.NewGuid():N}";
         Preferences.Default.Set(key, id);
         return id;
+    }
+
+    private static string NormalizeEventType(string? rawEventType)
+    {
+        if (string.IsNullOrWhiteSpace(rawEventType))
+            return "move";
+
+        var normalized = rawEventType.Trim().ToLowerInvariant();
+        if (normalized == "tour_start")
+            return "qr_scan";
+        if (normalized == "listen_skip")
+            return "listen_end";
+
+        return AllowedEventTypes.Contains(normalized) ? normalized : "move";
     }
 
     private Poi MapToMobile(PoiDto d) =>

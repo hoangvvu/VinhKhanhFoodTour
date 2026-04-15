@@ -34,12 +34,15 @@ public partial class LoginPage : ContentPage
             ModeLabel.Text = _localization.GetString("Login_ModeLogin");
             SubmitButton.Text = _localization.GetString("Login_SubmitLogin");
             ToggleButton.Text = _localization.GetString("Login_ToggleToRegister");
+            GuestButton.IsVisible = true;
+            GuestButton.Text = "Vao app khong can tai khoan";
         }
         else
         {
             ModeLabel.Text = _localization.GetString("Login_ModeRegister");
             SubmitButton.Text = _localization.GetString("Login_SubmitRegister");
             ToggleButton.Text = _localization.GetString("Login_ToggleToLogin");
+            GuestButton.IsVisible = false;
         }
     }
 
@@ -102,6 +105,25 @@ public partial class LoginPage : ContentPage
         finally
         {
             SubmitButton.IsEnabled = true;
+        }
+    }
+
+    private async void OnContinueAsGuest(object? sender, EventArgs e)
+    {
+        GuestButton.IsEnabled = false;
+        StatusLabel.Text = "Dang vao app voi che do khach...";
+        try
+        {
+            _session.EnterAnonymous();
+            await _dataService.TrackEventAsync(
+                poiId: null,
+                eventType: "move",
+                languageCode: $"anon:{_localization.CurrentLanguageCode}");
+            Application.Current!.Windows[0].Page = _shell;
+        }
+        finally
+        {
+            GuestButton.IsEnabled = true;
         }
     }
 }

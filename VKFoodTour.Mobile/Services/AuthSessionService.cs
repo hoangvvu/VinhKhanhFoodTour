@@ -7,13 +7,16 @@ public interface IAuthSessionService
 {
     AuthUserDto? CurrentUser { get; }
     bool IsLoggedIn { get; }
+    bool IsAnonymous { get; }
     void SetUser(AuthUserDto user);
+    void EnterAnonymous();
     void Logout();
 }
 
 public class AuthSessionService : IAuthSessionService
 {
     private const string UserKey = "AuthUser";
+    private const int AnonymousUserId = -1;
     private AuthUserDto? _currentUser;
 
     public AuthSessionService()
@@ -34,11 +37,24 @@ public class AuthSessionService : IAuthSessionService
 
     public AuthUserDto? CurrentUser => _currentUser;
     public bool IsLoggedIn => _currentUser is not null;
+    public bool IsAnonymous => _currentUser?.UserId == AnonymousUserId;
 
     public void SetUser(AuthUserDto user)
     {
         _currentUser = user;
         Preferences.Default.Set(UserKey, JsonSerializer.Serialize(user));
+    }
+
+    public void EnterAnonymous()
+    {
+        _currentUser = new AuthUserDto
+        {
+            UserId = AnonymousUserId,
+            Name = "Khach",
+            Email = string.Empty,
+            Role = "Anonymous"
+        };
+        Preferences.Default.Set(UserKey, JsonSerializer.Serialize(_currentUser));
     }
 
     public void Logout()

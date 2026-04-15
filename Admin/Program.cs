@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
+using System.Data;
 using System.Net;
 using System.Net.Http;
 using System.Security.Claims;
@@ -139,7 +140,8 @@ using (var scope = app.Services.CreateScope())
     try
     {
         var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-        await db.Database.MigrateAsync();
+        if (await ShouldRunMigrationsAsync(db))
+            await db.Database.MigrateAsync();
         await db.Database.ExecuteSqlRawAsync("""
 IF COL_LENGTH('NARRATIONS', 'audio_url') IS NULL
     ALTER TABLE NARRATIONS ADD audio_url NVARCHAR(2048) NULL;
@@ -162,6 +164,37 @@ ELSE
     {
         Console.WriteLine($"[LỖI CSDL / SEED]: {ex.Message}");
     }
+}
+
+static async Task<bool> ShouldRunMigrationsAsync(ApplicationDbContext db)
+{
+    // DB tạo bằng script thủ công thường đã có bảng nghiệp vụ nhưng không có __EFMigrationsHistory.
+    // Trường hợp đó bỏ qua Migrate để tránh lỗi "object already exists".
+    await using var conn = db.Database.GetDbConnection();
+    if (conn.State != ConnectionState.Open)
+        await conn.OpenAsync();
+
+    await using var cmd = conn.CreateCommand();
+    cmd.CommandText = """
+SELECT
+    CASE WHEN OBJECT_ID(N'dbo.__EFMigrationsHistory', N'U') IS NULL THEN 0 ELSE 1 END AS HasHistory,
+    CASE WHEN OBJECT_ID(N'dbo.LANGUAGES', N'U') IS NULL THEN 0 ELSE 1 END AS HasLanguages
+""";
+
+    await using var reader = await cmd.ExecuteReaderAsync();
+    if (!await reader.ReadAsync())
+        return true;
+
+    var hasHistory = reader.GetInt32(0) == 1;
+    var hasLanguages = reader.GetInt32(1) == 1;
+
+    if (!hasHistory && hasLanguages)
+    {
+        Console.WriteLine("[DB INIT] Skip EF migration: schema has been created manually.");
+        return false;
+    }
+
+    return true;
 }
 
 if (!app.Environment.IsDevelopment())

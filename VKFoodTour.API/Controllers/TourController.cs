@@ -11,6 +11,10 @@ public class TourController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
     private readonly IConfiguration _configuration;
+    private static readonly HashSet<string> AllowedEventTypes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "move", "enter", "exit", "qr_scan", "listen_start", "listen_end"
+    };
 
     public TourController(ApplicationDbContext context, IConfiguration configuration)
     {
@@ -123,7 +127,8 @@ public class TourController : ControllerBase
                 LanguageCode = narration.Language?.Code ?? "vi",
                 CoverImageUrl = NormalizeAudioUrl(poi.ImageUrl, apiBaseUrl),
                 Latitude = (double)poi.Latitude,
-                Longitude = (double)poi.Longitude
+                Longitude = (double)poi.Longitude,
+                PoiRadiusMeters = poi.Radius
             });
         }
 
@@ -156,7 +161,7 @@ public class TourController : ControllerBase
                 PoiId = priorityPoiId,
                 Latitude = (decimal)request.Latitude,
                 Longitude = (decimal)request.Longitude,
-                EventType = "tour_start",
+                EventType = "qr_scan",
                 LanguageCode = request.LanguageCode
             });
             await _context.SaveChangesAsync();
@@ -233,7 +238,8 @@ public class TourController : ControllerBase
                 LanguageCode = narration.Language?.Code ?? "vi",
                 CoverImageUrl = NormalizeAudioUrl(poi.ImageUrl, apiBaseUrl),
                 Latitude = (double)poi.Latitude,
-                Longitude = (double)poi.Longitude
+                Longitude = (double)poi.Longitude,
+                PoiRadiusMeters = poi.Radius
             });
         }
 
@@ -263,7 +269,7 @@ public class TourController : ControllerBase
             PoiId = dto.PoiId,
             Latitude = (decimal)(dto.Latitude ?? 0),
             Longitude = (decimal)(dto.Longitude ?? 0),
-            EventType = dto.EventType ?? "listen_end",
+            EventType = NormalizeEventType(dto.EventType),
             ListenedDurationSec = dto.ListenedDurationSec,
             LanguageCode = dto.LanguageCode
         });
@@ -334,6 +340,20 @@ public class TourController : ControllerBase
         var wordCount = content.Split(new[] { ' ', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries).Length;
         var seconds = (int)Math.Ceiling(wordCount / 2.5);
         return Math.Max(15, Math.Min(seconds, 300)); // 15s - 5 min
+    }
+
+    private static string NormalizeEventType(string? rawEventType)
+    {
+        if (string.IsNullOrWhiteSpace(rawEventType))
+            return "move";
+
+        var normalized = rawEventType.Trim().ToLowerInvariant();
+        if (normalized == "tour_start")
+            return "qr_scan";
+        if (normalized == "listen_skip")
+            return "listen_end";
+
+        return AllowedEventTypes.Contains(normalized) ? normalized : "move";
     }
 
     #endregion

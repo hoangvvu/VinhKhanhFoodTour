@@ -16,6 +16,7 @@
 
             <Button x:Name="SubmitButton" Text="Đăng nhập" Clicked="OnSubmit" BackgroundColor="#C8372D" TextColor="White"/>
             <Button x:Name="ToggleButton" Text="Chưa có tài khoản? Đăng ký" Clicked="OnToggleMode" BackgroundColor="#1A1818" TextColor="#F0EBE3"/>
+            <Button x:Name="GuestButton" Text="Vào app không cần tài khoản" Clicked="OnContinueAsGuest" BackgroundColor="#1A1818" TextColor="#F0EBE3"/>
             <Label x:Name="StatusLabel" TextColor="#E8A020"/>
         </VerticalStackLayout>
     </ScrollView>

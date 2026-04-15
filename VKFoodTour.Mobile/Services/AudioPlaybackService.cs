@@ -55,6 +55,21 @@ public sealed class AudioPlaybackService : IAudioPlaybackService
                 return false;
             }
 
+            var bytes = ms.ToArray();
+            if (LooksLikeHtml(bytes))
+            {
+                System.Diagnostics.Debug.WriteLine("[Audio] Payload is HTML instead of binary audio.");
+                ms.Dispose();
+                return false;
+            }
+
+            if (!LooksLikeAudioBinary(bytes))
+            {
+                System.Diagnostics.Debug.WriteLine("[Audio] Payload is not recognized as audio binary.");
+                ms.Dispose();
+                return false;
+            }
+
             ms.Position = 0;
             _playbackBuffer = ms;
             _player = _audioManager.CreatePlayer(ms);
@@ -79,5 +94,38 @@ public sealed class AudioPlaybackService : IAudioPlaybackService
     }
 
     private string NormalizeUrl(string url) =>
-        MediaUrlNormalizer.ToAbsolute(url, _settings.ApiBaseUrl) ?? url;
+        (MediaUrlNormalizer.ToAbsolute(url, _settings.ApiBaseUrl) ?? url)
+            .Replace("/uploads/uploads/", "/uploads/", StringComparison.OrdinalIgnoreCase);
+
+    private static bool LooksLikeHtml(byte[] bytes)
+    {
+        var take = Math.Min(bytes.Length, 512);
+        var head = System.Text.Encoding.UTF8.GetString(bytes, 0, take);
+        return head.Contains("<html", StringComparison.OrdinalIgnoreCase)
+               || head.Contains("<!doctype", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool LooksLikeAudioBinary(byte[] bytes)
+    {
+        if (bytes.Length < 12)
+            return false;
+
+        // MP3 ID3
+        if (bytes[0] == (byte)'I' && bytes[1] == (byte)'D' && bytes[2] == (byte)'3')
+            return true;
+
+        // MP3 frame sync
+        if (bytes[0] == 0xFF && (bytes[1] & 0xE0) == 0xE0)
+            return true;
+
+        // WAV RIFF
+        if (bytes[0] == (byte)'R' && bytes[1] == (byte)'I' && bytes[2] == (byte)'F' && bytes[3] == (byte)'F')
+            return true;
+
+        // MP4/M4A ftyp
+        if (bytes[4] == (byte)'f' && bytes[5] == (byte)'t' && bytes[6] == (byte)'y' && bytes[7] == (byte)'p')
+            return true;
+
+        return false;
+    }
 }

@@ -34,6 +34,9 @@ public class AudioQueueItemDto
     
     /// <summary>Longitude của POI.</summary>
     public double Longitude { get; set; }
+
+    /// <summary>Bán kính geofence của POI (meters).</summary>
+    public int PoiRadiusMeters { get; set; } = 20;
 }
 
 /// <summary>

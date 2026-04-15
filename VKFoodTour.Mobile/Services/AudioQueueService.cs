@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using Microsoft.Maui.Devices.Sensors;
 using VKFoodTour.Shared.DTOs;
 
 namespace VKFoodTour.Mobile.Services;
@@ -75,6 +76,8 @@ public class AudioQueueService : IAudioQueueService, IDisposable
     private CancellationTokenSource? _playbackCts;
     private bool _isDisposed;
     private DateTime _currentAudioStartTime;
+    private static readonly TimeSpan GeofencePollInterval = TimeSpan.FromSeconds(4);
+    private const int GeofenceGpsTimeoutSec = 8;
 
     public ObservableCollection<AudioQueueItemDto> Queue { get; } = new();
     public AudioQueueItemDto? CurrentlyPlaying { get; private set; }
@@ -152,10 +155,20 @@ public class AudioQueueService : IAudioQueueService, IDisposable
 
         CurrentlyPlaying = nextItem;
         IsPaused = false;
+        var token = _playbackCts?.Token ?? default;
+        var enteredGeofence = await WaitUntilEnterGeofenceAsync(nextItem, token);
+        if (!enteredGeofence)
+            return;
+
         _currentAudioStartTime = DateTime.UtcNow;
 
-        // Fire event on main thread
-        MainThread.BeginInvokeOnMainThread(() => 
+        await _dataService.TrackEventAsync(
+            nextItem.PoiId,
+            "enter",
+            languageCode: nextItem.LanguageCode,
+            cancellationToken: token);
+
+        MainThread.BeginInvokeOnMainThread(() =>
             OnAudioStarted?.Invoke(this, nextItem));
 
         // Track listen start
@@ -165,7 +178,7 @@ public class AudioQueueService : IAudioQueueService, IDisposable
             languageCode: nextItem.LanguageCode);
 
         // Play audio
-        var success = await _audioPlayer.PlayAsync(nextItem.AudioUrl, _playbackCts?.Token ?? default);
+        var success = await _audioPlayer.PlayAsync(nextItem.AudioUrl, token);
 
         if (!success)
         {
@@ -178,6 +191,64 @@ public class AudioQueueService : IAudioQueueService, IDisposable
         // Wait for audio to finish
         _ = WaitForAudioCompletionAsync(nextItem);
     }
+
+    private async Task<bool> WaitUntilEnterGeofenceAsync(AudioQueueItemDto item, CancellationToken cancellationToken)
+    {
+        var poiRadius = Math.Clamp(item.PoiRadiusMeters, 5, 200);
+        var thresholdMeters = poiRadius + 10; // nới nhẹ sai số GPS thực tế
+
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            var location = await TryGetCurrentLocationAsync(cancellationToken);
+            if (location is not null)
+            {
+                var distanceMeters = CalculateDistanceMeters(
+                    location.Latitude,
+                    location.Longitude,
+                    item.Latitude,
+                    item.Longitude);
+
+                if (distanceMeters <= thresholdMeters)
+                    return true;
+            }
+
+            await Task.Delay(GeofencePollInterval, cancellationToken);
+        }
+
+        return false;
+    }
+
+    private static async Task<Location?> TryGetCurrentLocationAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            var last = await Geolocation.GetLastKnownLocationAsync();
+            if (last is not null)
+                return last;
+
+            return await Geolocation.GetLocationAsync(
+                new GeolocationRequest(GeolocationAccuracy.Medium, TimeSpan.FromSeconds(GeofenceGpsTimeoutSec)),
+                cancellationToken);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static double CalculateDistanceMeters(double lat1, double lon1, double lat2, double lon2)
+    {
+        const double earthRadius = 6371000; // meters
+        var dLat = ToRadians(lat2 - lat1);
+        var dLon = ToRadians(lon2 - lon1);
+        var a = Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
+                Math.Cos(ToRadians(lat1)) * Math.Cos(ToRadians(lat2)) *
+                Math.Sin(dLon / 2) * Math.Sin(dLon / 2);
+        var c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
+        return earthRadius * c;
+    }
+
+    private static double ToRadians(double degrees) => degrees * (Math.PI / 180d);
 
     private async Task WaitForAudioCompletionAsync(AudioQueueItemDto item)
     {

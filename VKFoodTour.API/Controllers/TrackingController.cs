@@ -10,6 +10,10 @@ namespace VKFoodTour.Api.Controllers;
 public class TrackingController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
+    private static readonly HashSet<string> AllowedEventTypes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "move", "enter", "exit", "qr_scan", "listen_start", "listen_end"
+    };
 
     public TrackingController(ApplicationDbContext context)
     {
@@ -28,7 +32,7 @@ public class TrackingController : ControllerBase
             PoiId = dto.PoiId,
             Latitude = (decimal)(dto.Latitude ?? 0),
             Longitude = (decimal)(dto.Longitude ?? 0),
-            EventType = dto.EventType.Trim().ToLowerInvariant(),
+            EventType = NormalizeEventType(dto.EventType),
             ListenedDurationSec = dto.ListenedDurationSec,
             LanguageCode = dto.LanguageCode
         };
@@ -36,5 +40,19 @@ public class TrackingController : ControllerBase
         _context.TrackingLogs.Add(log);
         await _context.SaveChangesAsync();
         return Ok();
+    }
+
+    private static string NormalizeEventType(string? rawEventType)
+    {
+        if (string.IsNullOrWhiteSpace(rawEventType))
+            return "move";
+
+        var normalized = rawEventType.Trim().ToLowerInvariant();
+        if (normalized == "tour_start")
+            return "qr_scan";
+        if (normalized == "listen_skip")
+            return "listen_end";
+
+        return AllowedEventTypes.Contains(normalized) ? normalized : "move";
     }
 }

@@ -45,6 +45,12 @@
                     <h3 class="text-white fw-bold">@totalReviews</h3>
                 </div>
             </div>
+            <div class="col-md-3">
+                <div class="card bg-dark-card border-0 p-3 shadow-sm" style="border-radius: 12px; border-left: 4px solid #6f42c1 !important;">
+                    <div class="text-muted small fw-bold">TRUY CẬP ẨN DANH</div>
+                    <h3 class="text-white fw-bold">@anonymousVisits</h3>
+                </div>
+            </div>
         </div>
 
         <div class="row g-4">
@@ -138,7 +144,7 @@
     private bool isLoading = true;
 
     // Stats
-    private int totalEvents, uniqueDevices, avgListenSec, totalReviews;
+    private int totalEvents, uniqueDevices, avgListenSec, totalReviews, anonymousVisits;
     private List<NameCount> topVisitedPois = new();
     private List<LangStat> languageStats = new();
     private List<EventStat> eventTypeStats = new();
@@ -151,6 +157,11 @@
             // Tổng events
             totalEvents = await Db.TrackingLogs.CountAsync();
             uniqueDevices = await Db.TrackingLogs.Select(t => t.DeviceId).Distinct().CountAsync();
+            anonymousVisits = await Db.TrackingLogs
+                .CountAsync(t => t.PoiId == null &&
+                                 t.EventType == "move" &&
+                                 t.LanguageCode != null &&
+                                 t.LanguageCode.StartsWith("anon:"));
 
             // Thời gian nghe trung bình
             var listenLogs = Db.TrackingLogs.Where(t => t.EventType == "listen_end" && t.ListenedDurationSec != null);

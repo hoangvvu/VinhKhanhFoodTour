@@ -1,8 +1,10 @@
 ﻿using System.Net;
 using System.Text;
 using System.Text.Json;
+using System.Diagnostics;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
+using System.Net.Http.Headers;
 
 namespace Admin.Services;
 
@@ -44,11 +46,18 @@ public class TtsService
         if (string.IsNullOrWhiteSpace(text))
             return new TtsResult { ErrorMessage = "Nội dung mô tả đang trống." };
 
+        var normalizedText = NormalizeInputText(text);
+        if (normalizedText.Length > 4500)
+            normalizedText = normalizedText[..4500];
+
         var client = _httpFactory.CreateClient(HttpClientFptApi);
         var request = new HttpRequestMessage(HttpMethod.Post, "https://api.fpt.ai/hmi/tts/v5");
         request.Headers.TryAddWithoutValidation("api-key", _apiKey);
         request.Headers.TryAddWithoutValidation("voice", voiceCode);
-        request.Content = new StringContent(text, Encoding.UTF8, "text/plain");
+        request.Headers.TryAddWithoutValidation("speed", "0");
+        request.Headers.Accept.Clear();
+        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+        request.Content = new StringContent(normalizedText, Encoding.UTF8, "text/plain");
 
         using var response = await client.SendAsync(request, cancellationToken);
         var jsonString = await response.Content.ReadAsStringAsync(cancellationToken);
@@ -59,7 +68,19 @@ public class TtsService
             return new TtsResult { ErrorMessage = string.IsNullOrWhiteSpace(jsonString) ? $"FPT API lỗi {(int)response.StatusCode}." : jsonString };
         }
 
-        var audioUrl = TryExtractAudioUrl(jsonString);
+        var parsed = TryParseTtsResponse(jsonString);
+        if (!parsed.Success)
+        {
+            Console.WriteLine($"[TTS] FPT response reports failure: {parsed.ErrorMessage}");
+            return new TtsResult
+            {
+                ErrorMessage = string.IsNullOrWhiteSpace(parsed.ErrorMessage)
+                    ? "FPT từ chối tạo audio. Kiểm tra voice hoặc nội dung văn bản."
+                    : parsed.ErrorMessage
+            };
+        }
+
+        var audioUrl = parsed.AudioUrl;
         if (string.IsNullOrWhiteSpace(audioUrl))
         {
             Console.WriteLine($"[TTS] Không đọc được audio url từ FPT: {jsonString}");
@@ -115,11 +136,15 @@ public class TtsService
     private async Task<byte[]> DownloadAudioWithRetryAsync(string remoteUrl, CancellationToken cancellationToken)
     {
         var client = _httpFactory.CreateClient(HttpClientFptDownload);
-        const int maxAttempts = 28;
+        const int maxAttempts = 12;
+        var maxOverallWait = TimeSpan.FromSeconds(90);
+        var stopwatch = Stopwatch.StartNew();
 
         for (var attempt = 1; attempt <= maxAttempts; attempt++)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            if (stopwatch.Elapsed > maxOverallWait)
+                throw new TimeoutException($"Quá thời gian chờ tải audio ({maxOverallWait.TotalSeconds:0}s).");
 
             try
             {
@@ -184,8 +209,9 @@ public class TtsService
 
     private static async Task DelayBeforeRetryAsync(int attempt, CancellationToken cancellationToken)
     {
-        // 2s, 3s, 4s … tối đa ~14s mỗi lần — tổng thời gian chờ đủ cho CDN FPT.
-        var seconds = Math.Min(2 + attempt, 14);
+        // Giữ retry vừa đủ để CDN kịp tạo file nhưng không để UI chờ quá lâu.
+        // 1.5s, 2s, 2.5s... tối đa 6s mỗi lần.
+        var seconds = Math.Min(1 + attempt * 0.5, 6);
         await Task.Delay(TimeSpan.FromSeconds(seconds), cancellationToken);
     }
 
@@ -211,24 +237,63 @@ public class TtsService
         return true;
     }
 
-    private static string? TryExtractAudioUrl(string jsonString)
+    private static string NormalizeInputText(string input) =>
+        input.Replace("\r\n", "\n").Replace('\r', '\n').Trim();
+
+    private static (bool Success, string? AudioUrl, string? ErrorMessage) TryParseTtsResponse(string jsonString)
     {
-        using var jsonDoc = JsonDocument.Parse(jsonString);
-        var root = jsonDoc.RootElement;
-
-        if (root.TryGetProperty("async", out var asyncProp) && asyncProp.ValueKind == JsonValueKind.String)
-            return asyncProp.GetString();
-
-        if (root.TryGetProperty("url", out var urlProp) && urlProp.ValueKind == JsonValueKind.String)
-            return urlProp.GetString();
-
-        if (root.TryGetProperty("data", out var dataProp) && dataProp.ValueKind == JsonValueKind.Object)
+        try
         {
-            if (dataProp.TryGetProperty("async", out var nestedAsync) && nestedAsync.ValueKind == JsonValueKind.String)
-                return nestedAsync.GetString();
-            if (dataProp.TryGetProperty("url", out var nestedUrl) && nestedUrl.ValueKind == JsonValueKind.String)
-                return nestedUrl.GetString();
+            using var jsonDoc = JsonDocument.Parse(jsonString);
+            var root = jsonDoc.RootElement;
+
+            var errorCode = GetIntOrNull(root, "error");
+            var message = GetStringOrNull(root, "message")
+                          ?? GetStringOrNull(root, "msg");
+
+            if (errorCode.HasValue && errorCode.Value != 0)
+                return (false, null, message ?? $"FPT error code: {errorCode.Value}");
+
+            var audioUrl = GetStringOrNull(root, "async")
+                           ?? GetStringOrNull(root, "url")
+                           ?? GetStringOrNull(root, "async_url");
+
+            if (root.TryGetProperty("data", out var dataProp) && dataProp.ValueKind == JsonValueKind.Object)
+            {
+                audioUrl ??= GetStringOrNull(dataProp, "async")
+                            ?? GetStringOrNull(dataProp, "url")
+                            ?? GetStringOrNull(dataProp, "async_url");
+            }
+
+            return (true, audioUrl, message);
         }
+        catch (JsonException)
+        {
+            return (false, null, $"Phản hồi TTS không phải JSON hợp lệ: {jsonString}");
+        }
+    }
+
+    private static int? GetIntOrNull(JsonElement element, string propName)
+    {
+        if (!element.TryGetProperty(propName, out var prop))
+            return null;
+
+        if (prop.ValueKind == JsonValueKind.Number && prop.TryGetInt32(out var n))
+            return n;
+
+        if (prop.ValueKind == JsonValueKind.String && int.TryParse(prop.GetString(), out n))
+            return n;
+
+        return null;
+    }
+
+    private static string? GetStringOrNull(JsonElement element, string propName)
+    {
+        if (!element.TryGetProperty(propName, out var prop))
+            return null;
+
+        if (prop.ValueKind == JsonValueKind.String)
+            return prop.GetString();
 
         return null;
     }
