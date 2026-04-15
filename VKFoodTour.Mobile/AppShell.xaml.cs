@@ -22,7 +22,6 @@ namespace VKFoodTour.Mobile
             TabHome.Title = _localization.GetString("Shell_Home");
             TabMap.Title = _localization.GetString("Shell_Map");
             TabStalls.Title = _localization.GetString("Shell_Stalls");
-            TabQr.Title = _localization.GetString("Shell_Qr");
             TabProfile.Title = _localization.GetString("Shell_Profile");
         }
     }

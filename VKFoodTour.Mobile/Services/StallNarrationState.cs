@@ -15,6 +15,14 @@ public class StallNarrationState : IStallNarrationState
         }
     }
 
+    public QrResolveDto? Peek()
+    {
+        lock (_lock)
+        {
+            return _pending;
+        }
+    }
+
     public QrResolveDto? Consume()
     {
         lock (_lock)

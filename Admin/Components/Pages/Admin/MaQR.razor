@@ -1,5 +1,6 @@
 @page "/ma-qr"
 @using Microsoft.AspNetCore.Authorization
+@using global::Admin.Services
 @using VKFoodTour.Infrastructure.Data
 @using Microsoft.EntityFrameworkCore
 @attribute [Authorize(Roles = "Admin")]
@@ -7,15 +8,24 @@
 
 @inject ApplicationDbContext Db
 @inject IJSRuntime JS
+@inject PoiService PoiService
 
 <div class="container-fluid p-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h3 class="text-white fw-bold mb-0">QUẢN LÝ MÃ QR</h3>
+        <div class="d-flex gap-2">
+            <button class="btn btn-danger rounded-pill" @onclick="DeleteAllQrAsync">
+                <i class="bi bi-trash me-1"></i>Xóa toàn bộ QR cũ
+            </button>
+            <button class="btn btn-warning rounded-pill" @onclick="CreateMasterQrAsync">
+                <i class="bi bi-qr-code me-1"></i>Tạo QR tổng duy nhất
+            </button>
+        </div>
     </div>
 
     <div class="alert alert-secondary border-0 mb-4" style="border-radius: 12px; background-color: #1A1818; color: #F0EBE3;">
         <i class="bi bi-info-circle me-2 text-warning"></i>
-        Mã QR được <strong>chủ gian hàng tạo</strong> tại trang <strong>Mô tả &amp; hình ảnh</strong>. Danh sách này chỉ hiển thị QR từ gian hàng đã gán chủ quán.
+        Mã QR đầu phố do <strong>Admin quản lý</strong>. Chủ gian hàng chỉ quản lý TTS/audio.
     </div>
 
     @if (!string.IsNullOrEmpty(pageMessage))
@@ -35,6 +45,17 @@
     }
     else
     {
+        <div class="card bg-dark-card border-0 shadow-sm mb-4" style="border-radius: 16px;">
+            <div class="card-body d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="text-muted small">QR Tổng hệ thống</div>
+                    <h5 class="text-white mb-1">@PoiService.MasterTourQrToken</h5>
+                    <div class="text-muted small">Dùng 1 mã duy nhất để khởi động hàng đợi audio toàn tuyến.</div>
+                </div>
+                <img src="@GetQrImageUrl(PoiService.MasterTourQrToken)" class="img-fluid bg-white p-2 rounded-3" alt="Master QR" style="width: 96px; height: 96px;" />
+            </div>
+        </div>
+
         <div class="row g-3 mb-4">
             <div class="col-md-4">
                 <div class="card bg-dark-card border-0 p-3 shadow-sm" style="border-radius: 12px;">
@@ -86,6 +107,9 @@
                                 <button class="btn btn-sm btn-outline-info rounded-pill" type="button" @onclick="() => DownloadQr(qr.QrToken)" title="Tải QR">
                                     <i class="bi bi-download"></i>
                                 </button>
+                                <button class="btn btn-sm btn-outline-light rounded-pill" type="button" @onclick="() => RegenerateByDescription(qr)" title="Cập nhật token theo mô tả">
+                                    <i class="bi bi-arrow-repeat"></i>
+                                </button>
                                 <button class="btn btn-sm @(qr.IsActive ? "btn-outline-warning" : "btn-warning text-dark") rounded-pill" type="button" @onclick="() => ToggleQr(qr.QrId)" title="Bật/Tắt">
                                     <i class="bi @(qr.IsActive ? "bi-eye-slash" : "bi-eye")"></i>
                                 </button>
@@ -133,9 +157,12 @@
             {
                 QrId = q.QrId,
                 QrToken = q.QrToken,
+                PoiId = p.PoiId,
                 PoiName = p.Name,
+                PoiDescription = p.Description ?? "",
                 LocationNote = q.LocationNote ?? "",
                 IsActive = q.IsActive,
+                OwnerUserId = p.OwnerId ?? 0,
                 OwnerName = u != null ? u.Name : "—",
                 OwnerEmail = u != null ? u.Email : "—"
             }).ToListAsync();
@@ -160,16 +187,52 @@
         await LoadData();
     }
 
+    private async Task RegenerateByDescription(QrDisplayItem qr)
+    {
+        if (qr.PoiId <= 0 || qr.OwnerUserId <= 0)
+            return;
+
+        var token = await PoiService.RegenerateQrFromDescriptionAsync(
+            qr.PoiId,
+            qr.OwnerUserId,
+            qr.PoiDescription,
+            "QR dau pho (admin)");
+
+        if (!string.IsNullOrWhiteSpace(token))
+            pageMessage = $"Da cap nhat QR cho {qr.PoiName}: {token}";
+
+        await LoadData();
+    }
+
     private async Task DownloadQr(string token)
     {
         await JS.InvokeVoidAsync("open", GetQrImageUrl(token), "_blank");
+    }
+
+    private async Task DeleteAllQrAsync()
+    {
+        var deleted = await PoiService.DeleteAllQrAsync();
+        pageMessage = $"Đã xóa {deleted} mã QR cũ.";
+        await LoadData();
+    }
+
+    private async Task CreateMasterQrAsync()
+    {
+        var token = await PoiService.EnsureMasterTourQrAsync();
+        pageMessage = string.IsNullOrWhiteSpace(token)
+            ? "Không thể tạo QR tổng (chưa có quán active để gắn mã)."
+            : $"Đã tạo QR tổng: {token}";
+        await LoadData();
     }
 
     private sealed class QrDisplayItem
     {
         public int QrId { get; set; }
         public string QrToken { get; set; } = "";
+        public int PoiId { get; set; }
+        public int OwnerUserId { get; set; }
         public string PoiName { get; set; } = "";
+        public string PoiDescription { get; set; } = "";
         public string LocationNote { get; set; } = "";
         public string OwnerName { get; set; } = "";
         public string OwnerEmail { get; set; } = "";

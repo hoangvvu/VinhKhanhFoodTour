@@ -12,7 +12,9 @@ namespace VKFoodTour.Mobile.ViewModels;
 public partial class HomeViewModel : ObservableObject
 {
     private readonly IDataService _dataService;
+    private readonly IAudioPlaybackService _audio;
     private readonly IFavoriteService _favorites;
+    private readonly ISettingsService _settings;
     private readonly ILocalizationService _localization;
 
     // Các biến dùng [ObservableProperty] PHẢI viết thường chữ cái đầu (camelCase)
@@ -66,11 +68,15 @@ public partial class HomeViewModel : ObservableObject
     [ObservableProperty]
     private bool isBusy;
 
-    public HomeViewModel(IDataService dataService, IFavoriteService favorites, ILocalizationService localization)
+    public HomeViewModel(IDataService dataService, IAudioPlaybackService audio, IFavoriteService favorites, ISettingsService settings, ILocalizationService localization)
     {
         _dataService = dataService;
+        _audio = audio;
         _favorites = favorites;
+        _settings = settings;
         _localization = localization;
+
+        IsAutoPlayEnabled = _settings.AutoPlayEnabled;
 
         _localization.LanguageChanged += (_, _) =>
             MainThread.BeginInvokeOnMainThread(RefreshHomeUiStrings);
@@ -78,7 +84,6 @@ public partial class HomeViewModel : ObservableObject
         RefreshHomeUiStrings();
         NowPlayingText = _localization.GetString("Home_AutoNarrationFallback");
 
-        // Gọi hàm load dữ liệu khi khởi động
         _ = LoadDataAsync();
     }
 
@@ -195,6 +200,7 @@ public partial class HomeViewModel : ObservableObject
     private void ToggleAutoPlay()
     {
         IsAutoPlayEnabled = !IsAutoPlayEnabled;
+        _settings.AutoPlayEnabled = IsAutoPlayEnabled;
         NowPlayingText = IsAutoPlayEnabled
             ? _localization.GetString("Home_AutoOn")
             : _localization.GetString("Home_AutoOff");
@@ -203,16 +209,31 @@ public partial class HomeViewModel : ObservableObject
     [RelayCommand]
     private async Task PlayCommand()
     {
-        if (NearestPoi != null)
+        if (NearestPoi is null)
+            return;
+
+        NowPlayingText = $"{_localization.GetString("Player_Play")} - {NearestPoi.Name}";
+
+        var detail = await _dataService.GetPoiDetailAsync(NearestPoi.PoiId);
+        var audioUrl = detail?.AudioItems
+            .FirstOrDefault(a => string.Equals(a.SourceType, "auto_nearby", StringComparison.OrdinalIgnoreCase))?.Url
+            ?? detail?.AudioItems.FirstOrDefault()?.Url;
+
+        if (string.IsNullOrWhiteSpace(audioUrl))
         {
-            NowPlayingText = $"{_localization.GetString("Player_Play")} - {NearestPoi.Name}";
-            // Sau này sẽ gọi Service phát Audio tại đây
+            NowPlayingText = _localization.GetString("StallDetail_NoAudioFile");
+            return;
         }
+
+        var ok = await _audio.PlayAsync(audioUrl);
+        if (!ok)
+            NowPlayingText = _localization.GetString("StallDetail_PlaybackFail");
     }
 
     [RelayCommand]
     private void Stop()
     {
+        _audio.Stop();
         NowPlayingText = _localization.GetString("Home_AutoNarrationFallback");
     }
 }

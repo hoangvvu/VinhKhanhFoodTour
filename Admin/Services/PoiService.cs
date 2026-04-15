@@ -8,6 +8,7 @@ namespace Admin.Services;
 
 public class PoiService
 {
+    public const string MasterTourQrToken = "VINH-KHANH-TOUR";
     private readonly ApplicationDbContext _db;
 
     public PoiService(ApplicationDbContext db)
@@ -219,6 +220,49 @@ public class PoiService
         return true;
     }
 
+    /// <summary>Xoa toan bo QR hien co trong he thong (Admin).</summary>
+    public async Task<int> DeleteAllQrAsync()
+    {
+        var all = await _db.QrCodes.ToListAsync();
+        if (all.Count == 0)
+            return 0;
+
+        _db.QrCodes.RemoveRange(all);
+        await _db.SaveChangesAsync();
+        return all.Count;
+    }
+
+    /// <summary>Tao 1 QR duy nhat cho tour tong, do admin quan ly.</summary>
+    public async Task<string?> EnsureMasterTourQrAsync()
+    {
+        var existing = await _db.QrCodes
+            .AsNoTracking()
+            .FirstOrDefaultAsync(q => q.QrToken == MasterTourQrToken && q.IsActive);
+        if (existing is not null)
+            return existing.QrToken;
+
+        var anchorPoi = await _db.Pois
+            .AsNoTracking()
+            .Where(p => p.IsActive && p.OwnerId != null)
+            .OrderBy(p => p.Priority)
+            .ThenBy(p => p.PoiId)
+            .FirstOrDefaultAsync();
+
+        if (anchorPoi is null)
+            return null;
+
+        _db.QrCodes.Add(new QrCode
+        {
+            PoiId = anchorPoi.PoiId,
+            QrToken = MasterTourQrToken,
+            LocationNote = "QR tong tour do Admin quan ly",
+            IsActive = true
+        });
+
+        await _db.SaveChangesAsync();
+        return MasterTourQrToken;
+    }
+
     public async Task UpsertNarrationAutoAsync(int poiId, int languageId, string title, string content, string? ttsVoice, string? autoAudioUrl)
     {
         title = TruncateForDb(string.IsNullOrWhiteSpace(title) ? $"Gian hàng #{poiId}" : title, 200);
@@ -405,6 +449,18 @@ public class PoiService
         if (lang is null)
             throw new InvalidOperationException("Thiếu ngôn ngữ 'vi' trong bảng LANGUAGES. Khởi động lại app để chạy Seed.");
         return lang.LanguageId;
+    }
+
+    /// <summary>Lấy tất cả POI kèm theo Narrations và QrCodes để hiển thị trong trang quản lý Audio.</summary>
+    public async Task<List<Poi>> GetAllWithNarrationsAsync()
+    {
+        return await _db.Pois
+            .Include(p => p.Narrations.Where(n => n.IsActive))
+            .Include(p => p.QrCodes.Where(q => q.IsActive))
+            .OrderBy(p => p.Priority)
+            .ThenBy(p => p.Name)
+            .AsNoTracking()
+            .ToListAsync();
     }
 
     private static string ComputeShortHash(string input)

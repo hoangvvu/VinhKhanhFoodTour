@@ -1,13 +1,17 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Maui.Devices.Sensors;
+using VKFoodTour.Mobile.Models;
 using VKFoodTour.Mobile.Services;
+using VKFoodTour.Mobile.Views;
 
 namespace VKFoodTour.Mobile.ViewModels;
 
 public partial class QrScanViewModel : ObservableObject
 {
     private readonly IDataService _data;
-    private readonly IStallNarrationState _stallState;
+    private readonly ITourService _tourService;
+    private readonly IAudioQueueService _audioQueue;
     private readonly ILocalizationService _localization;
     private readonly SemaphoreSlim _scanGate = new(1, 1);
     private string _lastHandledPayload = string.Empty;
@@ -26,6 +30,9 @@ public partial class QrScanViewModel : ObservableObject
     private bool showManualEntry;
 
     [ObservableProperty]
+    private bool isLoading;
+
+    [ObservableProperty]
     private string uiTitle = string.Empty;
 
     [ObservableProperty]
@@ -37,10 +44,15 @@ public partial class QrScanViewModel : ObservableObject
     [ObservableProperty]
     private string uiManualButton = string.Empty;
 
-    public QrScanViewModel(IDataService data, IStallNarrationState stallState, ILocalizationService localization)
+    public QrScanViewModel(
+        IDataService data,
+        ITourService tourService,
+        IAudioQueueService audioQueue,
+        ILocalizationService localization)
     {
         _data = data;
-        _stallState = stallState;
+        _tourService = tourService;
+        _audioQueue = audioQueue;
         _localization = localization;
         _localization.LanguageChanged += (_, _) =>
             MainThread.BeginInvokeOnMainThread(RefreshQrUiStrings);
@@ -77,41 +89,92 @@ public partial class QrScanViewModel : ObservableObject
             return;
 
         var payload = raw.Trim();
+
+        // Debounce: tránh quét lại cùng mã trong 2 giây
         if (payload == _lastHandledPayload && (DateTime.UtcNow - _lastHandledAt).TotalSeconds < 2)
             return;
 
-        await _scanGate.WaitAsync();
+        if (!await _scanGate.WaitAsync(0))
+            return;
+
         try
         {
+            IsLoading = true;
             StatusMessage = _localization.GetString("Qr_Lookup");
-            var dto = await _data.ResolveQrAsync(payload);
-            if (dto is null)
+
+            // Lấy vị trí người dùng
+            var location = await TryGetCurrentLocationAsync();
+            if (location == null)
             {
-                StatusMessage = _localization.GetString("Qr_NotFound");
+                StatusMessage = "❌ Không lấy được vị trí GPS. Vui lòng bật định vị.";
+                return;
+            }
+
+            // Gọi API bắt đầu tour
+            StatusMessage = "🎙️ Đang tải danh sách audio...";
+            var response = await _tourService.StartTourAsync(
+                payload,
+                location.Latitude,
+                location.Longitude,
+                _localization.CurrentLanguageCode);
+
+            if (response == null || !response.Success)
+            {
+                StatusMessage = response?.Message ?? "❌ Không thể bắt đầu tour.";
+                _lastHandledPayload = string.Empty;
+                return;
+            }
+
+            if (response.AudioQueue.Count == 0)
+            {
+                StatusMessage = "⚠️ Không tìm thấy audio nào. Vui lòng thử lại sau.";
                 _lastHandledPayload = string.Empty;
                 return;
             }
 
             _lastHandledPayload = payload;
             _lastHandledAt = DateTime.UtcNow;
-
-            _stallState.SetFromQr(dto);
-            await _data.TrackEventAsync(dto.PoiId, "qr_scan");
-            StatusMessage = _localization.GetString("Qr_ReceivedFmt", dto.Name);
             ManualCode = string.Empty;
 
-            // Một lần điều hướng: tab Gian hàng + trang chi tiết (tránh lệch stack giữa hai GoToAsync).
-            await Shell.Current.GoToAsync(
-                $"//stalls/StallDetailPage?poiId={dto.PoiId}&fromQr=true");
+            // Khởi tạo queue và bắt đầu phát
+            await _audioQueue.InitializeQueueAsync(response.AudioQueue);
+
+            StatusMessage = $"✓ Đã tải {response.TotalStalls} quán. Đang chuyển sang Player...";
+
+            // Chuyển sang trang Tour Player
+            await Shell.Current.GoToAsync($"//tour");
+
+            // Bắt đầu phát audio
+            await _audioQueue.StartAsync();
         }
         catch (Exception ex)
         {
-            StatusMessage = _localization.GetString("Qr_ErrorFmt", ex.Message);
+            StatusMessage = $"❌ Lỗi: {ex.Message}";
             _lastHandledPayload = string.Empty;
+            System.Diagnostics.Debug.WriteLine($"[QR] Error: {ex}");
         }
         finally
         {
+            IsLoading = false;
             _scanGate.Release();
+        }
+    }
+
+    private static async Task<Location?> TryGetCurrentLocationAsync()
+    {
+        try
+        {
+            var last = await Geolocation.GetLastKnownLocationAsync();
+            if (last is not null)
+                return last;
+
+            return await Geolocation.GetLocationAsync(
+                new GeolocationRequest(GeolocationAccuracy.Medium, TimeSpan.FromSeconds(10)));
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[QR] Location error: {ex.Message}");
+            return null;
         }
     }
 }

@@ -26,18 +26,35 @@ public sealed class AudioPlaybackService : IAudioPlaybackService
             return false;
 
         var full = NormalizeUrl(url.Trim());
+        System.Diagnostics.Debug.WriteLine($"[Audio] PlayAsync → {full}");
         try
         {
-            using var response = await _http.GetAsync(full, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+            using var request = new HttpRequestMessage(HttpMethod.Get, full);
+            using var response = await _http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+
+            System.Diagnostics.Debug.WriteLine($"[Audio] HTTP {(int)response.StatusCode} | Content-Type: {response.Content.Headers.ContentType} | Length: {response.Content.Headers.ContentLength}");
+
             if (!response.IsSuccessStatusCode)
+                return false;
+
+            var ct = response.Content.Headers.ContentType?.MediaType ?? string.Empty;
+            if (ct.Contains("text/html", StringComparison.OrdinalIgnoreCase))
             {
-                System.Diagnostics.Debug.WriteLine($"[Audio] HTTP {(int)response.StatusCode} for {full}");
+                System.Diagnostics.Debug.WriteLine("[Audio] Received HTML instead of audio — likely a login/redirect page from Dev Tunnel.");
                 return false;
             }
 
             await using var remote = await response.Content.ReadAsStreamAsync(cancellationToken);
             var ms = new MemoryStream();
             await remote.CopyToAsync(ms, cancellationToken);
+
+            if (ms.Length < 64)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Audio] Response too small ({ms.Length} bytes) — not a valid audio file.");
+                ms.Dispose();
+                return false;
+            }
+
             ms.Position = 0;
             _playbackBuffer = ms;
             _player = _audioManager.CreatePlayer(ms);
@@ -46,7 +63,7 @@ public sealed class AudioPlaybackService : IAudioPlaybackService
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[Audio] {full}: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[Audio] {full}: {ex.GetType().Name}: {ex.Message}");
             Stop();
             return false;
         }

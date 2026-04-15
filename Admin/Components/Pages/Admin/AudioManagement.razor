@@ -1,0 +1,432 @@
+@page "/admin/audio-management"
+@using Microsoft.AspNetCore.Authorization    ← THÊM MỚI
+@using global::Admin.Services                        ← THÊM MỚI  
+@using VKFoodTour.Infrastructure.Entities    ← THÊM MỚI
+@attribute [Authorize(Roles = "Admin")]
+@inject PoiService PoiService
+@inject TtsService TtsService
+@inject IJSRuntime JS
+
+<PageTitle>Quản lý Audio Toàn Hệ Thống</PageTitle>
+
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col">
+            <h2 class="text-white mb-1"><i class="bi bi-soundwave me-2 text-danger"></i>Quản lý Audio Toàn Hệ Thống</h2>
+            <p class="text-muted">Tạo, xem và quản lý audio thuyết minh cho tất cả gian hàng</p>
+        </div>
+        <div class="col-auto">
+            <button class="btn btn-danger rounded-pill" @onclick="GenerateAllTtsAsync" disabled="@isGeneratingAll">
+                @if (isGeneratingAll)
+                {
+                    <span class="spinner-border spinner-border-sm me-2"></span>
+                }
+                <i class="bi bi-magic me-2"></i>Tạo TTS cho tất cả quán chưa có audio
+            </button>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(statusMessage))
+    {
+        <div class="alert @(isError ? "alert-danger" : "alert-success") alert-dismissible fade show" role="alert">
+            @statusMessage
+            <button type="button" class="btn-close" @onclick="() => statusMessage = null"></button>
+        </div>
+    }
+
+    <!-- Stats Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card bg-dark-card border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                    <div class="display-6 text-danger">@totalStalls</div>
+                    <div class="text-muted small">Tổng gian hàng</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-dark-card border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                    <div class="display-6 text-success">@stallsWithAudio</div>
+                    <div class="text-muted small">Có audio</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-dark-card border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                    <div class="display-6 text-warning">@stallsWithoutAudio</div>
+                    <div class="text-muted small">Chưa có audio</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-dark-card border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                    <div class="display-6 text-info">@stallsWithQr</div>
+                    <div class="text-muted small">Có mã QR</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- QR Code chung cho cả phố -->
+    <div class="card bg-dark-card border-0 shadow-sm mb-4">
+        <div class="card-body">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h5 class="text-white mb-2"><i class="bi bi-qr-code me-2 text-danger"></i>Mã QR Chung - Tour Vĩnh Khánh</h5>
+                    <p class="text-muted mb-0">
+                        Du khách quét mã này sẽ nghe audio của <strong>TẤT CẢ</strong> gian hàng trên phố, 
+                        sắp xếp theo khoảng cách từ vị trí hiện tại. Không cần mã riêng từng quán.
+                    </p>
+                </div>
+                <div class="col-md-4 text-end">
+                    <img src="@masterQrImageUrl" alt="Master QR" class="img-fluid" style="max-width: 150px;" />
+                    <div class="mt-2">
+                        <a href="@masterQrImageUrl" download="VinhKhanh-Tour-QR.png" class="btn btn-outline-light btn-sm rounded-pill">
+                            <i class="bi bi-download me-1"></i>Tải ảnh QR
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Audio List Table -->
+    <div class="card bg-dark-card border-0 shadow-sm">
+        <div class="card-header bg-transparent border-bottom border-secondary">
+            <div class="row align-items-center">
+                <div class="col">
+                    <h5 class="text-white mb-0">Danh sách Audio theo Gian hàng</h5>
+                </div>
+                <div class="col-auto">
+                    <select class="form-select form-select-sm bg-dark border-secondary text-white" style="width: auto;" @bind="filterStatus">
+                        <option value="all">Tất cả</option>
+                        <option value="with-audio">Có audio</option>
+                        <option value="without-audio">Chưa có audio</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-dark table-hover mb-0">
+                    <thead>
+                        <tr class="text-muted small">
+                            <th style="width: 50px;">STT</th>
+                            <th>Gian hàng</th>
+                            <th>Chủ quán</th>
+                            <th style="width: 100px;">Ưu tiên</th>
+                            <th>Audio Auto</th>
+                            <th>Audio QR</th>
+                            <th>Mã QR</th>
+                            <th style="width: 150px;">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var (poi, index) in FilteredPois.Select((p, i) => (p, i)))
+                        {
+                            <tr>
+                                <td class="text-muted">@(index + 1)</td>
+                                <td>
+                                    <div class="fw-bold text-white">@poi.Name</div>
+                                    <div class="text-muted small">@(poi.Address ?? "Chưa có địa chỉ")</div>
+                                </td>
+                                <td class="text-muted small">@(poi.OwnerId?.ToString() ?? "—")</td>
+                                <td>
+                                    <span class="badge bg-@(GetPriorityColor(poi.Priority))">@poi.Priority</span>
+                                </td>
+                                <td>
+                                    @if (!string.IsNullOrEmpty(GetAudioUrlAuto(poi)))
+                                    {
+                                        <button class="btn btn-sm btn-outline-success rounded-pill" 
+                                                @onclick="() => PlayAudio(GetAudioUrlAuto(poi))">
+                                            <i class="bi bi-play-fill"></i> Nghe
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary">Chưa có</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (!string.IsNullOrEmpty(GetAudioUrlQr(poi)))
+                                    {
+                                        <button class="btn btn-sm btn-outline-info rounded-pill" 
+                                                @onclick="() => PlayAudio(GetAudioUrlQr(poi))">
+                                            <i class="bi bi-play-fill"></i> Nghe
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary">Chưa có</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (poi.QrCodes?.Any(q => q.IsActive) == true)
+                                    {
+                                        <span class="badge bg-success">
+                                            @poi.QrCodes.First(q => q.IsActive).QrToken
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary">Chưa tạo</span>
+                                    }
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <button class="btn btn-outline-warning" title="Tạo TTS" 
+                                                @onclick="() => GenerateTtsForPoiAsync(poi)"
+                                                disabled="@(generatingPoiId == poi.PoiId)">
+                                            @if (generatingPoiId == poi.PoiId)
+                                            {
+                                                <span class="spinner-border spinner-border-sm"></span>
+                                            }
+                                            else
+                                            {
+                                                <i class="bi bi-mic"></i>
+                                            }
+                                        </button>
+                                        <button class="btn btn-outline-light" title="Tạo QR" 
+                                                @onclick="() => CreateQrForPoiAsync(poi)">
+                                            <i class="bi bi-qr-code"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Audio Player (floating) -->
+    @if (!string.IsNullOrEmpty(currentPlayingUrl))
+    {
+        <div class="position-fixed bottom-0 start-50 translate-middle-x mb-3 p-3 bg-dark rounded-pill shadow-lg border border-secondary"
+             style="z-index: 1050; min-width: 400px;">
+            <div class="d-flex align-items-center gap-3">
+                <button class="btn btn-danger btn-sm rounded-circle" @onclick="StopAudio">
+                    <i class="bi bi-stop-fill"></i>
+                </button>
+                <audio id="audioPlayer" controls autoplay class="flex-grow-1" style="height: 36px;">
+                    <source src="@currentPlayingUrl" type="audio/mpeg" />
+                </audio>
+                <button class="btn btn-outline-light btn-sm rounded-circle" @onclick="() => currentPlayingUrl = null">
+                    <i class="bi bi-x"></i>
+                </button>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private List<VKFoodTour.Infrastructure.Entities.Poi> allPois = new();
+    private string? statusMessage;
+    private bool isError;
+    private bool isGeneratingAll;
+    private int? generatingPoiId;
+    private string? currentPlayingUrl;
+    private string filterStatus = "all";
+
+    private int totalStalls => allPois.Count;
+    private int stallsWithAudio => allPois.Count(p => HasAnyAudio(p));
+    private int stallsWithoutAudio => allPois.Count(p => !HasAnyAudio(p));
+    private int stallsWithQr => allPois.Count(p => p.QrCodes?.Any(q => q.IsActive) == true);
+
+    private string masterQrImageUrl => "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" + 
+        Uri.EscapeDataString("vkfoodtour://VINH-KHANH-TOUR");
+
+    private IEnumerable<VKFoodTour.Infrastructure.Entities.Poi> FilteredPois => filterStatus switch
+    {
+        "with-audio" => allPois.Where(p => HasAnyAudio(p)),
+        "without-audio" => allPois.Where(p => !HasAnyAudio(p)),
+        _ => allPois
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        allPois = await PoiService.GetAllWithNarrationsAsync();
+    }
+
+    private bool HasAnyAudio(VKFoodTour.Infrastructure.Entities.Poi poi)
+    {
+        var narration = poi.Narrations?.FirstOrDefault(n => n.IsActive);
+        if (narration == null) return false;
+        return !string.IsNullOrEmpty(narration.AudioUrl) || 
+               !string.IsNullOrEmpty(narration.AudioUrlAuto) || 
+               !string.IsNullOrEmpty(narration.AudioUrlQr);
+    }
+
+    private string? GetAudioUrlAuto(VKFoodTour.Infrastructure.Entities.Poi poi)
+    {
+        var narration = poi.Narrations?.FirstOrDefault(n => n.IsActive);
+        return narration?.AudioUrlAuto ?? narration?.AudioUrl;
+    }
+
+    private string? GetAudioUrlQr(VKFoodTour.Infrastructure.Entities.Poi poi)
+    {
+        var narration = poi.Narrations?.FirstOrDefault(n => n.IsActive);
+        return narration?.AudioUrlQr;
+    }
+
+    private string GetPriorityColor(int priority) => priority switch
+    {
+        1 => "danger",
+        2 => "warning",
+        3 => "info",
+        4 => "secondary",
+        _ => "dark"
+    };
+
+    private async Task GenerateTtsForPoiAsync(VKFoodTour.Infrastructure.Entities.Poi poi)
+    {
+        if (string.IsNullOrWhiteSpace(poi.Description))
+        {
+            statusMessage = $"Quán '{poi.Name}' chưa có mô tả. Vui lòng thêm mô tả trước khi tạo TTS.";
+            isError = true;
+            return;
+        }
+
+        generatingPoiId = poi.PoiId;
+        StateHasChanged();
+
+        try
+        {
+            var tts = await TtsService.GenerateAndPersistLocalAsync(
+                poi.Description,
+                "lannhi",
+                $"poi{poi.PoiId}_{poi.Name}");
+
+            if (string.IsNullOrEmpty(tts.Url))
+            {
+                statusMessage = $"Không tạo được audio cho '{poi.Name}'. {tts.ErrorMessage}";
+                isError = true;
+                return;
+            }
+
+            var languageId = await PoiService.GetVietnameseLanguageIdAsync();
+            await PoiService.UpsertNarrationAutoAsync(poi.PoiId, languageId, poi.Name, poi.Description, "lannhi", tts.Url);
+
+            statusMessage = $"Đã tạo audio cho '{poi.Name}'.";
+            isError = false;
+            await LoadDataAsync();
+        }
+        catch (Exception ex)
+        {
+            statusMessage = $"Lỗi: {ex.Message}";
+            isError = true;
+        }
+        finally
+        {
+            generatingPoiId = null;
+            StateHasChanged();
+        }
+    }
+
+    private async Task GenerateAllTtsAsync()
+    {
+        isGeneratingAll = true;
+        StateHasChanged();
+
+        var poisWithoutAudio = allPois.Where(p => !HasAnyAudio(p) && !string.IsNullOrWhiteSpace(p.Description)).ToList();
+        var successCount = 0;
+        var failCount = 0;
+
+        foreach (var poi in poisWithoutAudio)
+        {
+            try
+            {
+                var tts = await TtsService.GenerateAndPersistLocalAsync(
+                    poi.Description!,
+                    "lannhi",
+                    $"poi{poi.PoiId}_{poi.Name}");
+
+                if (!string.IsNullOrEmpty(tts.Url))
+                {
+                    var languageId = await PoiService.GetVietnameseLanguageIdAsync();
+                    await PoiService.UpsertNarrationAutoAsync(poi.PoiId, languageId, poi.Name, poi.Description!, "lannhi", tts.Url);
+                    successCount++;
+                }
+                else
+                {
+                    failCount++;
+                }
+            }
+            catch
+            {
+                failCount++;
+            }
+
+            StateHasChanged();
+            await Task.Delay(500); // Rate limit
+        }
+
+        statusMessage = $"Đã tạo audio cho {successCount} quán. Thất bại: {failCount}.";
+        isError = failCount > 0;
+        isGeneratingAll = false;
+        await LoadDataAsync();
+    }
+
+    private async Task CreateQrForPoiAsync(VKFoodTour.Infrastructure.Entities.Poi poi)
+    {
+        if (poi.OwnerId == null)
+        {
+            statusMessage = $"Quán '{poi.Name}' chưa có chủ quán. Vui lòng gán chủ quán trước.";
+            isError = true;
+            return;
+        }
+
+        try
+        {
+            var token = await PoiService.EnsurePrimaryQrForVendorAsync(poi.PoiId, poi.OwnerId.Value, "Tại quán");
+            if (string.IsNullOrEmpty(token))
+            {
+                statusMessage = $"Không tạo được mã QR cho '{poi.Name}'.";
+                isError = true;
+            }
+            else
+            {
+                statusMessage = $"Đã tạo mã QR '{token}' cho '{poi.Name}'.";
+                isError = false;
+                await LoadDataAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            statusMessage = $"Lỗi: {ex.Message}";
+            isError = true;
+        }
+    }
+
+    private void PlayAudio(string? url)
+    {
+        if (string.IsNullOrEmpty(url)) return;
+        currentPlayingUrl = url.StartsWith("http") ? url : $"/uploads/{url.TrimStart('/')}";
+    }
+
+    private void StopAudio()
+    {
+        currentPlayingUrl = null;
+    }
+}
+
+<style>
+    .bg-dark-card {
+        background-color: #1a1a1a;
+    }
+    .table-dark {
+        --bs-table-bg: transparent;
+    }
+    .table-dark > tbody > tr:hover {
+        background-color: rgba(200, 55, 45, 0.1);
+    }
+</style>

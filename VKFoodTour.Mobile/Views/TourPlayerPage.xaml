@@ -1,0 +1,211 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage x:Class="VKFoodTour.Mobile.Views.TourPlayerPage"
+             xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:VKFoodTour.Mobile.ViewModels"
+             xmlns:dto="clr-namespace:VKFoodTour.Shared.DTOs;assembly=VKFoodTour.Shared"
+             xmlns:controls="clr-namespace:VKFoodTour.Mobile.Controls"
+             xmlns:zxing="clr-namespace:ZXing.Net.Maui.Controls;assembly=ZXing.Net.Maui.Controls"
+             x:DataType="vm:TourPlayerViewModel"
+             BackgroundColor="#0F0E0E"
+             Title="{Binding UiTourTitle}">
+
+    <Grid RowDefinitions="Auto, *, Auto" Padding="0">
+        
+        <!-- Header: Status Message -->
+        <Border Grid.Row="0" BackgroundColor="#1A1818" Padding="16" Margin="16,16,16,0">
+            <Border.StrokeShape>
+                <RoundRectangle CornerRadius="12"/>
+            </Border.StrokeShape>
+            <VerticalStackLayout Spacing="8">
+                <Label Text="{Binding StatusMessage}" 
+                       TextColor="#F0EBE3" 
+                       FontSize="14"
+                       HorizontalTextAlignment="Center"/>
+                
+                <!-- Progress -->
+                <HorizontalStackLayout HorizontalOptions="Center" Spacing="8" IsVisible="{Binding IsTourActive}">
+                    <Label Text="🎧" FontSize="16"/>
+                    <Label TextColor="#8A8078" FontSize="12">
+                        <Label.FormattedText>
+                            <FormattedString>
+                                <Span Text="{Binding CompletedStalls}"/>
+                                <Span Text="/"/>
+                                <Span Text="{Binding TotalStalls}"/>
+                                <Span Text=" quán"/>
+                            </FormattedString>
+                        </Label.FormattedText>
+                    </Label>
+                    <Label Text="•" TextColor="#8A8078"/>
+                    <Label Text="{Binding RemainingDuration, StringFormat='Còn {0}'}" TextColor="#8A8078" FontSize="12"/>
+                </HorizontalStackLayout>
+            </VerticalStackLayout>
+        </Border>
+
+        <!-- Main Content: Now Playing + Queue -->
+        <ScrollView Grid.Row="1" Padding="16">
+            <VerticalStackLayout Spacing="16">
+                
+                <!-- Now Playing Card -->
+                <Border BackgroundColor="#C8372D" Padding="16" IsVisible="{Binding IsPlaying}">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="16"/>
+                    </Border.StrokeShape>
+                    <Grid ColumnDefinitions="80, *" ColumnSpacing="16">
+                        <!-- Cover Image -->
+                        <Border Grid.Column="0" WidthRequest="80" HeightRequest="80" StrokeThickness="0">
+                            <Border.StrokeShape>
+                                <RoundRectangle CornerRadius="12"/>
+                            </Border.StrokeShape>
+                            <Grid>
+                                <BoxView Color="#2A2020" IsVisible="{Binding NowPlayingImage, Converter={StaticResource NullToBoolConverter}}"/>
+                                <Label Text="🍜" FontSize="32" HorizontalOptions="Center" VerticalOptions="Center" 
+                                       IsVisible="{Binding NowPlayingImage, Converter={StaticResource NullToBoolConverter}}"/>
+                                <Image Source="{Binding NowPlayingImage}" Aspect="AspectFill"
+                                       IsVisible="{Binding NowPlayingImage, Converter={StaticResource NotNullToBoolConverter}}"/>
+                            </Grid>
+                        </Border>
+                        
+                        <!-- Info -->
+                        <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="4">
+                            <Label Text="{Binding UiNowPlaying}" FontSize="11" TextColor="White" Opacity="0.7"/>
+                            <Label Text="{Binding NowPlayingName}" FontSize="18" FontFamily="BebasNeue" TextColor="White" LineBreakMode="TailTruncation"/>
+                            <Label Text="{Binding NowPlayingAddress}" FontSize="12" TextColor="White" Opacity="0.8" LineBreakMode="TailTruncation"/>
+                            <HorizontalStackLayout Spacing="8">
+                                <Label Text="📍" FontSize="12"/>
+                                <Label Text="{Binding NowPlayingDistance}" FontSize="12" TextColor="White" Opacity="0.9"/>
+                            </HorizontalStackLayout>
+                        </VerticalStackLayout>
+                    </Grid>
+                </Border>
+
+                <!-- Queue List -->
+                <VerticalStackLayout Spacing="8" IsVisible="{Binding IsTourActive}">
+                    <Label FontSize="16" FontFamily="BebasNeue" TextColor="#F0EBE3" Margin="0,8,0,0">
+                        <Label.FormattedText>
+                            <FormattedString>
+                                <Span Text="{Binding UiRemaining}"/>
+                                <Span Text=" ("/>
+                                <Span Text="{Binding RemainingCount}"/>
+                                <Span Text=")"/>
+                            </FormattedString>
+                        </Label.FormattedText>
+                    </Label>
+                    
+                    <CollectionView ItemsSource="{Binding QueueItems}" 
+                                    SelectionMode="None">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate x:DataType="dto:AudioQueueItemDto">
+                                <Border BackgroundColor="#1A1818" Padding="12" Margin="0,0,0,8">
+                                    <Border.StrokeShape>
+                                        <RoundRectangle CornerRadius="12"/>
+                                    </Border.StrokeShape>
+                                    <Grid ColumnDefinitions="50, *, Auto" ColumnSpacing="12">
+                                        <!-- Mini Cover -->
+                                        <Border Grid.Column="0" WidthRequest="50" HeightRequest="50" StrokeThickness="0">
+                                            <Border.StrokeShape>
+                                                <RoundRectangle CornerRadius="8"/>
+                                            </Border.StrokeShape>
+                                            <Grid>
+                                                <BoxView Color="#2A2020"/>
+                                                <Label Text="🍜" FontSize="20" HorizontalOptions="Center" VerticalOptions="Center"/>
+                                            </Grid>
+                                        </Border>
+                                        
+                                        <!-- Info -->
+                                        <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="2">
+                                            <Label Text="{Binding PoiName}" FontSize="14" TextColor="#F0EBE3" LineBreakMode="TailTruncation"/>
+                                            <Label Text="{Binding Address}" FontSize="11" TextColor="#8A8078" LineBreakMode="TailTruncation"/>
+                                        </VerticalStackLayout>
+                                        
+                                        <!-- Distance -->
+                                        <VerticalStackLayout Grid.Column="2" VerticalOptions="Center" HorizontalOptions="End">
+                                            <Label Text="{Binding DistanceMeters, StringFormat='{0:F0}m'}" FontSize="12" TextColor="#E8A020"/>
+                                            <Label Text="{Binding DurationSeconds, StringFormat='~{0}s'}" FontSize="10" TextColor="#8A8078"/>
+                                        </VerticalStackLayout>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </VerticalStackLayout>
+
+                <!-- Empty State when not active -->
+                <VerticalStackLayout Spacing="16" HorizontalOptions="Fill" VerticalOptions="Center" 
+                                     IsVisible="{Binding IsTourActive, Converter={StaticResource InvertedBoolConverter}}"
+                                     Margin="0,40,0,0">
+                    <Label Text="🎙️" FontSize="64" HorizontalOptions="Center"/>
+                    <Label Text="Quét mã QR để bắt đầu tour" FontSize="16" TextColor="#8A8078" HorizontalOptions="Center"/>
+                    <Label Text="Audio sẽ phát theo thứ tự từ quán gần nhất" FontSize="12" TextColor="#5A5050" HorizontalOptions="Center"/>
+
+                    <zxing:CameraBarcodeReaderView x:Name="BarcodeReader"
+                                                   HeightRequest="260"
+                                                   IsDetecting="True"
+                                                   IsTorchOn="False"
+                                                   IsVisible="{Binding ShowCameraScanner}"
+                                                   BarcodesDetected="OnBarcodesDetected"/>
+
+                    <Border IsVisible="{Binding ShowManualEntry}"
+                            BackgroundColor="#1A1818"
+                            Stroke="#2E2A2A"
+                            Padding="16">
+                        <Border.StrokeShape>
+                            <RoundRectangle CornerRadius="14"/>
+                        </Border.StrokeShape>
+                        <VerticalStackLayout Spacing="12">
+                            <Label Text="Nhập mã QR thủ công" TextColor="#8A8078" FontSize="12"/>
+                            <Entry Text="{Binding ManualCode}" Placeholder="VINH-KHANH-TOUR" TextColor="#F0EBE3" PlaceholderColor="#5C5650"/>
+                            <Button Text="Bắt đầu tour" Command="{Binding ResolveManualCommand}" BackgroundColor="#C8372D" TextColor="White"/>
+                        </VerticalStackLayout>
+                    </Border>
+                </VerticalStackLayout>
+            </VerticalStackLayout>
+        </ScrollView>
+
+        <!-- Bottom Controls -->
+        <Border Grid.Row="2" BackgroundColor="#1A1818" Padding="16" IsVisible="{Binding IsTourActive}">
+            <Grid ColumnDefinitions="*, Auto, Auto" ColumnSpacing="12">
+                <!-- Pause/Resume Button -->
+                <Button Grid.Column="0"
+                        Text="{Binding IsPaused, Converter={StaticResource PauseResumeTextConverter}}"
+                        Command="{Binding PauseResumeCommand}"
+                        BackgroundColor="#2E2A2A"
+                        TextColor="#F0EBE3"
+                        FontSize="14"
+                        HeightRequest="50"
+                        CornerRadius="25"/>
+                
+                <!-- Skip Button -->
+                <Button Grid.Column="1"
+                        Text="⏭️"
+                        Command="{Binding SkipCommand}"
+                        IsEnabled="{Binding CanSkip}"
+                        BackgroundColor="#C8372D"
+                        TextColor="White"
+                        FontSize="20"
+                        WidthRequest="60"
+                        HeightRequest="50"
+                        CornerRadius="25"/>
+                
+                <!-- Stop Button -->
+                <Button Grid.Column="2"
+                        Text="⏹️"
+                        Command="{Binding StopTourCommand}"
+                        BackgroundColor="#3A3030"
+                        TextColor="White"
+                        FontSize="20"
+                        WidthRequest="60"
+                        HeightRequest="50"
+                        CornerRadius="25"/>
+            </Grid>
+        </Border>
+
+        <!-- Loading Overlay -->
+        <Grid Grid.RowSpan="3" BackgroundColor="#80000000" IsVisible="{Binding IsLoading}">
+            <VerticalStackLayout HorizontalOptions="Center" VerticalOptions="Center" Spacing="16">
+                <ActivityIndicator IsRunning="True" Color="#C8372D" HeightRequest="50" WidthRequest="50"/>
+                <Label Text="Đang tải tour..." TextColor="White" FontSize="14"/>
+            </VerticalStackLayout>
+        </Grid>
+    </Grid>
+</ContentPage>

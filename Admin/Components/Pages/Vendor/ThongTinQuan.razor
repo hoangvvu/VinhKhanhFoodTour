@@ -134,39 +134,11 @@
 
             <div class="card bg-dark-card border-0 shadow-sm mb-4" style="border-radius: 16px;">
                 <div class="card-body p-4">
-                    <h5 class="text-white mb-3"><i class="bi bi-qr-code me-2 text-danger"></i>Mã QR quán</h5>
-                    <p class="text-muted small">
-                        Mã QR chứa <strong>token gắn với mô tả</strong> (đổi mô tả → nên bấm “Cập nhật mã QR theo mô tả”).
-                        App mobile quét token này để mở quán và phát audio.
+                    <h5 class="text-white mb-3"><i class="bi bi-qr-code me-2 text-danger"></i>Mã QR đầu phố</h5>
+                    <p class="text-muted small mb-0">
+                        Mã QR do <strong>Admin</strong> quản lý tại trang <strong>Quản lý mã QR</strong>.
+                        Gian hàng chỉ cần chuẩn bị nội dung TTS và file audio để app phát theo khoảng cách.
                     </p>
-                    <div class="p-3 bg-dark rounded border border-secondary text-center mb-3">
-                        <span class="text-danger fw-bold fs-5">@qrCode</span>
-                    </div>
-                    @if (qrCode != "Chưa tạo mã QR" && !string.IsNullOrEmpty(activeQrToken))
-                    {
-                        <div class="text-center p-3 bg-white rounded-4 mb-3">
-                            <img src="@GetQrImageUrl(activeQrToken)" style="width: 200px; height: 200px;" alt="QR" />
-                        </div>
-                    }
-                    @if (string.IsNullOrEmpty(activeQrToken))
-                    {
-                        <button type="button" class="btn btn-outline-danger w-100 rounded-pill" @onclick="CreateQrAsync" disabled="@isSaving">
-                            Tạo mã QR (token ngẫu nhiên)
-                        </button>
-                        <button type="button" class="btn btn-outline-light w-100 rounded-pill mt-2" @onclick="RegenerateQrFromDescriptionOnlyAsync" disabled="@isSaving">
-                            Tạo mã QR từ mô tả hiện tại
-                        </button>
-                    }
-                    else
-                    {
-                        <p class="text-muted small mb-0">Quán đã có mã QR. In hoặc tải ảnh mã phía trên.</p>
-                        <button type="button" class="btn btn-outline-danger w-100 rounded-pill mt-3" @onclick="RegenerateQrFromDescriptionOnlyAsync" disabled="@isSaving">
-                            Cập nhật mã QR theo mô tả hiện tại
-                        </button>
-                        <button type="button" class="btn btn-outline-light w-100 rounded-pill mt-2" @onclick="DeleteQrAsync" disabled="@isSaving">
-                            Xóa mã QR hiện tại để tạo lại
-                        </button>
-                    }
                 </div>
             </div>
 
@@ -293,8 +265,7 @@
 
     private static string GetQrImageUrl(string token)
     {
-        // Encode token thuần để tránh camera ngoài app tự mở URL/web.
-        var qrData = Uri.EscapeDataString(token);
+        var qrData = Uri.EscapeDataString($"vkfoodtour://{token}");
         return $"https://api.qrserver.com/v1/create-qr-code/?size=200x200&data={qrData}";
     }
 
@@ -363,7 +334,7 @@
         }
     }
 
-    /// <summary>Tạo lại token QR từ mô tả (không cần TTS / lưu riêng).</summary>
+    /// <summary>Tạo lại token QR từ mô tả + tự động tạo TTS audio để app mobile phát ngay khi quét.</summary>
     private async Task RegenerateQrFromDescriptionOnlyAsync()
     {
         if (currentPoiId == 0)
@@ -378,7 +349,10 @@
         }
 
         isSaving = true;
-        statusMessage = null;
+        isTtsBusy = true;
+        statusMessage = "Đang tạo mã QR và audio thuyết minh…";
+        isError = false;
+        StateHasChanged();
         try
         {
             await PoiService.UpdateStallInfoAsync(
@@ -389,6 +363,25 @@
                 latitude,
                 longitude,
                 mainImageUrl);
+
+            var langId = await PoiService.GetVietnameseLanguageIdAsync();
+            var stem = $"poi{currentPoiId}_vi";
+            var tts = await TtsService.GenerateAndPersistLocalAsync(poiDescription.Trim(), ttsVoice, stem);
+            if (!string.IsNullOrEmpty(tts.ErrorMessage))
+            {
+                statusMessage = $"Tạo TTS thất bại: {tts.ErrorMessage}";
+                isError = true;
+                return;
+            }
+
+            lastAutoAudioUrl = tts.Url;
+            await PoiService.UpsertNarrationAutoAsync(
+                currentPoiId,
+                langId,
+                poiName,
+                poiDescription.Trim(),
+                ttsVoice,
+                tts.Url);
 
             var token = await PoiService.RegenerateQrFromDescriptionAsync(
                 currentPoiId,
@@ -402,17 +395,18 @@
                 qrCode = token;
             }
 
-            statusMessage = "Đã cập nhật mã QR theo mô tả hiện tại.";
+            statusMessage = "Đã tạo mã QR + audio thuyết minh từ mô tả. App mobile quét QR sẽ tự động phát audio.";
             isError = false;
         }
         catch (Exception ex)
         {
-            statusMessage = ex.Message;
+            statusMessage = FormatSaveException(ex);
             isError = true;
         }
         finally
         {
             isSaving = false;
+            isTtsBusy = false;
             StateHasChanged();
         }
     }

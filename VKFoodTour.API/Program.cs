@@ -99,10 +99,27 @@ if (!Directory.Exists(uploadsPath))
 
 Directory.CreateDirectory(Path.Combine(uploadsPath, "narration"));
 
+var contentTypes = new Microsoft.AspNetCore.StaticFiles.FileExtensionContentTypeProvider();
+contentTypes.Mappings[".mp3"] = "audio/mpeg";
+contentTypes.Mappings[".wav"] = "audio/wav";
+contentTypes.Mappings[".m4a"] = "audio/mp4";
+contentTypes.Mappings[".ogg"] = "audio/ogg";
+contentTypes.Mappings[".aac"] = "audio/aac";
+contentTypes.Mappings[".heic"] = "image/heic";
+contentTypes.Mappings[".webp"] = "image/webp";
+
 app.UseStaticFiles(new StaticFileOptions
 {
     FileProvider = new PhysicalFileProvider(uploadsPath),
-    RequestPath = "/uploads"
+    RequestPath = "/uploads",
+    ContentTypeProvider = contentTypes,
+    ServeUnknownFileTypes = true,
+    DefaultContentType = "application/octet-stream",
+    OnPrepareResponse = ctx =>
+    {
+        ctx.Context.Response.Headers.Append("Access-Control-Allow-Origin", "*");
+        ctx.Context.Response.Headers.Append("Cache-Control", "public, max-age=3600");
+    }
 });
 
 // d. Xác thực (Authentication - Đăng nhập) và Phân quyền (Authorization)

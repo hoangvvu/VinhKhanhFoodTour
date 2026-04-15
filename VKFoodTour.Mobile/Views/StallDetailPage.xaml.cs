@@ -38,7 +38,7 @@ public partial class StallDetailPage : ContentPage
         if (_fromQr)
         {
             _fromQr = false;
-            var fromQr = _stallState.Consume();
+            var fromQr = _stallState.Peek();
             var qrAudio = fromQr?.PoiId == _poiId ? fromQr.AudioUrl : null;
             await _vm.PlayPreferredAudioFromQrAsync(qrAudio);
         }

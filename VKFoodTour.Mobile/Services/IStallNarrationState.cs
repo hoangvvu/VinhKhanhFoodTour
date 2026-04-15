@@ -6,5 +6,8 @@ namespace VKFoodTour.Mobile.Services;
 public interface IStallNarrationState
 {
     void SetFromQr(QrResolveDto dto);
+    /// <summary>Đọc mà không xóa — cho phép nhiều consumer đọc cùng state.</summary>
+    QrResolveDto? Peek();
+    /// <summary>Đọc và xóa — chỉ consumer cuối cùng mới gọi.</summary>
     QrResolveDto? Consume();
 }
