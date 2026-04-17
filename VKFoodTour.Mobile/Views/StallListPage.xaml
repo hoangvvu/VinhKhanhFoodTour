@@ -6,78 +6,74 @@
              xmlns:models="clr-namespace:VKFoodTour.Mobile.Models"
              xmlns:controls="clr-namespace:VKFoodTour.Mobile.Controls"
              x:DataType="vm:StallListViewModel"
-             BackgroundColor="#0F0E0E"
+             BackgroundColor="{StaticResource VKBg}"
              Shell.NavBarIsVisible="False">
 
-    <Grid RowDefinitions="Auto, *">
-        <Label Grid.Row="0" 
-               Text="{Binding UiPageTitle}" 
-               FontSize="32" 
-               FontFamily="BebasNeue" 
-               TextColor="#F0EBE3" 
-               Margin="20,20,20,10" />
+    <Grid RowDefinitions="Auto, Auto, *">
 
-        <CollectionView Grid.Row="1" 
-                        ItemsSource="{Binding Pois}" 
-                        Margin="20,0"
+        <!-- HEADER -->
+        <VerticalStackLayout Grid.Row="0" Padding="20,52,20,16" Spacing="2"
+                             BackgroundColor="{StaticResource VKBg}">
+            <Label Text="{Binding UiPageTitle}"
+                   FontSize="30" FontFamily="BebasNeue"
+                   TextColor="{StaticResource VKText}" CharacterSpacing="0.5"/>
+            <Label Text="Tất cả gian hàng trên phố Vĩnh Khánh"
+                   FontSize="12" TextColor="{StaticResource VKTextMuted}"/>
+        </VerticalStackLayout>
+
+        <BoxView Grid.Row="1" HeightRequest="1"
+                 Color="{StaticResource VKStroke}" Margin="20,0"/>
+
+        <!-- LIST -->
+        <CollectionView Grid.Row="2"
+                        ItemsSource="{Binding Pois}"
+                        Margin="16,8,16,0"
                         SelectionMode="Single"
                         SelectionChanged="OnStallSelected">
             <CollectionView.ItemTemplate>
                 <DataTemplate x:DataType="models:Poi">
-                    <Border BackgroundColor="#1A1818" 
-                            Stroke="#2E2A2A" 
-                            StrokeThickness="1"
-                            Padding="15" 
-                            Margin="0,0,0,15">
-
-                        <Border.StrokeShape>
-                            <RoundRectangle CornerRadius="10"/>
-                        </Border.StrokeShape>
-
-                        <Grid ColumnDefinitions="72, *, Auto">
-                            <controls:NetworkImageView Grid.Column="0"
-                                                       Url="{Binding CoverImageUrl}"
-                                                       Placeholder="{Binding CoverEmoji}"
-                                                       WidthRequest="72"
-                                                       HeightRequest="72"
-                                                       VerticalOptions="Center"
-                                                       Margin="0,0,12,0"/>
-
+                    <Border BackgroundColor="{StaticResource VKCard}"
+                            Stroke="{StaticResource VKStrokeBrush}"
+                            StrokeThickness="1" Padding="0" Margin="0,0,0,12">
+                        <Border.StrokeShape><RoundRectangle CornerRadius="16"/></Border.StrokeShape>
+                        <Grid ColumnDefinitions="80, *, Auto" ColumnSpacing="0">
+                            <Border Grid.Column="0" StrokeThickness="0" WidthRequest="80">
+                                <Border.StrokeShape><RoundRectangle CornerRadius="16,0,0,16"/></Border.StrokeShape>
+                                <controls:NetworkImageView
+                                    Url="{Binding CoverImageUrl}"
+                                    Placeholder="{Binding CoverEmoji}"
+                                    WidthRequest="80" HeightRequest="80"
+                                    VerticalOptions="Fill"/>
+                            </Border>
                             <VerticalStackLayout Grid.Column="1"
-                                                 VerticalOptions="Center"
-                                                 Spacing="4">
+                                                 Padding="14,12" VerticalOptions="Center" Spacing="3">
                                 <Label Text="{Binding Name}"
-                                       FontSize="20"
-                                       FontFamily="BebasNeue"
-                                       TextColor="#F0EBE3"/>
-
+                                       FontSize="18" FontFamily="BebasNeue"
+                                       TextColor="{StaticResource VKText}"
+                                       LineBreakMode="TailTruncation" CharacterSpacing="0.3"/>
                                 <Label Text="{Binding Address}"
-                                       FontSize="12"
-                                       TextColor="#8A8078"
+                                       FontSize="11" TextColor="{StaticResource VKTextMuted}"
                                        LineBreakMode="TailTruncation"/>
-
-                                <HorizontalStackLayout Spacing="5" Margin="0,5,0,0">
+                                <HorizontalStackLayout Spacing="6" Margin="0,2,0,0">
+                                    <Label Text="{Binding Rating, StringFormat='⭐ {0:0.0}'}"
+                                           FontSize="12" TextColor="{StaticResource VKGold}"
+                                           FontAttributes="Bold"/>
+                                    <Label Text="·" TextColor="{StaticResource VKTextFaint}" FontSize="12"/>
                                     <Label Text="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.UiPriorityLabel}"
-                                           FontSize="11"
-                                           TextColor="#8A8078"/>
+                                           FontSize="11" TextColor="{StaticResource VKTextFaint}"/>
                                     <Label Text="{Binding Priority}"
-                                           FontSize="11"
-                                           TextColor="#E8A020"
-                                           FontFamily="OpenSansSemibold"/>
+                                           FontSize="11" TextColor="{StaticResource VKGold}"
+                                           FontAttributes="Bold"/>
                                 </HorizontalStackLayout>
                             </VerticalStackLayout>
-
                             <Button Grid.Column="2"
                                     Text="{Binding FavoriteIcon}"
                                     Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.ToggleFavoriteCommand}"
                                     CommandParameter="{Binding .}"
-                                    BackgroundColor="#2E2A2A"
-                                    TextColor="#E8A020"
-                                    FontSize="18"
-                                    WidthRequest="44"
-                                    HeightRequest="44"
-                                    CornerRadius="22"
-                                    VerticalOptions="Center"/>
+                                    BackgroundColor="Transparent"
+                                    TextColor="{StaticResource VKGold}"
+                                    FontSize="20" WidthRequest="48" HeightRequest="48"
+                                    CornerRadius="0" VerticalOptions="Center" Margin="0,0,4,0"/>
                         </Grid>
                     </Border>
                 </DataTemplate>

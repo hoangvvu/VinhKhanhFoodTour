@@ -4,21 +4,57 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:vm="clr-namespace:VKFoodTour.Mobile.ViewModels"
              x:DataType="vm:PlayerViewModel"
-             BackgroundColor="#0F0E0E">
-    <VerticalStackLayout Padding="30" Spacing="25" VerticalOptions="Center">
-        <Border WidthRequest="220" HeightRequest="220" StrokeShape="RoundRectangle 110" BackgroundColor="#1A1818" Stroke="#C8372D">
-            <Label Text="🎧" FontSize="80" HorizontalOptions="Center" VerticalOptions="Center"/>
+             BackgroundColor="{StaticResource VKBg}"
+             Shell.NavBarIsVisible="False">
+
+    <VerticalStackLayout Padding="32" Spacing="24" VerticalOptions="Center">
+
+        <!-- Album art -->
+        <Border WidthRequest="220" HeightRequest="220"
+                HorizontalOptions="Center"
+                StrokeThickness="3" Stroke="{StaticResource VKRedBrush}">
+            <Border.StrokeShape><RoundRectangle CornerRadius="110"/></Border.StrokeShape>
+            <Border.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                    <GradientStop Color="#2A0808" Offset="0"/>
+                    <GradientStop Color="{StaticResource VKCard}" Offset="1"/>
+                </LinearGradientBrush>
+            </Border.Background>
+            <Label Text="🎧" FontSize="80"
+                   HorizontalOptions="Center" VerticalOptions="Center"/>
         </Border>
-        <Label Text="{Binding NowPlayingName}" FontSize="28" FontFamily="BebasNeue" TextColor="#E8A020" HorizontalOptions="Center"/>
-        <Label Text="{Binding NowPlayingText}" FontSize="14" TextColor="#F0EBE3" HorizontalOptions="Center" HorizontalTextAlignment="Center"/>
-        <Button Text="{Binding UiPlayAudio}"
-                Command="{Binding OpenAudioCommand}"
-                IsEnabled="{Binding HasAudio}"
-                BackgroundColor="#E8A020"
-                TextColor="#111111"
-                CornerRadius="25"
-                HeightRequest="50"/>
-        <Label Text="{Binding AudioHint}" FontSize="12" TextColor="#8A8078" HorizontalOptions="Center" HorizontalTextAlignment="Center"/>
-        <Button Text="{Binding UiStop}" Command="{Binding StopCommand}" BackgroundColor="#C8372D" CornerRadius="25" HeightRequest="50"/>
+
+        <!-- Track info -->
+        <VerticalStackLayout Spacing="6" HorizontalOptions="Center">
+            <Label Text="{Binding NowPlayingName}"
+                   FontSize="26" FontFamily="BebasNeue"
+                   TextColor="{StaticResource VKGold}"
+                   HorizontalOptions="Center" HorizontalTextAlignment="Center"
+                   CharacterSpacing="0.5"/>
+            <Label Text="{Binding NowPlayingText}"
+                   FontSize="14" TextColor="{StaticResource VKTextMuted}"
+                   HorizontalOptions="Center" HorizontalTextAlignment="Center"
+                   MaxLines="2" LineBreakMode="WordWrap"/>
+        </VerticalStackLayout>
+
+        <Label Text="{Binding AudioHint}"
+               FontSize="12" TextColor="{StaticResource VKTextFaint}"
+               HorizontalOptions="Center" HorizontalTextAlignment="Center"/>
+
+        <!-- Controls -->
+        <VerticalStackLayout Spacing="12">
+            <Button Text="{Binding UiPlayAudio}"
+                    Command="{Binding OpenAudioCommand}"
+                    IsEnabled="{Binding HasAudio}"
+                    BackgroundColor="{StaticResource VKGold}"
+                    TextColor="#111111" FontAttributes="Bold"
+                    CornerRadius="25" HeightRequest="52"/>
+            <Button Text="{Binding UiStop}"
+                    Command="{Binding StopCommand}"
+                    BackgroundColor="{StaticResource VKCard}"
+                    TextColor="{StaticResource VKTextMuted}"
+                    CornerRadius="25" HeightRequest="48"/>
+        </VerticalStackLayout>
+
     </VerticalStackLayout>
 </ContentPage>

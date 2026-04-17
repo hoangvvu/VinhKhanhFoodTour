@@ -5,43 +5,72 @@
              xmlns:vm="clr-namespace:VKFoodTour.Mobile.ViewModels"
              xmlns:zxing="clr-namespace:ZXing.Net.Maui.Controls;assembly=ZXing.Net.Maui.Controls"
              x:DataType="vm:QrScanViewModel"
-             BackgroundColor="#0F0E0E"
+             BackgroundColor="{StaticResource VKBg}"
              Shell.NavBarIsVisible="False">
 
     <Grid RowDefinitions="Auto, *, Auto" Padding="20" RowSpacing="16">
-        <Label Grid.Row="0"
-               Text="{Binding UiTitle}"
-               FontSize="28"
-               FontFamily="BebasNeue"
-               TextColor="#F0EBE3"/>
 
+        <!-- HEADER -->
+        <VerticalStackLayout Grid.Row="0" Spacing="4">
+            <Label Text="{Binding UiTitle}"
+                   FontSize="30" FontFamily="BebasNeue"
+                   TextColor="{StaticResource VKText}" CharacterSpacing="0.5"/>
+            <Label Text="Hướng camera vào mã QR trên bàn"
+                   FontSize="12" TextColor="{StaticResource VKTextMuted}"/>
+        </VerticalStackLayout>
+
+        <!-- SCANNER AREA -->
         <Grid Grid.Row="1">
-            <zxing:CameraBarcodeReaderView x:Name="BarcodeReader"
-                                             IsDetecting="True"
-                                             IsTorchOn="False"
-                                             IsVisible="{Binding ShowCameraScanner}"
-                                             BarcodesDetected="OnBarcodesDetected"/>
+            <Border StrokeThickness="2" Stroke="{StaticResource VKRedBrush}"
+                    IsVisible="{Binding ShowCameraScanner}">
+                <Border.StrokeShape><RoundRectangle CornerRadius="20"/></Border.StrokeShape>
+                <zxing:CameraBarcodeReaderView x:Name="BarcodeReader"
+                                               IsDetecting="True"
+                                               IsTorchOn="False"
+                                               BarcodesDetected="OnBarcodesDetected"/>
+            </Border>
 
             <Border IsVisible="{Binding ShowManualEntry}"
-                    BackgroundColor="#1A1818"
-                    Stroke="#2E2A2A"
-                    Padding="16"
-                    VerticalOptions="Center">
-                <Border.StrokeShape>
-                    <RoundRectangle CornerRadius="14"/>
-                </Border.StrokeShape>
-                <VerticalStackLayout Spacing="12">
-                    <Label Text="{Binding UiManualLabel}" TextColor="#8A8078" FontSize="12"/>
-                    <Entry Text="{Binding ManualCode}" Placeholder="{Binding UiManualPlaceholder}" TextColor="#F0EBE3" PlaceholderColor="#5C5650"/>
-                    <Button Text="{Binding UiManualButton}" Command="{Binding ResolveManualCommand}" BackgroundColor="#C8372D" TextColor="White"/>
+                    BackgroundColor="{StaticResource VKCard}"
+                    Stroke="{StaticResource VKStrokeBrush}" StrokeThickness="1"
+                    Padding="20" VerticalOptions="Center">
+                <Border.StrokeShape><RoundRectangle CornerRadius="20"/></Border.StrokeShape>
+                <VerticalStackLayout Spacing="14">
+                    <Label Text="🔑" FontSize="40" HorizontalOptions="Center"/>
+                    <Label Text="{Binding UiManualLabel}"
+                           TextColor="{StaticResource VKTextMuted}"
+                           FontSize="12" HorizontalOptions="Center" CharacterSpacing="1"/>
+                    <Border BackgroundColor="{StaticResource VKCardDeep}"
+                            Stroke="{StaticResource VKStrokeBrush}" StrokeThickness="1" Padding="4">
+                        <Border.StrokeShape><RoundRectangle CornerRadius="10"/></Border.StrokeShape>
+                        <Entry Text="{Binding ManualCode}"
+                               Placeholder="{Binding UiManualPlaceholder}"
+                               TextColor="{StaticResource VKText}"
+                               PlaceholderColor="{StaticResource VKTextFaint}"
+                               BackgroundColor="Transparent"
+                               HorizontalTextAlignment="Center"/>
+                    </Border>
+                    <Button Text="{Binding UiManualButton}"
+                            Command="{Binding ResolveManualCommand}"
+                            BackgroundColor="{StaticResource VKRed}"
+                            TextColor="White" FontAttributes="Bold"
+                            CornerRadius="12" HeightRequest="48"/>
                 </VerticalStackLayout>
             </Border>
         </Grid>
 
-        <Label Grid.Row="2"
-               Text="{Binding StatusMessage}"
-               FontSize="13"
-               TextColor="#E8A020"
-               LineBreakMode="WordWrap"/>
+        <!-- STATUS -->
+        <Border Grid.Row="2"
+                BackgroundColor="{StaticResource VKCard}"
+                Stroke="{StaticResource VKStrokeBrush}" StrokeThickness="1" Padding="14,12">
+            <Border.StrokeShape><RoundRectangle CornerRadius="12"/></Border.StrokeShape>
+            <HorizontalStackLayout Spacing="10">
+                <Label Text="●" TextColor="{StaticResource VKGold}" FontSize="12" VerticalOptions="Center"/>
+                <Label Text="{Binding StatusMessage}"
+                       FontSize="13" TextColor="{StaticResource VKGold}"
+                       LineBreakMode="WordWrap" VerticalOptions="Center"/>
+            </HorizontalStackLayout>
+        </Border>
+
     </Grid>
 </ContentPage>

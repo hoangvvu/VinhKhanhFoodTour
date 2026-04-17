@@ -8,110 +8,206 @@
              xmlns:vm="clr-namespace:VKFoodTour.Mobile.ViewModels"
              x:DataType="vm:StallDetailViewModel"
              Title="{Binding UiPageTitle}"
-             BackgroundColor="#0F0E0E">
+             BackgroundColor="{StaticResource VKBg}">
+
     <ScrollView>
-        <VerticalStackLayout Padding="16" Spacing="12">
-            <Grid ColumnDefinitions="*, Auto">
-                <VerticalStackLayout Grid.Column="0">
-                    <Label Text="{Binding Name}" FontSize="28" FontFamily="BebasNeue" TextColor="#F0EBE3"/>
-                    <Label Text="{Binding Address}" FontSize="13" TextColor="#8A8078"/>
+        <VerticalStackLayout Spacing="0">
+
+            <!-- HERO IMAGE -->
+            <Grid HeightRequest="260">
+                <controls:NetworkImageView Url="{Binding CoverImageUrl}"
+                                           Placeholder="{Binding CoverEmoji}"
+                                           HeightRequest="260"/>
+                <!-- Title overlay -->
+                <VerticalStackLayout VerticalOptions="End" Padding="16,0,16,16"
+                                     BackgroundColor="#CC000000">
+                    <Label Text="{Binding Name}"
+                           FontSize="28" FontFamily="BebasNeue"
+                           TextColor="White" CharacterSpacing="0.5"/>
+                    <Label Text="{Binding Address}"
+                           FontSize="12" TextColor="#CCFFFFFF"
+                           LineBreakMode="TailTruncation"/>
                 </VerticalStackLayout>
-                <Button Grid.Column="1"
-                        Text="{Binding FavoriteIcon}"
+                <!-- Fav button -->
+                <Button Text="{Binding FavoriteIcon}"
                         Command="{Binding ToggleFavoriteCommand}"
-                        BackgroundColor="#2E2A2A"
-                        TextColor="#E8A020"
-                        FontSize="22"
-                        WidthRequest="48"
-                        HeightRequest="48"
-                        CornerRadius="24"
-                        VerticalOptions="Start"/>
+                        BackgroundColor="#AA1A1818"
+                        TextColor="{StaticResource VKGold}"
+                        FontSize="20" WidthRequest="44" HeightRequest="44"
+                        CornerRadius="22"
+                        HorizontalOptions="End" VerticalOptions="Start"
+                        Margin="0,48,12,0"/>
             </Grid>
 
-            <controls:NetworkImageView Url="{Binding CoverImageUrl}" Placeholder="{Binding CoverEmoji}" HeightRequest="220"/>
+            <!-- DESCRIPTION -->
+            <VerticalStackLayout Padding="16,16,16,8" Spacing="8">
+                <Label Text="{Binding Description}"
+                       TextColor="{StaticResource VKTextMuted}"
+                       FontSize="14" LineBreakMode="WordWrap"/>
+            </VerticalStackLayout>
 
-            <Label Text="{Binding Description}" TextColor="#F0EBE3"/>
+            <!-- GALLERY -->
+            <VerticalStackLayout Spacing="8" Margin="0,8,0,0">
+                <Label Text="{Binding UiGallery}" Padding="16,0"
+                       FontSize="17" FontFamily="BebasNeue"
+                       TextColor="{StaticResource VKText}" CharacterSpacing="0.5"/>
+                <CollectionView ItemsSource="{Binding GalleryImages}" HeightRequest="110">
+                    <CollectionView.ItemsLayout>
+                        <LinearItemsLayout Orientation="Horizontal" ItemSpacing="8"/>
+                    </CollectionView.ItemsLayout>
+                    <CollectionView.Header><BoxView WidthRequest="16" Color="Transparent"/></CollectionView.Header>
+                    <CollectionView.Footer><BoxView WidthRequest="16" Color="Transparent"/></CollectionView.Footer>
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate x:DataType="dto:ImageItemDto">
+                            <Border StrokeThickness="0">
+                                <Border.StrokeShape><RoundRectangle CornerRadius="10"/></Border.StrokeShape>
+                                <controls:NetworkImageView Url="{Binding Url}"
+                                                           WidthRequest="110" HeightRequest="100"/>
+                            </Border>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+            </VerticalStackLayout>
 
-            <Label Text="{Binding UiGallery}" FontAttributes="Bold" TextColor="#F0EBE3"/>
-            <CollectionView ItemsSource="{Binding GalleryImages}" HeightRequest="120">
-                <CollectionView.ItemsLayout>
-                    <LinearItemsLayout Orientation="Horizontal" ItemSpacing="8"/>
-                </CollectionView.ItemsLayout>
-                <CollectionView.ItemTemplate>
-                    <DataTemplate x:DataType="dto:ImageItemDto">
-                        <controls:NetworkImageView Url="{Binding Url}" WidthRequest="120" HeightRequest="100"/>
-                    </DataTemplate>
-                </CollectionView.ItemTemplate>
-            </CollectionView>
+            <!-- THỰC ĐƠN -->
+            <VerticalStackLayout Spacing="10" Margin="16,16,16,0">
+                <Label Text="{Binding UiMenu}"
+                       FontSize="17" FontFamily="BebasNeue"
+                       TextColor="{StaticResource VKText}" CharacterSpacing="0.5"/>
+                <CollectionView ItemsSource="{Binding MenuItems}">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate x:DataType="dto:MenuItemDto">
+                            <Border Padding="0" Margin="0,0,0,10"
+                                    Stroke="{StaticResource VKStrokeBrush}" StrokeThickness="1"
+                                    BackgroundColor="{StaticResource VKCard}">
+                                <Border.StrokeShape><RoundRectangle CornerRadius="14"/></Border.StrokeShape>
+                                <Grid ColumnDefinitions="90, *">
+                                    <controls:NetworkImageView Grid.Column="0"
+                                                               Url="{Binding ImageUrl}"
+                                                               WidthRequest="90" HeightRequest="85"/>
+                                    <VerticalStackLayout Grid.Column="1"
+                                                         Padding="12,10" Spacing="4"
+                                                         VerticalOptions="Center">
+                                        <Label Text="{Binding Name}"
+                                               FontAttributes="Bold"
+                                               TextColor="{StaticResource VKText}"
+                                               FontSize="14" LineBreakMode="TailTruncation"/>
+                                        <Label Text="{Binding Description}"
+                                               FontSize="11" TextColor="{StaticResource VKTextMuted}"
+                                               MaxLines="2" LineBreakMode="WordWrap"/>
+                                        <Label Text="{Binding Price, StringFormat='{0:N0} ₫'}"
+                                               TextColor="{StaticResource VKGold}"
+                                               FontSize="14" FontAttributes="Bold"/>
+                                    </VerticalStackLayout>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+            </VerticalStackLayout>
 
-            <Label Text="{Binding UiMenu}" FontAttributes="Bold" TextColor="#F0EBE3"/>
-            <CollectionView ItemsSource="{Binding MenuItems}">
-                <CollectionView.ItemTemplate>
-                    <DataTemplate x:DataType="dto:MenuItemDto">
-                        <Border Padding="10" Margin="0,0,0,8" Stroke="#2E2A2A" BackgroundColor="#1A1818">
-                            <VerticalStackLayout>
-                                <Label Text="{Binding Name}" FontAttributes="Bold" TextColor="#F0EBE3"/>
-                                <controls:NetworkImageView Url="{Binding ImageUrl}" HeightRequest="90"/>
-                                <Label Text="{Binding Description}" FontSize="12" TextColor="#8A8078"/>
-                                <Label Text="{Binding Price, StringFormat='{0:N0} đ'}" TextColor="#E8A020"/>
-                            </VerticalStackLayout>
-                        </Border>
-                    </DataTemplate>
-                </CollectionView.ItemTemplate>
-            </CollectionView>
+            <!-- AUDIO -->
+            <VerticalStackLayout Spacing="10" Margin="16,8,16,0">
+                <Label Text="{Binding UiAudio}"
+                       FontSize="17" FontFamily="BebasNeue"
+                       TextColor="{StaticResource VKText}" CharacterSpacing="0.5"/>
+                <Label Text="{Binding PlaybackStatus}"
+                       FontSize="12" TextColor="{StaticResource VKGold}"
+                       LineBreakMode="WordWrap"
+                       IsVisible="{Binding PlaybackStatus, Converter={x:Static conv:StringNotNullOrEmptyConverter.Instance}}"/>
+                <CollectionView ItemsSource="{Binding AudioItems}">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate x:DataType="dto:AudioItemDto">
+                            <Border Padding="14,12" Margin="0,0,0,8"
+                                    Stroke="{StaticResource VKStrokeBrush}" StrokeThickness="1"
+                                    BackgroundColor="{StaticResource VKCard}">
+                                <Border.StrokeShape><RoundRectangle CornerRadius="12"/></Border.StrokeShape>
+                                <Grid ColumnDefinitions="*, Auto">
+                                    <VerticalStackLayout Grid.Column="0" Spacing="2" VerticalOptions="Center">
+                                        <Label Text="{Binding Title}"
+                                               FontAttributes="Bold"
+                                               TextColor="{StaticResource VKText}" FontSize="14"/>
+                                        <Label Text="{Binding SourceType}"
+                                               FontSize="11" TextColor="{StaticResource VKTextFaint}"/>
+                                    </VerticalStackLayout>
+                                    <Button Grid.Column="1"
+                                            Text="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.UiListen}"
+                                            Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.OpenAudioCommand}"
+                                            CommandParameter="{Binding Url}"
+                                            BackgroundColor="{StaticResource VKGold}"
+                                            TextColor="#111111" FontAttributes="Bold"/>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+            </VerticalStackLayout>
 
-            <Label Text="{Binding UiAudio}" FontAttributes="Bold" TextColor="#F0EBE3"/>
-            <Label Text="{Binding PlaybackStatus}"
-                   FontSize="12"
-                   TextColor="#E8A020"
-                   LineBreakMode="WordWrap"
-                   IsVisible="{Binding PlaybackStatus, Converter={x:Static conv:StringNotNullOrEmptyConverter.Instance}}"/>
-            <CollectionView ItemsSource="{Binding AudioItems}">
-                <CollectionView.ItemTemplate>
-                    <DataTemplate x:DataType="dto:AudioItemDto">
-                        <Grid ColumnDefinitions="*,Auto" Padding="8">
-                            <VerticalStackLayout>
-                                <Label Text="{Binding Title}" FontAttributes="Bold" TextColor="#F0EBE3"/>
-                                <Label Text="{Binding SourceType}" FontSize="11" TextColor="#8A8078"/>
-                            </VerticalStackLayout>
-                            <Button Grid.Column="1"
-                                    Text="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.UiListen}"
-                                    Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.OpenAudioCommand}"
-                                    CommandParameter="{Binding Url}"
-                                    BackgroundColor="#E8A020"
-                                    TextColor="#111111"/>
-                        </Grid>
-                    </DataTemplate>
-                </CollectionView.ItemTemplate>
-            </CollectionView>
+            <!-- ĐÁNH GIÁ -->
+            <VerticalStackLayout Spacing="10" Margin="16,16,16,0">
+                <Label Text="{Binding UiReviews}"
+                       FontSize="17" FontFamily="BebasNeue"
+                       TextColor="{StaticResource VKText}" CharacterSpacing="0.5"/>
+                <CollectionView ItemsSource="{Binding PoiReviews}">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate x:DataType="dto:ReviewListItemDto">
+                            <Border BackgroundColor="{StaticResource VKCard}"
+                                    Stroke="{StaticResource VKStrokeBrush}" StrokeThickness="1"
+                                    Padding="14,12" Margin="0,0,0,8">
+                                <Border.StrokeShape><RoundRectangle CornerRadius="12"/></Border.StrokeShape>
+                                <VerticalStackLayout Spacing="5">
+                                    <HorizontalStackLayout Spacing="8">
+                                        <Label Text="{Binding Rating, StringFormat='⭐ {0}/5'}"
+                                               TextColor="{StaticResource VKGold}"
+                                               FontAttributes="Bold" FontSize="13"/>
+                                        <Label Text="{Binding CreatedAt, StringFormat='{0:dd/MM/yyyy}'}"
+                                               FontSize="11" TextColor="{StaticResource VKTextFaint}"
+                                               VerticalOptions="Center"/>
+                                    </HorizontalStackLayout>
+                                    <Label Text="{Binding Comment}"
+                                           TextColor="{StaticResource VKText}"
+                                           FontSize="13" LineBreakMode="WordWrap"/>
+                                </VerticalStackLayout>
+                            </Border>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+            </VerticalStackLayout>
 
-            <Label Text="{Binding UiReviews}" FontAttributes="Bold" TextColor="#F0EBE3"/>
-            <CollectionView ItemsSource="{Binding PoiReviews}">
-                <CollectionView.ItemTemplate>
-                    <DataTemplate x:DataType="dto:ReviewListItemDto">
-                        <Border BackgroundColor="#1A1818" Stroke="#2E2A2A" Padding="10" Margin="0,0,0,8">
-                            <Border.StrokeShape>
-                                <RoundRectangle CornerRadius="8"/>
-                            </Border.StrokeShape>
-                            <VerticalStackLayout Spacing="4">
-                                <Label Text="{Binding Rating, StringFormat='⭐ {0}/5'}" TextColor="#E8A020"/>
-                                <Label Text="{Binding Comment}" TextColor="#F0EBE3" LineBreakMode="WordWrap"/>
-                                <Label Text="{Binding CreatedAt, StringFormat='{0:dd/MM/yyyy HH:mm}'}" FontSize="11" TextColor="#8A8078"/>
-                            </VerticalStackLayout>
-                        </Border>
-                    </DataTemplate>
-                </CollectionView.ItemTemplate>
-            </CollectionView>
+            <!-- GỬI ĐÁNH GIÁ -->
+            <Border Margin="16,16,16,32"
+                    BackgroundColor="{StaticResource VKCard}"
+                    Stroke="{StaticResource VKStrokeBrush}" StrokeThickness="1" Padding="16">
+                <Border.StrokeShape><RoundRectangle CornerRadius="16"/></Border.StrokeShape>
+                <VerticalStackLayout Spacing="12">
+                    <Label Text="{Binding UiAddReview}"
+                           FontSize="17" FontFamily="BebasNeue"
+                           TextColor="{StaticResource VKText}" CharacterSpacing="0.5"/>
+                    <Label Text="{Binding ReviewStatus}"
+                           FontSize="12" TextColor="{StaticResource VKTextMuted}"/>
+                    <Label Text="{Binding RatingLabel}"
+                           TextColor="{StaticResource VKGold}" FontSize="14" FontAttributes="Bold"/>
+                    <Slider Minimum="1" Maximum="5" Value="{Binding NewRating}"
+                            MinimumTrackColor="{StaticResource VKRed}"
+                            MaximumTrackColor="{StaticResource VKStroke}"
+                            ThumbColor="{StaticResource VKRed}"/>
+                    <Border BackgroundColor="{StaticResource VKCardDeep}"
+                            Stroke="{StaticResource VKStrokeBrush}" StrokeThickness="1" Padding="2">
+                        <Border.StrokeShape><RoundRectangle CornerRadius="10"/></Border.StrokeShape>
+                        <Editor Placeholder="{Binding UiReviewPlaceholder}"
+                                Text="{Binding NewComment}"
+                                TextColor="{StaticResource VKText}"
+                                PlaceholderColor="{StaticResource VKTextFaint}"
+                                HeightRequest="80" BackgroundColor="Transparent"/>
+                    </Border>
+                    <Button Text="{Binding UiSubmitReview}"
+                            Command="{Binding SubmitReviewCommand}"
+                            BackgroundColor="{StaticResource VKRed}"
+                            TextColor="White" FontAttributes="Bold"
+                            CornerRadius="12" HeightRequest="48"/>
+                </VerticalStackLayout>
+            </Border>
 
-            <Label Text="{Binding UiAddReview}" FontAttributes="Bold" TextColor="#F0EBE3"/>
-            <Label Text="{Binding ReviewStatus}" FontSize="12" TextColor="#8A8078"/>
-            <Label Text="{Binding RatingLabel}" TextColor="#F0EBE3"/>
-            <Slider Minimum="1" Maximum="5" Value="{Binding NewRating}"/>
-            <Editor Placeholder="{Binding UiReviewPlaceholder}" Text="{Binding NewComment}" TextColor="#F0EBE3" HeightRequest="80"/>
-            <Button Text="{Binding UiSubmitReview}"
-                    Command="{Binding SubmitReviewCommand}"
-                    BackgroundColor="#C8372D"
-                    TextColor="White"/>
         </VerticalStackLayout>
     </ScrollView>
 </ContentPage>

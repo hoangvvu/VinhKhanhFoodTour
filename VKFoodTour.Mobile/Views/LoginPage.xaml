@@ -2,22 +2,106 @@
 <ContentPage x:Class="VKFoodTour.Mobile.Views.LoginPage"
              xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-             BackgroundColor="#0F0E0E"
+             BackgroundColor="{StaticResource VKBg}"
              Shell.NavBarIsVisible="False">
-    <ScrollView>
-        <VerticalStackLayout Padding="24" Spacing="14" VerticalOptions="Center">
-            <Label x:Name="BrandLabel" Text="VK FOOD TOUR" FontSize="34" TextColor="#F0EBE3" FontFamily="BebasNeue" HorizontalOptions="Center"/>
-            <Label x:Name="ModeLabel" Text="Đăng nhập để sử dụng ứng dụng" TextColor="White" HorizontalOptions="Center"/>
 
-            <Entry x:Name="NameEntry" Placeholder="Họ tên" IsVisible="False" TextColor="White" PlaceholderColor="#A0A0A0"/>
-            <Entry x:Name="EmailEntry" Placeholder="Email" Keyboard="Email" TextColor="White" PlaceholderColor="#A0A0A0"/>
-            <Entry x:Name="PasswordEntry" Placeholder="Mật khẩu" IsPassword="True" TextColor="White" PlaceholderColor="#A0A0A0"/>
-            <Entry x:Name="ConfirmPasswordEntry" Placeholder="Xác nhận mật khẩu" IsPassword="True" IsVisible="False" TextColor="White" PlaceholderColor="#A0A0A0"/>
+    <Grid>
+        <!-- Background accent -->
+        <BoxView VerticalOptions="Start" HeightRequest="340" Color="#1A0808"/>
 
-            <Button x:Name="SubmitButton" Text="Đăng nhập" Clicked="OnSubmit" BackgroundColor="#C8372D" TextColor="White"/>
-            <Button x:Name="ToggleButton" Text="Chưa có tài khoản? Đăng ký" Clicked="OnToggleMode" BackgroundColor="#1A1818" TextColor="#F0EBE3"/>
-            <Button x:Name="GuestButton" Text="Vào app không cần tài khoản" Clicked="OnContinueAsGuest" BackgroundColor="#1A1818" TextColor="#F0EBE3"/>
-            <Label x:Name="StatusLabel" TextColor="#E8A020"/>
-        </VerticalStackLayout>
-    </ScrollView>
+        <ScrollView>
+            <VerticalStackLayout Padding="28" Spacing="0" VerticalOptions="Center">
+
+                <!-- Logo area -->
+                <VerticalStackLayout Spacing="8" Margin="0,40,0,40" HorizontalOptions="Center">
+                    <Border WidthRequest="80" HeightRequest="80" StrokeThickness="0">
+                        <Border.StrokeShape><RoundRectangle CornerRadius="20"/></Border.StrokeShape>
+                        <Border.Background>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                <GradientStop Color="{StaticResource VKRed}" Offset="0"/>
+                                <GradientStop Color="{StaticResource VKRedDark}" Offset="1"/>
+                            </LinearGradientBrush>
+                        </Border.Background>
+                        <Label Text="🍜" FontSize="38"
+                               HorizontalOptions="Center" VerticalOptions="Center"/>
+                    </Border>
+                    <Label x:Name="BrandLabel" Text="VK FOOD TOUR"
+                           FontSize="32" FontFamily="BebasNeue"
+                           TextColor="{StaticResource VKText}"
+                           HorizontalOptions="Center" CharacterSpacing="2"/>
+                    <Label x:Name="ModeLabel"
+                           Text="Đăng nhập để sử dụng ứng dụng"
+                           TextColor="{StaticResource VKTextMuted}"
+                           FontSize="13" HorizontalOptions="Center"/>
+                </VerticalStackLayout>
+
+                <!-- Form card -->
+                <Border BackgroundColor="{StaticResource VKCard}"
+                        Stroke="{StaticResource VKStrokeBrush}"
+                        StrokeThickness="1" Padding="20">
+                    <Border.StrokeShape><RoundRectangle CornerRadius="20"/></Border.StrokeShape>
+                    <VerticalStackLayout Spacing="12">
+
+                        <!-- Họ tên (register only) — code-behind toggles IsVisible -->
+                        <Entry x:Name="NameEntry" Placeholder="Họ tên"
+                               IsVisible="False"
+                               TextColor="{StaticResource VKText}"
+                               PlaceholderColor="{StaticResource VKTextFaint}"
+                               BackgroundColor="{StaticResource VKCardDeep}"/>
+
+                        <Border BackgroundColor="{StaticResource VKCardDeep}"
+                                Stroke="{StaticResource VKStrokeBrush}" StrokeThickness="1" Padding="4">
+                            <Border.StrokeShape><RoundRectangle CornerRadius="10"/></Border.StrokeShape>
+                            <Entry x:Name="EmailEntry" Placeholder="Email" Keyboard="Email"
+                                   TextColor="{StaticResource VKText}"
+                                   PlaceholderColor="{StaticResource VKTextFaint}"
+                                   BackgroundColor="Transparent"/>
+                        </Border>
+
+                        <Border BackgroundColor="{StaticResource VKCardDeep}"
+                                Stroke="{StaticResource VKStrokeBrush}" StrokeThickness="1" Padding="4">
+                            <Border.StrokeShape><RoundRectangle CornerRadius="10"/></Border.StrokeShape>
+                            <Entry x:Name="PasswordEntry" Placeholder="Mật khẩu" IsPassword="True"
+                                   TextColor="{StaticResource VKText}"
+                                   PlaceholderColor="{StaticResource VKTextFaint}"
+                                   BackgroundColor="Transparent"/>
+                        </Border>
+
+                        <!-- Xác nhận mật khẩu (register only) — code-behind toggles IsVisible -->
+                        <Entry x:Name="ConfirmPasswordEntry" Placeholder="Xác nhận mật khẩu"
+                               IsPassword="True" IsVisible="False"
+                               TextColor="{StaticResource VKText}"
+                               PlaceholderColor="{StaticResource VKTextFaint}"
+                               BackgroundColor="{StaticResource VKCardDeep}"/>
+
+                        <Button x:Name="SubmitButton" Text="Đăng nhập"
+                                Clicked="OnSubmit"
+                                BackgroundColor="{StaticResource VKRed}"
+                                TextColor="White" FontAttributes="Bold"
+                                CornerRadius="12" HeightRequest="50" Margin="0,4,0,0"/>
+                    </VerticalStackLayout>
+                </Border>
+
+                <!-- Secondary actions -->
+                <VerticalStackLayout Spacing="8" Margin="0,12,0,0">
+                    <Button x:Name="ToggleButton"
+                            Text="Chưa có tài khoản? Đăng ký"
+                            Clicked="OnToggleMode"
+                            BackgroundColor="Transparent"
+                            TextColor="{StaticResource VKTextMuted}" FontSize="13"/>
+                    <Button x:Name="GuestButton"
+                            Text="Vào app không cần tài khoản →"
+                            Clicked="OnContinueAsGuest"
+                            BackgroundColor="{StaticResource VKCard}"
+                            TextColor="{StaticResource VKText}"
+                            CornerRadius="12" HeightRequest="46"/>
+                </VerticalStackLayout>
+
+                <Label x:Name="StatusLabel"
+                       TextColor="{StaticResource VKGold}"
+                       FontSize="13" HorizontalOptions="Center" Margin="0,8,0,0"/>
+
+            </VerticalStackLayout>
+        </ScrollView>
+    </Grid>
 </ContentPage>

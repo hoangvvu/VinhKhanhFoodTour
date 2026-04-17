@@ -5,16 +5,32 @@
              xmlns:maps="clr-namespace:Microsoft.Maui.Controls.Maps;assembly=Microsoft.Maui.Controls.Maps"
              xmlns:vm="clr-namespace:VKFoodTour.Mobile.ViewModels"
              x:DataType="vm:HomeViewModel"
-             Title="{Binding MapPageTitle}">
+             Title="{Binding MapPageTitle}"
+             BackgroundColor="{StaticResource VKBg}">
 
     <Grid>
-        <maps:Map x:Name="bigMap" 
-                  IsShowingUser="True" 
-                  MapType="Street" />
+        <maps:Map x:Name="bigMap"
+                  IsShowingUser="True"
+                  MapType="Street"/>
 
+        <!-- Floating header -->
+        <Border VerticalOptions="Start" HorizontalOptions="Fill"
+                Margin="16,52,16,0"
+                BackgroundColor="#DD0F0E0E"
+                Stroke="{StaticResource VKStrokeBrush}" StrokeThickness="1"
+                Padding="14,10">
+            <Border.StrokeShape><RoundRectangle CornerRadius="14"/></Border.StrokeShape>
+            <Label Text="{Binding MapPageTitle}"
+                   FontSize="18" FontFamily="BebasNeue"
+                   TextColor="{StaticResource VKText}" CharacterSpacing="0.5"/>
+        </Border>
+
+        <!-- Center button -->
         <VerticalStackLayout VerticalOptions="End" HorizontalOptions="End" Margin="20" Spacing="10">
-            <Button Text="🎯" WidthRequest="50" HeightRequest="50" CornerRadius="25" 
-                    BackgroundColor="White" TextColor="Black" FontSize="20"
+            <Button Text="🎯"
+                    WidthRequest="52" HeightRequest="52" CornerRadius="26"
+                    BackgroundColor="{StaticResource VKCard}"
+                    TextColor="White" FontSize="22"
                     Clicked="OnCenterOnStreet"/>
         </VerticalStackLayout>
     </Grid>

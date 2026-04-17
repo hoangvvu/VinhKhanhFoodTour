@@ -2,7 +2,10 @@
        xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
        xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
        xmlns:pages="clr-namespace:VKFoodTour.Mobile.Views"
-       Shell.NavBarIsVisible="False">
+       Shell.NavBarIsVisible="False"
+       Shell.TabBarBackgroundColor="#0F0E0E"
+       Shell.TabBarForegroundColor="#E8A020"
+       Shell.TabBarUnselectedColor="#5A5050">
 
     <TabBar>
         <Tab x:Name="TabHome" Title="Khám phá" Icon="icon_map.png">

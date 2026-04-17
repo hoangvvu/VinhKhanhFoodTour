@@ -5,16 +5,36 @@
 
 @inject ApplicationDbContext Db
 
-<div class="h-100 p-4" style="border-radius: 20px; background: linear-gradient(135deg, #0d2818 0%, #0a3d1f 100%); border: 1px solid rgba(34,197,94,0.25); position: relative; overflow: hidden; min-height: 130px;">
-    <div style="position: absolute; top: -25px; right: -25px; width: 110px; height: 110px; background: rgba(34,197,94,0.08); border-radius: 50%;"></div>
-    <div style="position: absolute; bottom: -20px; right: 40px; width: 60px; height: 60px; background: rgba(34,197,94,0.05); border-radius: 50%;"></div>
+<style>
+    @@keyframes vk-pulse {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50%       { opacity: 0.35; transform: scale(0.85); }
+    }
+    .vk-live-dot {
+        display: inline-block;
+        animation: vk-pulse 1.6s ease-in-out infinite;
+    }
+    @@keyframes vk-count-in {
+        from { opacity: 0; transform: translateY(4px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+    .vk-count { animation: vk-count-in 0.4s ease; }
+</style>
+
+<div class="h-100 p-4" style="border-radius: 20px; background: linear-gradient(135deg, #0d2818 0%, #0a3d1f 100%); border: 1px solid rgba(34,197,94,0.25); position: relative; overflow: hidden; min-height: 160px;">
+    <div style="position: absolute; top: -25px; right: -25px; width: 110px; height: 110px; background: rgba(34,197,94,0.07); border-radius: 50%;"></div>
+    <div style="position: absolute; bottom: -20px; right: 40px; width: 60px; height: 60px; background: rgba(34,197,94,0.04); border-radius: 50%;"></div>
 
     <div class="d-flex justify-content-between align-items-start position-relative">
         <div>
             <div class="small fw-bold mb-2" style="letter-spacing: 1.5px; color: #4ade80;">
                 @if (isLive)
                 {
-                    <span style="animation: pulse 2s infinite; display: inline-block;">●</span>
+                    <span class="vk-live-dot" style="color: #4ade80;">●</span>
+                }
+                else if (isFirstLoad)
+                {
+                    <span style="color: #374151;">◌</span>
                 }
                 else
                 {
@@ -22,10 +42,28 @@
                 }
                 <span class="ms-1">NGƯỜI DÙNG ĐANG ONLINE</span>
             </div>
-            <h1 class="fw-bold mb-1" style="font-size: 3rem; color: #fff; line-height: 1;">@onlineCount</h1>
-            <small style="color: #166534; font-size: 11px;">trong @windowMinutes phút qua · cập nhật @secondsAgo giây trước</small>
+
+            @if (isFirstLoad)
+            {
+                <div class="d-flex align-items-center gap-2 mt-1 mb-1">
+                    <div class="spinner-border spinner-border-sm" style="color: #4ade80; width: 1.5rem; height: 1.5rem;" role="status"></div>
+                    <span style="color: #166534; font-size: 12px;">Đang kết nối...</span>
+                </div>
+            }
+            else
+            {
+                <h1 class="vk-count fw-bold mb-0" style="font-size: 3.2rem; color: #fff; line-height: 1;">
+                    @onlineCount
+                </h1>
+                <small style="color: #2d6a4f; font-size: 11px; display: block; margin-top: 4px;">
+                    thiết bị trong @windowMinutes phút qua
+                </small>
+                <small style="color: #1b4332; font-size: 10px;">
+                    cập nhật @secondsAgo giây trước
+                </small>
+            }
         </div>
-        <div style="background: rgba(34,197,94,0.15); border-radius: 14px; padding: 12px;">
+        <div style="background: rgba(34,197,94,0.15); border-radius: 14px; padding: 12px; flex-shrink: 0;">
             <i class="bi bi-people-fill" style="font-size: 1.8rem; color: #4ade80;"></i>
         </div>
     </div>
@@ -39,6 +77,7 @@
     private int windowMinutes = 2;
     private int secondsAgo = 0;
     private bool isLive = false;
+    private bool isFirstLoad = true;
     private System.Threading.Timer? _refreshTimer;
     private System.Threading.Timer? _tickTimer;
     private DateTime _lastRefresh = DateTime.MinValue;
@@ -47,6 +86,7 @@
     {
         windowMinutes = WindowMinutes;
         await LoadAsync();
+        isFirstLoad = false;
 
         _refreshTimer = new System.Threading.Timer(async _ =>
         {

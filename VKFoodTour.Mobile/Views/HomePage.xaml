@@ -7,144 +7,202 @@
              xmlns:controls="clr-namespace:VKFoodTour.Mobile.Controls"
              xmlns:dto="clr-namespace:VKFoodTour.Shared.DTOs;assembly=VKFoodTour.Shared"
              x:DataType="vm:HomeViewModel"
-             BackgroundColor="#0F0E0E"
+             BackgroundColor="{StaticResource VKBg}"
              Shell.NavBarIsVisible="False">
 
-    <ScrollView BackgroundColor="#0F0E0E">
-        <VerticalStackLayout Padding="20" Spacing="25">
+    <ScrollView BackgroundColor="{StaticResource VKBg}">
+        <VerticalStackLayout Spacing="0">
 
-            <Grid ColumnDefinitions="*, Auto">
-                <VerticalStackLayout Grid.Column="0">
-                    <Label Text="{Binding UiGreeting}" FontSize="12" TextColor="#8A8078"/>
-                    <Label Text="{Binding UiTitle}" FontSize="26" FontFamily="BebasNeue" TextColor="#F0EBE3"/>
+            <!-- HEADER -->
+            <Grid Padding="20,52,20,20" ColumnDefinitions="*, Auto"
+                  BackgroundColor="{StaticResource VKBg}">
+                <VerticalStackLayout Grid.Column="0" VerticalOptions="Center">
+                    <Label Text="{Binding UiGreeting}"
+                           FontSize="12" TextColor="{StaticResource VKTextMuted}"
+                           CharacterSpacing="1.5" FontAttributes="Bold"/>
+                    <Label Text="{Binding UiTitle}"
+                           FontSize="28" FontFamily="BebasNeue"
+                           TextColor="{StaticResource VKText}" CharacterSpacing="0.5"/>
                 </VerticalStackLayout>
-                <Border Grid.Column="1" WidthRequest="45" HeightRequest="45" BackgroundColor="#1A1818" Stroke="#2E2A2A">
-                    <Border.StrokeShape>
-                        <RoundRectangle CornerRadius="22.5"/>
-                    </Border.StrokeShape>
-                    <Label Text="{Binding LangFlagEmoji}" HorizontalOptions="Center" VerticalOptions="Center" FontSize="20"/>
+                <Border Grid.Column="1" WidthRequest="44" HeightRequest="44"
+                        BackgroundColor="{StaticResource VKCard}"
+                        Stroke="{StaticResource VKStrokeBrush}" StrokeThickness="1">
+                    <Border.StrokeShape><RoundRectangle CornerRadius="22"/></Border.StrokeShape>
+                    <Label Text="{Binding LangFlagEmoji}"
+                           HorizontalOptions="Center" VerticalOptions="Center" FontSize="20"/>
                 </Border>
             </Grid>
 
-            <Border BackgroundColor="#C8372D" Padding="15" StrokeThickness="0">
-                <Border.StrokeShape>
-                    <RoundRectangle CornerRadius="15"/>
-                </Border.StrokeShape>
-                <Grid ColumnDefinitions="Auto, *">
-                    <Label Text="🎙️" FontSize="24" VerticalOptions="Center"/>
-                    <VerticalStackLayout Grid.Column="1" Margin="15,0,0,0">
-                        <Label Text="{Binding UiAutoNarration}" FontSize="11" TextColor="White" Opacity="0.8"/>
+            <!-- NOW PLAYING BANNER -->
+            <Border Margin="20,0,20,24"
+                    BackgroundColor="{StaticResource VKRed}" StrokeThickness="0">
+                <Border.StrokeShape><RoundRectangle CornerRadius="18"/></Border.StrokeShape>
+                <Grid ColumnDefinitions="Auto, *" Padding="16" ColumnSpacing="14">
+                    <Border Grid.Column="0" WidthRequest="44" HeightRequest="44"
+                            BackgroundColor="#80000000" StrokeThickness="0">
+                        <Border.StrokeShape><RoundRectangle CornerRadius="22"/></Border.StrokeShape>
+                        <Label Text="🎙️" FontSize="22"
+                               HorizontalOptions="Center" VerticalOptions="Center"/>
+                    </Border>
+                    <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="2">
+                        <Label Text="{Binding UiAutoNarration}"
+                               FontSize="10" TextColor="White" Opacity="0.7"
+                               CharacterSpacing="1" FontAttributes="Bold"/>
                         <Label Text="{Binding NowPlayingText}"
-                               TextColor="White" FontSize="14" MaxLines="2" LineBreakMode="WordWrap"/>
+                               TextColor="White" FontSize="14" FontAttributes="Bold"
+                               MaxLines="2" LineBreakMode="WordWrap"/>
                     </VerticalStackLayout>
                 </Grid>
             </Border>
 
-            <VerticalStackLayout Spacing="10" IsVisible="{Binding HasFavoritePois}">
-                <Label Text="{Binding UiFavoritesSection}" FontSize="18" FontFamily="BebasNeue" TextColor="#F0EBE3"/>
-                <CollectionView ItemsSource="{Binding FavoritePois}" HeightRequest="200">
+            <!-- YÊU THÍCH -->
+            <VerticalStackLayout Spacing="12" IsVisible="{Binding HasFavoritePois}" Margin="0,0,0,24">
+                <Grid Padding="20,0" ColumnDefinitions="*, Auto">
+                    <Label Grid.Column="0"
+                           Text="{Binding UiFavoritesSection}"
+                           FontSize="20" FontFamily="BebasNeue"
+                           TextColor="{StaticResource VKText}" CharacterSpacing="0.5"/>
+                </Grid>
+                <CollectionView ItemsSource="{Binding FavoritePois}" HeightRequest="210">
                     <CollectionView.ItemsLayout>
-                        <LinearItemsLayout Orientation="Horizontal" ItemSpacing="15"/>
+                        <LinearItemsLayout Orientation="Horizontal" ItemSpacing="12"/>
                     </CollectionView.ItemsLayout>
+                    <CollectionView.Header><BoxView WidthRequest="20" Color="Transparent"/></CollectionView.Header>
+                    <CollectionView.Footer><BoxView WidthRequest="20" Color="Transparent"/></CollectionView.Footer>
                     <CollectionView.ItemTemplate>
                         <DataTemplate x:DataType="models:Poi">
-                            <Border WidthRequest="160" BackgroundColor="#1A1818" Stroke="#2E2A2A" Padding="12">
-                                <Border.StrokeShape>
-                                    <RoundRectangle CornerRadius="15"/>
-                                </Border.StrokeShape>
+                            <Border WidthRequest="155"
+                                    BackgroundColor="{StaticResource VKCard}"
+                                    Stroke="{StaticResource VKStrokeBrush}"
+                                    StrokeThickness="1" Padding="0">
+                                <Border.StrokeShape><RoundRectangle CornerRadius="16"/></Border.StrokeShape>
                                 <Border.GestureRecognizers>
                                     <TapGestureRecognizer
                                         Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.OpenStallCommand}"
                                         CommandParameter="{Binding .}"/>
                                 </Border.GestureRecognizers>
-                                <VerticalStackLayout Spacing="8">
-                                    <Grid HeightRequest="100" HorizontalOptions="Fill">
-                                        <controls:NetworkImageView Url="{Binding CoverImageUrl}"
-                                                                   Placeholder="{Binding CoverEmoji}"
-                                                                   HeightRequest="100"/>
-                                        <Button Text="{Binding FavoriteIcon}"
-                                                Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.ToggleFavoriteCommand}"
-                                                CommandParameter="{Binding .}"
-                                                BackgroundColor="#80000000"
-                                                TextColor="White"
-                                                FontSize="16"
-                                                Padding="6"
-                                                CornerRadius="14"
-                                                HorizontalOptions="End"
-                                                VerticalOptions="Start"
-                                                WidthRequest="40"
-                                                HeightRequest="40"/>
-                                    </Grid>
-                                    <Label Text="{Binding Name}" TextColor="#F0EBE3" FontFamily="BebasNeue" FontSize="16" HorizontalOptions="Center"/>
-                                </VerticalStackLayout>
+                                <Grid RowDefinitions="120, *">
+                                    <controls:NetworkImageView Grid.Row="0"
+                                                               Url="{Binding CoverImageUrl}"
+                                                               Placeholder="{Binding CoverEmoji}"
+                                                               HeightRequest="120"/>
+                                    <Button Grid.Row="0"
+                                            Text="{Binding FavoriteIcon}"
+                                            Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.ToggleFavoriteCommand}"
+                                            CommandParameter="{Binding .}"
+                                            BackgroundColor="#88000000"
+                                            TextColor="White" FontSize="14"
+                                            Padding="0" CornerRadius="14"
+                                            HorizontalOptions="End" VerticalOptions="Start"
+                                            Margin="0,8,8,0"
+                                            WidthRequest="32" HeightRequest="32"/>
+                                    <VerticalStackLayout Grid.Row="1" Padding="10,8">
+                                        <Label Text="{Binding Name}"
+                                               TextColor="{StaticResource VKText}"
+                                               FontFamily="BebasNeue" FontSize="15"
+                                               LineBreakMode="TailTruncation"/>
+                                        <Label Text="{Binding Address}"
+                                               TextColor="{StaticResource VKTextFaint}"
+                                               FontSize="10" MaxLines="1"
+                                               LineBreakMode="TailTruncation"/>
+                                    </VerticalStackLayout>
+                                </Grid>
                             </Border>
                         </DataTemplate>
                     </CollectionView.ItemTemplate>
                 </CollectionView>
             </VerticalStackLayout>
 
-            <VerticalStackLayout Spacing="10">
-                <Label Text="{Binding UiFeaturedSection}" FontSize="18" FontFamily="BebasNeue" TextColor="#F0EBE3"/>
-
-                <CollectionView ItemsSource="{Binding Pois}" HeightRequest="200">
+            <!-- NỔI BẬT -->
+            <VerticalStackLayout Spacing="12" Margin="0,0,0,24">
+                <Grid Padding="20,0" ColumnDefinitions="*, Auto">
+                    <Label Grid.Column="0"
+                           Text="{Binding UiFeaturedSection}"
+                           FontSize="20" FontFamily="BebasNeue"
+                           TextColor="{StaticResource VKText}" CharacterSpacing="0.5"/>
+                </Grid>
+                <CollectionView ItemsSource="{Binding Pois}" HeightRequest="230">
                     <CollectionView.ItemsLayout>
-                        <LinearItemsLayout Orientation="Horizontal" ItemSpacing="15"/>
+                        <LinearItemsLayout Orientation="Horizontal" ItemSpacing="12"/>
                     </CollectionView.ItemsLayout>
+                    <CollectionView.Header><BoxView WidthRequest="20" Color="Transparent"/></CollectionView.Header>
+                    <CollectionView.Footer><BoxView WidthRequest="20" Color="Transparent"/></CollectionView.Footer>
                     <CollectionView.ItemTemplate>
                         <DataTemplate x:DataType="models:Poi">
-                            <Border WidthRequest="160" BackgroundColor="#1A1818" Stroke="#2E2A2A" Padding="12">
-                                <Border.StrokeShape>
-                                    <RoundRectangle CornerRadius="15"/>
-                                </Border.StrokeShape>
+                            <Border WidthRequest="165"
+                                    BackgroundColor="{StaticResource VKCard}"
+                                    Stroke="{StaticResource VKStrokeBrush}"
+                                    StrokeThickness="1" Padding="0">
+                                <Border.StrokeShape><RoundRectangle CornerRadius="16"/></Border.StrokeShape>
                                 <Border.GestureRecognizers>
                                     <TapGestureRecognizer
                                         Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.OpenStallCommand}"
                                         CommandParameter="{Binding .}"/>
                                 </Border.GestureRecognizers>
-                                <VerticalStackLayout Spacing="8">
-                                    <Grid HeightRequest="100" HorizontalOptions="Fill">
-                                        <controls:NetworkImageView Url="{Binding CoverImageUrl}"
-                                                                   Placeholder="{Binding CoverEmoji}"
-                                                                   HeightRequest="100"/>
+                                <Grid RowDefinitions="140, *">
+                                    <Grid Grid.Row="0">
+                                        <controls:NetworkImageView
+                                            Url="{Binding CoverImageUrl}"
+                                            Placeholder="{Binding CoverEmoji}"
+                                            HeightRequest="140"/>
                                         <Button Text="{Binding FavoriteIcon}"
                                                 Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.ToggleFavoriteCommand}"
                                                 CommandParameter="{Binding .}"
-                                                BackgroundColor="#80000000"
-                                                TextColor="White"
-                                                FontSize="16"
-                                                Padding="6"
-                                                CornerRadius="14"
-                                                HorizontalOptions="End"
-                                                VerticalOptions="Start"
-                                                WidthRequest="40"
-                                                HeightRequest="40"/>
+                                                BackgroundColor="#88000000"
+                                                TextColor="White" FontSize="14"
+                                                Padding="0" CornerRadius="14"
+                                                HorizontalOptions="End" VerticalOptions="Start"
+                                                Margin="0,8,8,0"
+                                                WidthRequest="32" HeightRequest="32"/>
                                     </Grid>
-                                    <Label Text="{Binding Name}" TextColor="#F0EBE3" FontFamily="BebasNeue" FontSize="16" HorizontalOptions="Center"/>
-                                    <HorizontalStackLayout HorizontalOptions="Center" Spacing="5">
-                                        <Label Text="{Binding Rating, StringFormat='⭐ {0:0.0}'}" TextColor="#E8A020" FontSize="11"/>
-                                        <Label Text="{Binding ReviewCount, StringFormat='({0})'}" TextColor="#8A8078" FontSize="11"/>
-                                    </HorizontalStackLayout>
-                                </VerticalStackLayout>
+                                    <VerticalStackLayout Grid.Row="1" Padding="10,8,10,10" Spacing="2">
+                                        <Label Text="{Binding Name}"
+                                               TextColor="{StaticResource VKText}"
+                                               FontFamily="BebasNeue" FontSize="16"
+                                               LineBreakMode="TailTruncation"/>
+                                        <HorizontalStackLayout Spacing="4">
+                                            <Label Text="{Binding Rating, StringFormat='⭐ {0:0.0}'}"
+                                                   TextColor="{StaticResource VKGold}" FontSize="11"/>
+                                            <Label Text="{Binding ReviewCount, StringFormat='({0})'}"
+                                                   TextColor="{StaticResource VKTextFaint}" FontSize="10"/>
+                                        </HorizontalStackLayout>
+                                    </VerticalStackLayout>
+                                </Grid>
                             </Border>
                         </DataTemplate>
                     </CollectionView.ItemTemplate>
                 </CollectionView>
             </VerticalStackLayout>
 
-            <VerticalStackLayout Spacing="10">
-                <Label Text="{Binding UiRecentReviews}" FontSize="18" FontFamily="BebasNeue" TextColor="#F0EBE3"/>
+            <!-- ĐÁNH GIÁ GẦN ĐÂY -->
+            <VerticalStackLayout Spacing="12" Padding="20,0,20,32">
+                <Label Text="{Binding UiRecentReviews}"
+                       FontSize="20" FontFamily="BebasNeue"
+                       TextColor="{StaticResource VKText}" CharacterSpacing="0.5"/>
                 <CollectionView ItemsSource="{Binding RecentReviews}">
                     <CollectionView.ItemTemplate>
                         <DataTemplate x:DataType="dto:ReviewListItemDto">
-                            <Border BackgroundColor="#1A1818" Stroke="#2E2A2A" Padding="12" Margin="0,0,0,10">
-                                <Border.StrokeShape>
-                                    <RoundRectangle CornerRadius="12"/>
-                                </Border.StrokeShape>
-                                <VerticalStackLayout Spacing="4">
-                                    <Label Text="{Binding PoiName}" FontFamily="BebasNeue" FontSize="16" TextColor="#E8A020"/>
-                                    <Label Text="{Binding Rating, StringFormat='⭐ {0}/5'}" FontSize="12" TextColor="#F0EBE3"/>
-                                    <Label Text="{Binding Comment}" TextColor="#F0EBE3" LineBreakMode="WordWrap"/>
-                                    <Label Text="{Binding CreatedAt, StringFormat='{0:dd/MM/yyyy HH:mm}'}" FontSize="11" TextColor="#8A8078"/>
+                            <Border BackgroundColor="{StaticResource VKCard}"
+                                    Stroke="{StaticResource VKStrokeBrush}"
+                                    StrokeThickness="1" Padding="14" Margin="0,0,0,10">
+                                <Border.StrokeShape><RoundRectangle CornerRadius="14"/></Border.StrokeShape>
+                                <VerticalStackLayout Spacing="6">
+                                    <Grid ColumnDefinitions="*, Auto">
+                                        <Label Grid.Column="0"
+                                               Text="{Binding PoiName}"
+                                               FontFamily="BebasNeue" FontSize="17"
+                                               TextColor="{StaticResource VKGold}"
+                                               LineBreakMode="TailTruncation"/>
+                                        <Label Grid.Column="1"
+                                               Text="{Binding CreatedAt, StringFormat='{0:dd/MM}'}"
+                                               FontSize="11"
+                                               TextColor="{StaticResource VKTextFaint}"/>
+                                    </Grid>
+                                    <Label Text="{Binding Rating, StringFormat='⭐ {0}/5'}"
+                                           FontSize="12" TextColor="{StaticResource VKText}"/>
+                                    <Label Text="{Binding Comment}"
+                                           TextColor="{StaticResource VKTextMuted}"
+                                           FontSize="13" LineBreakMode="WordWrap" MaxLines="3"/>
                                 </VerticalStackLayout>
                             </Border>
                         </DataTemplate>
