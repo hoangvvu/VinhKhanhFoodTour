@@ -14,19 +14,24 @@
 @inject PoiService PoiService
 @inject ApplicationDbContext Db
 
-<div class="container-fluid p-4">
-    <h3 class="text-white fw-bold mb-4">THỐNG KÊ DOANH THU & TƯƠNG TÁC</h3>
+<div class="dash-page p-4">
+    <div class="d-flex justify-content-between align-items-center mb-5">
+        <div>
+            <h2 class="fw-bold mb-1" style="color: #F0EBE3;">THỐNG KÊ DOANH THU & TƯƠNG TÁC</h2>
+            <span style="color: #4a4a5a; font-size: 13px;"><i class="bi bi-bar-chart-line me-1"></i>Thống kê hoạt động hôm nay</span>
+        </div>
+    </div>
 
     @if (isLoading)
     {
         <div class="text-center py-5">
-            <div class="spinner-border text-danger" role="status"></div>
-            <p class="text-muted mt-3">Đang tải dữ liệu...</p>
+            <div class="spinner-border text-danger" style="width:2.5rem;height:2.5rem;" role="status"></div>
+            <p style="color:#4a4a5a;font-size:13px;letter-spacing:1px;margin-top:12px;">ĐANG TẢI...</p>
         </div>
     }
     else if (currentPoiId == 0)
     {
-        <div class="alert alert-warning">
+        <div style="background:rgba(200,55,45,0.08);border:1px solid rgba(200,55,45,0.2);border-radius:12px;color:#f87171;padding:12px 16px;">
             <i class="bi bi-exclamation-triangle me-2"></i>
             Tài khoản chưa được gán quán. Vui lòng liên hệ Admin.
         </div>
@@ -36,59 +41,71 @@
         <div class="row g-4 mb-4">
             @* ── Card 1: Doanh thu (N/A vì chưa có bảng thanh toán) ── *@
             <div class="col-md-3">
-                <div class="card bg-dark-card border-0 p-3 shadow-sm h-100" style="border-radius: 12px; border-left: 4px solid #198754 !important;">
-                    <div class="text-muted small fw-bold mb-1">DOANH THU HÔM NAY</div>
-                    <h5 class="text-secondary fw-bold mb-0">N/A</h5>
-                    <small class="text-muted" style="font-size: 0.7rem;">Chưa có hệ thống thanh toán</small>
+                <div class="dash-card p-4" style="border-left: 4px solid #198754 !important;">
+                    <div style="background:rgba(25,135,84,0.12);border-radius:10px;padding:10px;width:fit-content;margin-bottom:12px;">
+                        <i class="bi bi-currency-dollar" style="color:#4ade80;font-size:1.3rem;"></i>
+                    </div>
+                    <h2 class="text-white fw-bold mb-1">N/A</h2>
+                    <div style="color:#4a4a5a;font-size:12px;letter-spacing:0.5px;">DOANH THU HÔM NAY</div>
+                    <small style="color:#4a4a5a;font-size:11px;">Chưa có hệ thống thanh toán</small>
                 </div>
             </div>
 
             @* ── Card 2: Lượt quét QR hôm nay ── *@
             <div class="col-md-3">
-                <div class="card bg-dark-card border-0 p-3 shadow-sm h-100" style="border-radius: 12px; border-left: 4px solid #E8A020 !important;">
-                    <div class="text-muted small fw-bold mb-1">LƯỢT QUÉT QR HÔM NAY</div>
-                    <h4 class="text-white fw-bold mb-0">@qrScanCount lượt</h4>
+                <div class="dash-card p-4" style="border-left: 4px solid #E8A020 !important;">
+                    <div style="background:rgba(232,160,32,0.12);border-radius:10px;padding:10px;width:fit-content;margin-bottom:12px;">
+                        <i class="bi bi-qr-code-scan" style="color:#E8A020;font-size:1.3rem;"></i>
+                    </div>
+                    <h2 class="text-white fw-bold mb-1">@qrScanCount</h2>
+                    <div style="color:#4a4a5a;font-size:12px;letter-spacing:0.5px;">LƯỢT QUÉT QR HÔM NAY</div>
                 </div>
             </div>
 
             @* ── Card 3: Lượt nghe Audio hôm nay ── *@
             <div class="col-md-3">
-                <div class="card bg-dark-card border-0 p-3 shadow-sm h-100" style="border-radius: 12px; border-left: 4px solid #0dcaf0 !important;">
-                    <div class="text-muted small fw-bold mb-1">LƯỢT NGHE AUDIO HÔM NAY</div>
-                    <h4 class="text-white fw-bold mb-0">@audioPlayCount lượt</h4>
+                <div class="dash-card p-4" style="border-left: 4px solid #0dcaf0 !important;">
+                    <div style="background:rgba(13,202,240,0.12);border-radius:10px;padding:10px;width:fit-content;margin-bottom:12px;">
+                        <i class="bi bi-headphones" style="color:#0dcaf0;font-size:1.3rem;"></i>
+                    </div>
+                    <h2 class="text-white fw-bold mb-1">@audioPlayCount</h2>
+                    <div style="color:#4a4a5a;font-size:12px;letter-spacing:0.5px;">LƯỢT NGHE AUDIO HÔM NAY</div>
                 </div>
             </div>
 
             @* ── Card 4: Đánh giá trung bình ── *@
             <div class="col-md-3">
-                <div class="card bg-dark-card border-0 p-3 shadow-sm h-100" style="border-radius: 12px; border-left: 4px solid #C8372D !important;">
-                    <div class="text-muted small fw-bold mb-1">ĐÁNH GIÁ TRUNG BÌNH</div>
+                <div class="dash-card p-4" style="border-left: 4px solid #facc15 !important;">
+                    <div style="background:rgba(250,204,21,0.12);border-radius:10px;padding:10px;width:fit-content;margin-bottom:12px;">
+                        <i class="bi bi-star-fill" style="color:#facc15;font-size:1.3rem;"></i>
+                    </div>
                     @if (averageRating > 0)
                     {
-                        <h4 class="text-white fw-bold mb-0">
-                            @averageRating.ToString("0.0") <i class="bi bi-star-fill text-warning" style="font-size: 0.9rem;"></i>
-                        </h4>
-                        <small class="text-muted" style="font-size: 0.7rem;">(@totalReviews đánh giá)</small>
+                        <h2 class="text-white fw-bold mb-1">
+                            @averageRating.ToString("0.0") <i class="bi bi-star-fill" style="color:#facc15;font-size:0.9rem;"></i>
+                        </h2>
+                        <div style="color:#4a4a5a;font-size:12px;letter-spacing:0.5px;">ĐÁNH GIÁ TRUNG BÌNH</div>
+                        <small style="color:#4a4a5a;font-size:11px;">(@totalReviews đánh giá)</small>
                     }
                     else
                     {
-                        <h6 class="text-secondary fw-bold mb-0 mt-2">Chưa có đánh giá</h6>
+                        <h2 class="text-white fw-bold mb-1">—</h2>
+                        <div style="color:#4a4a5a;font-size:12px;letter-spacing:0.5px;">ĐÁNH GIÁ TRUNG BÌNH</div>
+                        <small style="color:#4a4a5a;font-size:11px;">Chưa có đánh giá</small>
                     }
                 </div>
             </div>
         </div>
 
         @* ── Danh sách đánh giá gần đây ── *@
-        <div class="card bg-dark-card border-0 p-4 shadow-sm" style="border-radius: 16px;">
-            <h6 class="text-white fw-bold mb-4 border-bottom border-secondary pb-3">
-                <i class="bi bi-chat-left-quote me-2 text-warning"></i>ĐÁNH GIÁ GẦN ĐÂY
-            </h6>
+        <div class="dash-card p-4">
+            <div class="dash-label mb-3"><i class="bi bi-chat-left-quote me-2"></i>ĐÁNH GIÁ GẦN ĐÂY</div>
 
             @if (recentReviews.Any())
             {
                 @foreach (var review in recentReviews)
                 {
-                    <div class="d-flex justify-content-between align-items-start mb-3 border-bottom border-secondary pb-3">
+                    <div class="d-flex justify-content-between align-items-start mb-3 pb-3" style="border-bottom: 1px solid rgba(255,255,255,0.06);">
                         <div class="flex-grow-1">
                             <div class="d-flex align-items-center mb-1">
                                 @* Hiển thị sao *@

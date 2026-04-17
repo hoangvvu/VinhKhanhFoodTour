@@ -1,0 +1,154 @@
+@using Microsoft.EntityFrameworkCore
+@using VKFoodTour.Infrastructure.Data
+@implements IDisposable
+@rendermode InteractiveServer
+
+@inject ApplicationDbContext Db
+
+<div class="realtime-card h-100 p-4" style="border-radius: 20px; background: linear-gradient(135deg, #1e0a3c 0%, #2d1b69 100%); border: 1px solid rgba(124,58,237,0.3); position: relative; overflow: hidden;">
+    <div style="position: absolute; top: -20px; right: -20px; width: 100px; height: 100px; background: rgba(124,58,237,0.15); border-radius: 50%;"></div>
+    <div style="position: absolute; bottom: -30px; right: 30px; width: 60px; height: 60px; background: rgba(124,58,237,0.1); border-radius: 50%;"></div>
+
+    <div class="d-flex justify-content-between align-items-start mb-3 position-relative">
+        <div>
+            <div class="small fw-bold mb-1" style="letter-spacing: 1.5px; color: #a78bfa;">
+                @if (isLive)
+                {
+                    <span style="color: #4ade80;" class="pulse-dot">●</span>
+                }
+                else
+                {
+                    <span style="color: #6b7280;">○</span>
+                }
+                <span class="ms-1">THIẾT BỊ ĐANG DÙNG APP</span>
+            </div>
+            <h1 class="fw-bold mb-0" style="font-size: 3rem; color: #fff; line-height: 1;">@activeDevices.Count</h1>
+            <small style="color: #7c6faa; font-size: 11px;">trong @windowMinutes phút qua · cập nhật @secondsAgo giây trước</small>
+        </div>
+        <div style="background: rgba(124,58,237,0.2); border-radius: 14px; padding: 12px;">
+            <i class="bi bi-phone-fill" style="font-size: 1.8rem; color: #a78bfa;"></i>
+        </div>
+    </div>
+
+    @if (activeDevices.Any())
+    {
+        <div style="max-height: 160px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #4a3a7a transparent;">
+            @foreach (var dev in activeDevices.Take(8))
+            {
+                <div class="d-flex justify-content-between align-items-center py-1 px-2 mb-1"
+                     style="border-radius: 8px; background: rgba(255,255,255,0.04);">
+                    <div class="d-flex align-items-center gap-2">
+                        <span style="width: 7px; height: 7px; background: #4ade80; border-radius: 50%; display: inline-block; flex-shrink: 0; box-shadow: 0 0 6px #4ade80;"></span>
+                        <small style="color: #d1c4f0; font-size: 11px; font-family: monospace;">
+                            @(dev.DeviceId.Length > 12 ? dev.DeviceId[..12] + "…" : dev.DeviceId)
+                        </small>
+                    </div>
+                    <small style="color: #a78bfa; font-size: 11px; max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                        @(dev.PoiName ?? "Đang khám phá")
+                    </small>
+                </div>
+            }
+            @if (activeDevices.Count > 8)
+            {
+                <div class="text-center mt-1">
+                    <small style="color: #6b7280;">+@(activeDevices.Count - 8) thiết bị khác</small>
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="text-center py-3">
+            <i class="bi bi-moon-stars" style="color: #4a3a7a; font-size: 1.5rem;"></i>
+            <p class="mb-0 mt-1" style="color: #4a3a7a; font-size: 12px;">Không có thiết bị hoạt động</p>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public int WindowMinutes { get; set; } = 5;
+    [Parameter] public int RefreshSeconds { get; set; } = 10;
+
+    private List<ActiveDevice> activeDevices = new();
+    private int windowMinutes = 5;
+    private int secondsAgo = 0;
+    private bool isLive = false;
+    private System.Threading.Timer? _refreshTimer;
+    private System.Threading.Timer? _tickTimer;
+    private DateTime _lastRefresh = DateTime.MinValue;
+
+    protected override async Task OnInitializedAsync()
+    {
+        windowMinutes = WindowMinutes;
+        await LoadAsync();
+
+        _refreshTimer = new System.Threading.Timer(async _ =>
+        {
+            await LoadAsync();
+            await InvokeAsync(StateHasChanged);
+        }, null, TimeSpan.FromSeconds(RefreshSeconds), TimeSpan.FromSeconds(RefreshSeconds));
+
+        _tickTimer = new System.Threading.Timer(async _ =>
+        {
+            secondsAgo = (int)(DateTime.Now - _lastRefresh).TotalSeconds;
+            await InvokeAsync(StateHasChanged);
+        }, null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+    }
+
+    private async Task LoadAsync()
+    {
+        try
+        {
+            var threshold = DateTime.Now.AddMinutes(-windowMinutes);
+
+            var latestPerDevice = await Db.TrackingLogs
+                .AsNoTracking()
+                .Where(t => t.CreatedAt >= threshold)
+                .GroupBy(t => t.DeviceId)
+                .Select(g => new
+                {
+                    DeviceId = g.Key,
+                    PoiId = g.OrderByDescending(t => t.CreatedAt).Select(t => t.PoiId).FirstOrDefault()
+                })
+                .ToListAsync();
+
+            var poiIds = latestPerDevice
+                .Where(d => d.PoiId.HasValue)
+                .Select(d => d.PoiId!.Value)
+                .Distinct()
+                .ToList();
+
+            var poiNames = poiIds.Any()
+                ? await Db.Pois.AsNoTracking()
+                    .Where(p => poiIds.Contains(p.PoiId))
+                    .ToDictionaryAsync(p => p.PoiId, p => p.Name)
+                : new Dictionary<int, string>();
+
+            activeDevices = latestPerDevice.Select(d => new ActiveDevice
+            {
+                DeviceId = d.DeviceId ?? "unknown",
+                PoiName = d.PoiId.HasValue ? poiNames.GetValueOrDefault(d.PoiId.Value) : null
+            }).ToList();
+
+            isLive = true;
+            _lastRefresh = DateTime.Now;
+            secondsAgo = 0;
+        }
+        catch
+        {
+            isLive = false;
+        }
+    }
+
+    public void Dispose()
+    {
+        _refreshTimer?.Dispose();
+        _tickTimer?.Dispose();
+    }
+
+    private class ActiveDevice
+    {
+        public string DeviceId { get; set; } = "";
+        public string? PoiName { get; set; }
+    }
+}

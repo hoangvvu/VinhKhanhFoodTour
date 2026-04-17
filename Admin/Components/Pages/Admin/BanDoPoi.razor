@@ -8,11 +8,11 @@
 @inject ApplicationDbContext Db
 @inject IJSRuntime JS
 
-<div class="container-fluid p-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
+<div class="dash-page p-4">
+    <div class="d-flex justify-content-between align-items-center mb-5">
         <div>
-            <h3 class="text-white fw-bold mb-1">BẢN ĐỒ GIAN HÀNG</h3>
-            <p class="text-muted small mb-0">Các POI đang hoạt động (OpenStreetMap + Leaflet)</p>
+            <h2 class="fw-bold mb-1" style="color: #F0EBE3;">BẢN ĐỒ GIAN HÀNG</h2>
+            <span style="color: #4a4a5a; font-size: 13px;"><i class="bi bi-map me-1"></i>Các POI đang hoạt động (OpenStreetMap + Leaflet)</span>
         </div>
         <a href="admin/pois" class="btn btn-outline-danger rounded-pill">Quản lý POI</a>
     </div>
@@ -20,15 +20,14 @@
     @if (isLoading)
     {
         <div class="text-center py-5">
-            <div class="spinner-border text-danger" role="status"></div>
+            <div class="spinner-border text-danger" style="width:2.5rem;height:2.5rem;" role="status"></div>
+            <p style="color:#4a4a5a;font-size:13px;letter-spacing:1px;margin-top:12px;">ĐANG TẢI...</p>
         </div>
     }
     else
     {
-        <div class="card bg-dark-card border-0 shadow-sm" style="border-radius: 16px;">
-            <div class="card-body p-0">
-                <div id="admin-poi-map" style="height: min(70vh, 640px); min-height: 420px; border-radius: 16px; overflow: hidden;"></div>
-            </div>
+        <div class="dash-card">
+            <div id="admin-poi-map" style="height: min(70vh, 640px); min-height: 420px; border-radius: 16px; overflow: hidden;"></div>
         </div>
     }
 </div>

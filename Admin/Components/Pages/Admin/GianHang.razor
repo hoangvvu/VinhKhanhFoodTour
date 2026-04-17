@@ -7,9 +7,12 @@
 
 @inject ApplicationDbContext Db
 
-<div class="container-fluid p-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h3 class="text-white fw-bold">QUẢN LÝ GIAN HÀNG</h3>
+<div class="dash-page p-4">
+    <div class="d-flex justify-content-between align-items-center mb-5">
+        <div>
+            <h2 class="fw-bold mb-1" style="color: #F0EBE3;">QUẢN LÝ GIAN HÀNG</h2>
+            <span style="color: #4a4a5a; font-size: 13px;"><i class="bi bi-shop me-1"></i>Toàn bộ gian hàng trên phố Vĩnh Khánh</span>
+        </div>
         <a href="/admin/pois" class="btn btn-danger rounded-pill px-4 shadow">
             <i class="bi bi-pencil-square me-2"></i>Chỉnh sửa / ẩn gian hàng
         </a>
@@ -18,15 +21,15 @@
     @if (isLoading)
     {
         <div class="text-center py-5">
-            <div class="spinner-border text-danger" role="status"></div>
+            <div class="spinner-border text-danger" style="width:2.5rem;height:2.5rem;" role="status"></div>
+            <p style="color:#4a4a5a;font-size:13px;letter-spacing:1px;margin-top:12px;">ĐANG TẢI...</p>
         </div>
     }
     else
     {
-        <div class="card bg-dark-card border-0 shadow" style="border-radius: 16px;">
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-dark table-hover mb-0 align-middle">
+        <div class="dash-card" style="overflow:hidden;">
+            <div class="table-responsive">
+                <table class="table dash-table mb-0">
                         <thead class="bg-black text-muted small">
                             <tr>
                                 <th class="ps-4 py-3">GIAN HÀNG</th>
@@ -101,7 +104,6 @@
                             }
                         </tbody>
                     </table>
-                </div>
             </div>
         </div>
     }

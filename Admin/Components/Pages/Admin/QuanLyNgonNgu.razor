@@ -7,12 +7,14 @@
 @inject ApplicationDbContext Db
 @inject GoogleTranslateService TranslateService
 
-<div class="container-fluid p-4">
+<div class="dash-page p-4">
 
     @* ── HEADER ── *@
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h3 class="text-white fw-bold mb-0">QUẢN LÝ NGÔN NGỮ & DỊCH TỰ ĐỘNG</h3>
-        <span class="badge bg-danger-subtle text-danger px-3 py-2 rounded-pill">
+    <div class="d-flex justify-content-between align-items-center mb-5">
+        <div>
+            <h2 class="fw-bold mb-1" style="color:#F0EBE3;"><i class="bi bi-translate me-2 text-danger"></i>QUẢN LÝ NGÔN NGỮ & DỊCH TỰ ĐỘNG</h2>
+        </div>
+        <span class="badge px-3 py-2 rounded-pill" style="background:rgba(200,55,45,0.12);color:#C8372D;border:1px solid rgba(200,55,45,0.25);">
             <i class="bi bi-translate me-1"></i> Google Translate API
         </span>
     </div>
@@ -20,9 +22,10 @@
     @* ── THÔNG BÁO ── *@
     @if (!string.IsNullOrEmpty(alertMessage))
     {
-        <div class="alert @alertClass alert-dismissible fade show rounded-3 small" role="alert">
+        <div class="alert alert-dismissible fade show small" role="alert"
+             style="@(alertClass == "alert-success" ? "background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.2);border-radius:12px;" : "background:rgba(200,55,45,0.08);border:1px solid rgba(200,55,45,0.2);border-radius:12px;")">
             <i class="bi @alertIcon me-1"></i> @alertMessage
-            <button type="button" class="btn-close btn-close-white" @onclick="() => alertMessage = null"></button>
+            <button type="button" class="btn-close" @onclick="() => alertMessage = null"></button>
         </div>
     }
 
@@ -33,11 +36,8 @@
         <div class="col-lg-5">
 
             @* ── DANH SÁCH NGÔN NGỮ ── *@
-            <div class="card bg-dark-card border-0 shadow mb-4" style="border-radius: 16px;">
-                <div class="card-body p-4">
-                    <h6 class="text-white fw-bold mb-3 border-bottom border-secondary pb-3">
-                        <i class="bi bi-globe2 me-2"></i>NGÔN NGỮ HIỆN CÓ
-                    </h6>
+            <div class="dash-card p-4 mb-4">
+                <div class="dash-label mb-3"><i class="bi bi-globe2 me-2"></i>NGÔN NGỮ HIỆN CÓ</div>
 
                     @if (isLoadingLanguages)
                     {
@@ -55,7 +55,7 @@
                     else
                     {
                         <div class="table-responsive">
-                            <table class="table table-dark table-hover mb-0 align-middle small">
+                            <table class="table dash-table mb-0 align-middle small">
                                 <thead class="text-muted">
                                     <tr>
                                         <th>MÃ</th>
@@ -93,22 +93,18 @@
                             </table>
                         </div>
                     }
-                </div>
             </div>
 
             @* ── FORM THÊM NGÔN NGỮ MỚI ── *@
-            <div class="card bg-dark-card border-0 shadow" style="border-radius: 16px;">
-                <div class="card-body p-4">
-                    <h6 class="text-white fw-bold mb-3 border-bottom border-secondary pb-3">
-                        <i class="bi bi-plus-circle me-2"></i>THÊM NGÔN NGỮ MỚI
-                    </h6>
+            <div class="dash-card p-4">
+                <div class="dash-label mb-3"><i class="bi bi-plus-circle me-2"></i>THÊM NGÔN NGỮ MỚI</div>
 
                     <div class="row g-3">
                         <div class="col-md-6">
                             <label class="form-label text-muted small fw-bold">MÃ NGÔN NGỮ</label>
                             <div class="input-group">
                                 <input type="text" @bind="newLangCode" @bind:event="oninput"
-                                       class="form-control bg-dark border-secondary text-white rounded-start-3"
+                                       class="form-control dash-input rounded-start-3"
                                        placeholder="vd: en, ja, ko, zh-TW" />
                                 <button class="btn btn-outline-light rounded-end-3" @onclick="CheckLanguageCode"
                                         disabled="@isCheckingCode">
@@ -126,13 +122,13 @@
                         <div class="col-md-6">
                             <label class="form-label text-muted small fw-bold">TTS VOICE (TÙY CHỌN)</label>
                             <input type="text" @bind="newTtsVoice"
-                                   class="form-control bg-dark border-secondary text-white rounded-3"
+                                   class="form-control dash-input rounded-3"
                                    placeholder="vd: en-US-Standard-A" />
                         </div>
                         <div class="col-12">
                             <label class="form-label text-muted small fw-bold">TÊN HIỂN THỊ (THỦ CÔNG)</label>
                             <input type="text" @bind="newLangDisplayName" @bind:event="oninput"
-                                   class="form-control bg-dark border-secondary text-white rounded-3"
+                                   class="form-control dash-input rounded-3"
                                    placeholder="Bắt buộc nếu chưa cấu hình Google API; hoặc ghi đè tên khi Google không nhận mã." />
                             <div class="form-text text-muted small">Dùng khi không có Google Translate hoặc cần tên tùy chỉnh (vd: English, 日本語).</div>
                         </div>
@@ -162,7 +158,6 @@
                         }
                         <i class="bi bi-plus-lg"></i> Thêm ngôn ngữ
                     </button>
-                </div>
             </div>
         </div>
 
@@ -170,16 +165,13 @@
            CỘT PHẢI: DỊCH HÀNG LOẠT
            ══════════════════════════════════════════════════════════ *@
         <div class="col-lg-7">
-            <div class="card bg-dark-card border-0 shadow" style="border-radius: 16px;">
-                <div class="card-body p-4">
-                    <h6 class="text-white fw-bold mb-3 border-bottom border-secondary pb-3">
-                        <i class="bi bi-lightning-charge me-2"></i>DỊCH HÀNG LOẠT (BATCH TRANSLATE)
-                    </h6>
+            <div class="dash-card p-4">
+                <div class="dash-label mb-3"><i class="bi bi-lightning-charge me-2"></i>DỊCH HÀNG LOẠT (BATCH TRANSLATE)</div>
 
                     <div class="row g-3 mb-4">
                         <div class="col-md-4">
                             <label class="form-label text-muted small fw-bold">NGÔN NGỮ NGUỒN</label>
-                            <select @bind="sourceLanguageId" class="form-select bg-dark border-secondary text-white rounded-3">
+                            <select @bind="sourceLanguageId" class="form-select dash-input rounded-3">
                                 @foreach (var lang in languages)
                                 {
                                     <option value="@lang.LanguageId">@lang.Name (@lang.Code.ToUpper())</option>
@@ -188,7 +180,7 @@
                         </div>
                         <div class="col-md-4">
                             <label class="form-label text-muted small fw-bold">NGÔN NGỮ ĐÍCH</label>
-                            <select @bind="targetLanguageId" class="form-select bg-dark border-secondary text-white rounded-3">
+                            <select @bind="targetLanguageId" class="form-select dash-input rounded-3">
                                 <option value="0">-- Chọn ngôn ngữ đích --</option>
                                 @foreach (var lang in languages)
                                 {
@@ -198,7 +190,7 @@
                         </div>
                         <div class="col-md-4">
                             <label class="form-label text-muted small fw-bold">CHỌN POI</label>
-                            <select @bind="selectedPoiId" class="form-select bg-dark border-secondary text-white rounded-3">
+                            <select @bind="selectedPoiId" class="form-select dash-input rounded-3">
                                 <option value="0">Tất cả POI</option>
                                 @foreach (var poi in pois)
                                 {
@@ -273,7 +265,6 @@
                             }
                         </div>
                     }
-                </div>
             </div>
 
             @* ── XÁC NHẬN GHI ĐÈ ── *@

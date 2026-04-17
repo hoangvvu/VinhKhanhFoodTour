@@ -6,53 +6,37 @@
 @inject PoiService PoiService
 
 @* ══════════════════════════════════════════════════════════════
-   PHẦN 1: HEADER — Giữ nguyên giao diện gốc của bạn
+   PHẦN 1: HEADER
    ══════════════════════════════════════════════════════════════ *@
 
-<div class="container-fluid p-4" style="background-color: #f8f9fa; min-height: 100vh;">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h3 class="mb-0 fw-bold">Gian hàng</h3>
-        <div class="d-flex align-items-center gap-3">
-            <div class="position-relative">
-                <input type="text" class="form-control rounded-pill border-0 shadow-sm ps-4" placeholder="Tìm kiếm...">
-                <span class="bi bi-search position-absolute text-muted" style="top: 10px; right: 15px;"></span>
-            </div>
-            <button class="btn btn-link text-muted position-relative">
-                <span class="bi bi-bell fs-5"></span>
-                <span class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle"></span>
-            </button>
-            <div class="d-flex align-items-center gap-2">
-                <span class="badge bg-danger rounded-circle p-3 fs-6">A</span>
-                <div class="small">
-                    <strong>Admin</strong><br>
-                    <small class="text-muted">Quản trị viên</small>
-                </div>
-            </div>
+<div class="dash-page p-4">
+    <div class="d-flex justify-content-between align-items-center mb-5">
+        <div>
+            <h2 class="fw-bold mb-1" style="color: #F0EBE3;">Gian hàng</h2>
+            <span style="color: #4a4a5a; font-size: 13px;"><i class="bi bi-clock me-1"></i>Quản lý danh sách gian hàng</span>
         </div>
+        <button class="btn btn-danger rounded-pill px-4" @onclick="ShowAddModal">
+            + Thêm gian hàng
+        </button>
     </div>
 
     @* ══════════════════════════════════════════════════════════
-       PHẦN 2: THANH LỌC + NÚT THÊM
-       Thay đổi: Thêm @bind cho ô tìm kiếm và dropdown lọc
+       PHẦN 2: THANH LỌC
        ══════════════════════════════════════════════════════════ *@
 
-    <div class="card card-admin mb-4 border-0 shadow-sm" style="border-radius: 15px;">
-        <div class="card-body d-flex gap-3">
-            <input type="text" class="form-control rounded-pill bg-light border-0 ps-4 w-50"
+    <div class="dash-card p-4 mb-4">
+        <div class="d-flex gap-3">
+            <input type="text" class="form-control dash-input rounded-pill ps-4 w-50"
                    placeholder="Tìm gian hàng..."
                    @bind="searchText"
                    @bind:event="oninput" />
 
-            <select class="form-select rounded-pill bg-light border-0 w-25"
+            <select class="form-select dash-input rounded-pill w-25"
                     @bind="filterStatus">
                 <option value="all">Tất cả trạng thái</option>
                 <option value="active">Đang hoạt động</option>
                 <option value="inactive">Đã tắt</option>
             </select>
-
-            <button class="btn btn-dark rounded-pill px-4 ms-auto" @onclick="ShowAddModal">
-                + Thêm gian hàng
-            </button>
         </div>
     </div>
 
@@ -67,105 +51,103 @@
     @if (isLoading)
     {
         <div class="text-center py-5">
-            <div class="spinner-border text-primary" role="status"></div>
-            <p class="mt-2 text-muted">Đang tải dữ liệu...</p>
+            <div class="spinner-border text-danger" style="width:2.5rem;height:2.5rem;" role="status"></div>
+            <p style="color:#4a4a5a;font-size:13px;letter-spacing:1px;margin-top:12px;">ĐANG TẢI...</p>
         </div>
     }
     else if (!FilteredPois.Any())
     {
-        <div class="card card-admin border-0 shadow-sm text-center py-5" style="border-radius: 15px;">
-            <p class="text-muted fs-5">Không tìm thấy gian hàng nào.</p>
+        <div class="dash-card p-5 text-center">
+            <p style="color:#4a4a5a;" class="fs-5">Không tìm thấy gian hàng nào.</p>
         </div>
     }
     else
     {
-        <div class="card card-admin border-0 shadow-sm" style="border-radius: 15px;">
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table mb-0 table-admin table-hover align-middle">
-                        <thead>
+        <div class="dash-card" style="overflow:hidden;">
+            <div class="table-responsive">
+                <table class="table dash-table mb-0">
+                    <thead>
+                        <tr style="background:rgba(0,0,0,0.4);">
+                            <th class="ps-4" style="color:#4a4a5a;font-size:11px;letter-spacing:1.5px;">GIAN HÀNG</th>
+                            <th style="color:#4a4a5a;font-size:11px;letter-spacing:1.5px;">CHỦ &amp; GMAIL</th>
+                            <th style="color:#4a4a5a;font-size:11px;letter-spacing:1.5px;">ĐỊA CHỈ</th>
+                            <th style="color:#4a4a5a;font-size:11px;letter-spacing:1.5px;">TỌA ĐỘ</th>
+                            <th style="color:#4a4a5a;font-size:11px;letter-spacing:1.5px;">BÁN KÍNH</th>
+                            <th style="color:#4a4a5a;font-size:11px;letter-spacing:1.5px;">ƯU TIÊN</th>
+                            <th style="color:#4a4a5a;font-size:11px;letter-spacing:1.5px;">TRẠNG THÁI</th>
+                            <th class="text-end pe-4" style="color:#4a4a5a;font-size:11px;letter-spacing:1.5px;">HÀNH ĐỘNG</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in FilteredPois)
+                        {
                             <tr>
-                                <th class="ps-4">GIAN HÀNG</th>
-                                <th>CHỦ &amp; GMAIL</th>
-                                <th>ĐỊA CHỈ</th>
-                                <th>TỌA ĐỘ</th>
-                                <th>BÁN KÍNH</th>
-                                <th>ƯU TIÊN</th>
-                                <th>TRẠNG THÁI</th>
-                                <th class="text-end pe-4">HÀNH ĐỘNG</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var item in FilteredPois)
-                            {
-                                <tr>
-                                    <td class="ps-4">
-                                        <strong>@item.Name</strong><br />
-                                        <small class="text-muted">@item.Phone</small>
-                                    </td>
-                                    <td>
-                                        <small class="text-muted">@GetOwnerLabel(item.OwnerId)</small>
-                                    </td>
-                                    <td>@item.Address</td>
-                                    <td>
-                                        <small class="text-muted">
-                                            @item.Latitude.ToString("F8")<br />
-                                            @item.Longitude.ToString("F8")
-                                        </small>
-                                    </td>
-                                    <td>
-                                        <span class="badge bg-primary-subtle text-primary rounded-pill">
-                                            @item.Radius m
+                                <td class="ps-4">
+                                    <strong style="color:#F0EBE3;">@item.Name</strong><br />
+                                    <small style="color:#4a4a5a;">@item.Phone</small>
+                                </td>
+                                <td>
+                                    <small style="color:#4a4a5a;">@GetOwnerLabel(item.OwnerId)</small>
+                                </td>
+                                <td style="color:#8A8078;">@item.Address</td>
+                                <td>
+                                    <small style="color:#4a4a5a;">
+                                        @item.Latitude.ToString("F8")<br />
+                                        @item.Longitude.ToString("F8")
+                                    </small>
+                                </td>
+                                <td>
+                                    <span class="badge px-3 py-2" style="background:rgba(232,160,32,0.12);color:#E8A020;border:1px solid rgba(232,160,32,0.25);border-radius:20px;">
+                                        @item.Radius m
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge px-3 py-2" style="background:rgba(232,160,32,0.12);color:#E8A020;border:1px solid rgba(232,160,32,0.25);border-radius:20px;">
+                                        @item.Priority
+                                    </span>
+                                </td>
+                                <td>
+                                    @if (item.IsActive)
+                                    {
+                                        <span class="badge px-3 py-2"
+                                              style="background:rgba(34,197,94,0.12);color:#4ade80;border:1px solid rgba(34,197,94,0.25);border-radius:20px;cursor:pointer;"
+                                              @onclick="() => ToggleActive(item.PoiId)">
+                                            Đã bật
                                         </span>
-                                    </td>
-                                    <td>
-                                        <span class="badge bg-warning-subtle text-warning rounded-pill">
-                                            @item.Priority
+                                    }
+                                    else
+                                    {
+                                        <span class="badge px-3 py-2"
+                                              style="background:rgba(107,114,128,0.12);color:#6b7280;border:1px solid rgba(107,114,128,0.25);border-radius:20px;cursor:pointer;"
+                                              @onclick="() => ToggleActive(item.PoiId)">
+                                            Đã tắt
                                         </span>
-                                    </td>
-                                    <td>
-                                        @if (item.IsActive)
-                                        {
-                                            <span class="badge bg-success-subtle text-success rounded-pill"
-                                                  style="cursor: pointer;"
-                                                  @onclick="() => ToggleActive(item.PoiId)">
-                                                Đã bật
-                                            </span>
-                                        }
-                                        else
-                                        {
-                                            <span class="badge bg-secondary-subtle text-secondary rounded-pill"
-                                                  style="cursor: pointer;"
-                                                  @onclick="() => ToggleActive(item.PoiId)">
-                                                Đã tắt
-                                            </span>
-                                        }
-                                    </td>
-                                    <td class="text-end pe-4">
-                                        <button class="btn btn-sm btn-outline-primary rounded-pill me-1"
-                                                @onclick="() => ShowEditModal(item)">
-                                            <span class="bi bi-pencil"></span> Sửa
+                                    }
+                                </td>
+                                <td class="text-end pe-4">
+                                    <button class="btn btn-sm btn-outline-primary rounded-pill me-1"
+                                            @onclick="() => ShowEditModal(item)">
+                                        <span class="bi bi-pencil"></span> Sửa
+                                    </button>
+                                    @if (item.IsActive)
+                                    {
+                                        <button class="btn btn-sm btn-outline-warning rounded-pill"
+                                                @onclick="() => ShowHideConfirm(item)">
+                                            <span class="bi bi-eye-slash"></span> Ẩn
                                         </button>
-                                        @if (item.IsActive)
-                                        {
-                                            <button class="btn btn-sm btn-outline-warning rounded-pill"
-                                                    @onclick="() => ShowHideConfirm(item)">
-                                                <span class="bi bi-eye-slash"></span> Ẩn
-                                            </button>
-                                        }
-                                        else
-                                        {
-                                            <button class="btn btn-sm btn-outline-success rounded-pill"
-                                                    @onclick="() => ToggleActive(item.PoiId)">
-                                                <span class="bi bi-eye"></span> Hiển thị lại
-                                            </button>
-                                        }
-                                    </td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
+                                    }
+                                    else
+                                    {
+                                        <button class="btn btn-sm btn-outline-success rounded-pill"
+                                                @onclick="() => ToggleActive(item.PoiId)">
+                                            <span class="bi bi-eye"></span> Hiển thị lại
+                                        </button>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
             </div>
         </div>
     }
@@ -181,17 +163,16 @@
 
 @if (isModalVisible)
 {
-    <div class="modal fade show d-block" style="background: rgba(0,0,0,0.5);">
+    <div class="modal fade show d-block" style="background: rgba(0,0,0,0.6);">
         <div class="modal-dialog modal-lg modal-dialog-centered">
-            <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
-                <div class="modal-header border-0 pe-4 pt-4">
-                    <h5 class="modal-title fw-bold">
+            <div class="modal-content border-0" style="background:#1a1a24;border-radius:20px;border:1px solid rgba(255,255,255,0.08);">
+                <div class="modal-header pe-4 pt-4" style="border-bottom:1px solid rgba(255,255,255,0.06);">
+                    <h5 class="modal-title fw-bold" style="color:#F0EBE3;">
                         @(isEditing ? "Sửa gian hàng" : "Thêm gian hàng mới")
                     </h5>
-                    <button type="button" class="btn-close" @onclick="HideModal"></button>
+                    <button type="button" class="btn-close btn-close-white" @onclick="HideModal"></button>
                 </div>
                 <div class="modal-body p-4">
-                    @* Hiển thị lỗi nếu có *@
                     @if (!string.IsNullOrEmpty(errorMessage))
                     {
                         <div class="alert alert-danger rounded-pill text-center">
@@ -201,29 +182,29 @@
 
                     <div class="row g-3">
                         <div class="col-12">
-                            <label class="form-label text-uppercase small fw-bold text-muted">Tên gian hàng</label>
+                            <label class="form-label" style="color:#8A8078;font-size:11px;letter-spacing:1px;font-weight:700;">TÊN GIAN HÀNG</label>
                             <input type="text"
-                                   class="form-control rounded-pill bg-light border-0 ps-3 fs-5"
+                                   class="form-control dash-input rounded-pill ps-3"
                                    placeholder="VD: Ốc Oanh"
                                    @bind="editingPoi.Name" />
                         </div>
                         <div class="col-12">
-                            <label class="form-label text-uppercase small fw-bold text-muted">Địa chỉ</label>
+                            <label class="form-label" style="color:#8A8078;font-size:11px;letter-spacing:1px;font-weight:700;">ĐỊA CHỈ</label>
                             <input type="text"
-                                   class="form-control rounded-pill bg-light border-0 ps-3 fs-5"
+                                   class="form-control dash-input rounded-pill ps-3"
                                    placeholder="Địa chỉ chi tiết"
                                    @bind="editingPoi.Address" />
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label text-uppercase small fw-bold text-muted">Số điện thoại</label>
+                            <label class="form-label" style="color:#8A8078;font-size:11px;letter-spacing:1px;font-weight:700;">SỐ ĐIỆN THOẠI</label>
                             <input type="text"
-                                   class="form-control rounded-pill bg-light border-0 ps-3 fs-5"
+                                   class="form-control dash-input rounded-pill ps-3"
                                    placeholder="VD: 0901234567"
                                    @bind="editingPoi.Phone" />
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label text-uppercase small fw-bold text-muted">Chủ gian hàng</label>
-                            <select class="form-select rounded-pill bg-light border-0 ps-3 fs-5"
+                            <label class="form-label" style="color:#8A8078;font-size:11px;letter-spacing:1px;font-weight:700;">CHỦ GIAN HÀNG</label>
+                            <select class="form-select dash-input rounded-pill ps-3"
                                     @bind="editingOwnerIdText">
                                 <option value="">Chưa gán chủ gian hàng</option>
                                 @foreach (var owner in vendorUsers)
@@ -233,27 +214,27 @@
                             </select>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label text-uppercase small fw-bold text-muted">Vĩ độ (Latitude)</label>
+                            <label class="form-label" style="color:#8A8078;font-size:11px;letter-spacing:1px;font-weight:700;">VĨ ĐỘ (LATITUDE)</label>
                             <input type="number" step="0.00000001"
-                                   class="form-control rounded-pill bg-light border-0 ps-3 fs-5"
+                                   class="form-control dash-input rounded-pill ps-3"
                                    @bind="editingPoi.Latitude" />
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label text-uppercase small fw-bold text-muted">Kinh độ (Longitude)</label>
+                            <label class="form-label" style="color:#8A8078;font-size:11px;letter-spacing:1px;font-weight:700;">KINH ĐỘ (LONGITUDE)</label>
                             <input type="number" step="0.00000001"
-                                   class="form-control rounded-pill bg-light border-0 ps-3 fs-5"
+                                   class="form-control dash-input rounded-pill ps-3"
                                    @bind="editingPoi.Longitude" />
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label text-uppercase small fw-bold text-muted">Bán kính Geofence (m)</label>
+                            <label class="form-label" style="color:#8A8078;font-size:11px;letter-spacing:1px;font-weight:700;">BÁN KÍNH GEOFENCE (M)</label>
                             <input type="number"
-                                   class="form-control rounded-pill bg-light border-0 ps-3 fs-5"
+                                   class="form-control dash-input rounded-pill ps-3"
                                    min="5" max="200"
                                    @bind="editingPoi.Radius" />
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label text-uppercase small fw-bold text-muted">Mức ưu tiên (1=Cao)</label>
-                            <select class="form-select rounded-pill bg-light border-0 ps-3 fs-5"
+                            <label class="form-label" style="color:#8A8078;font-size:11px;letter-spacing:1px;font-weight:700;">MỨC ƯU TIÊN (1=CAO)</label>
+                            <select class="form-select dash-input rounded-pill ps-3"
                                     @bind="editingPoi.Priority">
                                 <option value="1">1 - Cao nhất</option>
                                 <option value="2">2 - Cao</option>
@@ -267,18 +248,18 @@
                                 <input class="form-check-input" type="checkbox" role="switch"
                                        id="switchActive"
                                        @bind="editingPoi.IsActive" />
-                                <label class="form-check-label" for="switchActive">
+                                <label class="form-check-label" for="switchActive" style="color:#8A8078;">
                                     @(editingPoi.IsActive ? "Đang hoạt động" : "Đã tắt")
                                 </label>
                             </div>
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer border-0 p-4">
-                    <button class="btn text-muted" @onclick="HideModal" disabled="@isSaving">
+                <div class="modal-footer p-4" style="border-top:1px solid rgba(255,255,255,0.06);">
+                    <button class="btn" style="color:#4a4a5a;" @onclick="HideModal" disabled="@isSaving">
                         Hủy
                     </button>
-                    <button class="btn btn-dark px-4 rounded-pill"
+                    <button class="btn btn-danger px-4 rounded-pill"
                             @onclick="SavePoi"
                             disabled="@isSaving">
                         @if (isSaving)
@@ -299,18 +280,18 @@
 
 @if (isHideConfirmVisible)
 {
-    <div class="modal fade show d-block" style="background: rgba(0,0,0,0.5);">
+    <div class="modal fade show d-block" style="background: rgba(0,0,0,0.6);">
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
+            <div class="modal-content border-0" style="background:#1a1a24;border-radius:20px;border:1px solid rgba(255,255,255,0.08);">
                 <div class="modal-body p-4 text-center">
                     <div class="fs-1 mb-3">👁‍🗨</div>
-                    <h5 class="fw-bold">Ẩn gian hàng</h5>
-                    <p class="text-muted">
-                        Gian hàng <strong>@hidingPoi?.Name</strong> sẽ được đánh dấu <strong>không hoạt động</strong> (ẩn khỏi app khách).<br />
-                        <small class="text-secondary">Dữ liệu vẫn lưu trong CSDL; có thể bật lại bằng trạng thái trong bảng hoặc sửa gian hàng.</small>
+                    <h5 class="fw-bold" style="color:#F0EBE3;">Ẩn gian hàng</h5>
+                    <p style="color:#8A8078;">
+                        Gian hàng <strong style="color:#F0EBE3;">@hidingPoi?.Name</strong> sẽ được đánh dấu <strong>không hoạt động</strong> (ẩn khỏi app khách).<br />
+                        <small style="color:#4a4a5a;">Dữ liệu vẫn lưu trong CSDL; có thể bật lại bằng trạng thái trong bảng hoặc sửa gian hàng.</small>
                     </p>
                     <div class="d-flex justify-content-center gap-2 mt-3">
-                        <button class="btn text-muted px-4" @onclick="HideHideConfirm">Hủy</button>
+                        <button class="btn px-4" style="color:#4a4a5a;" @onclick="HideHideConfirm">Hủy</button>
                         <button class="btn btn-warning text-dark rounded-pill px-4"
                                 @onclick="HidePoiAsync"
                                 disabled="@isSaving">

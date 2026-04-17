@@ -6,19 +6,22 @@
 @inject AuthService AuthService
 @inject AuthenticationStateProvider AuthStateProvider
 
-<div class="container-fluid p-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h3 class="text-white fw-bold mb-0">NHÂN SỰ QUẢN TRỊ</h3>
+<div class="dash-page p-4">
+    <div class="d-flex justify-content-between align-items-center mb-5">
+        <div>
+            <h2 class="fw-bold mb-1" style="color: #F0EBE3;">NHÂN SỰ QUẢN TRỊ</h2>
+            <span style="color: #4a4a5a; font-size: 13px;"><i class="bi bi-clock me-1"></i>Quản lý tài khoản hệ thống</span>
+        </div>
         <button class="btn btn-danger rounded-pill px-4 shadow" @onclick="ShowModal">
             <i class="bi bi-person-plus me-2"></i>Thêm người dùng
         </button>
     </div>
-    
+
     @if (users == null)
     {
         <div class="text-center py-5">
-            <div class="spinner-border text-danger" role="status"></div>
-            <p class="text-muted mt-2">Đang tải dữ liệu...</p>
+            <div class="spinner-border text-danger" style="width:2.5rem;height:2.5rem;" role="status"></div>
+            <p style="color:#4a4a5a;font-size:13px;letter-spacing:1px;margin-top:12px;">ĐANG TẢI...</p>
         </div>
     }
     else
@@ -27,30 +30,29 @@
             @foreach (var user in users)
             {
                 <div class="col-md-6 col-lg-4">
-                    <div class="card bg-dark-card border-0 shadow-sm h-100" style="border-radius: 12px;">
+                    <div class="dash-card h-100">
                         <div class="card-body p-4">
                             <div class="d-flex align-items-center">
-                                @* Tự động lấy chữ cái đầu của tên làm Avatar *@
-                                <div class="bg-danger rounded-circle d-flex justify-content-center align-items-center me-3 text-white fw-bold shadow" style="width: 50px; height: 50px; font-size: 1.2rem;">
+                                <div class="bg-danger rounded-circle d-flex justify-content-center align-items-center me-3 text-white fw-bold shadow" style="width: 50px; height: 50px; font-size: 1.2rem; flex-shrink: 0;">
                                     @(string.IsNullOrWhiteSpace(user.Name) ? "U" : user.Name.Substring(0, 1).ToUpper())
                                 </div>
                                 <div class="flex-grow-1">
-                                    <h6 class="text-white mb-1 fw-bold">@user.Name</h6>
-                                    <small class="text-muted d-block mb-2">@user.Email</small>
+                                    <h6 class="mb-1 fw-bold" style="color:#F0EBE3;">@user.Name</h6>
+                                    <small style="color:#4a4a5a;" class="d-block mb-2">@user.Email</small>
                                     <div>
-                                        <span class="badge @(user.Role == "Admin" ? "bg-warning text-dark" : "bg-info text-dark")">@user.Role</span>
+                                        <span class="badge px-3 py-2" style="@(user.Role == "Admin" ? "background:rgba(232,160,32,0.12);color:#E8A020;border:1px solid rgba(232,160,32,0.25);border-radius:20px;" : "background:rgba(34,197,94,0.12);color:#4ade80;border:1px solid rgba(34,197,94,0.25);border-radius:20px;")">@user.Role</span>
                                         @if (user.IsActive)
                                         {
-                                            <span class="badge bg-success ms-1">Hoạt động</span>
+                                            <span class="badge px-3 py-2 ms-1" style="background:rgba(34,197,94,0.12);color:#4ade80;border:1px solid rgba(34,197,94,0.25);border-radius:20px;">Hoạt động</span>
                                         }
                                         else
                                         {
-                                            <span class="badge bg-secondary ms-1">Đã ẩn</span>
+                                            <span class="badge px-3 py-2 ms-1" style="background:rgba(107,114,128,0.12);color:#6b7280;border:1px solid rgba(107,114,128,0.25);border-radius:20px;">Đã ẩn</span>
                                         }
                                     </div>
                                 </div>
                             </div>
-                            <div class="mt-3 pt-3 border-top border-secondary">
+                            <div class="mt-3 pt-3" style="border-top:1px solid rgba(255,255,255,0.06);">
                                 <button type="button"
                                         class="btn btn-sm w-100 rounded-pill @(user.IsActive ? "btn-outline-warning" : "btn-outline-success")"
                                         disabled="@(user.UserId == currentUserId || togglingId == user.UserId)"
@@ -64,7 +66,7 @@
                                 </button>
                                 @if (user.UserId == currentUserId)
                                 {
-                                    <small class="text-muted d-block mt-2 text-center">Không thể ẩn chính mình.</small>
+                                    <small style="color:#4a4a5a;" class="d-block mt-2 text-center">Không thể ẩn chính mình.</small>
                                 }
                             </div>
                         </div>
@@ -80,9 +82,9 @@
 {
     <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.8); backdrop-filter: blur(4px);">
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content bg-dark border-secondary text-white" style="border-radius: 16px;">
-                <div class="modal-header border-secondary">
-                    <h5 class="modal-title fw-bold">Thêm Nhân Sự Mới</h5>
+            <div class="modal-content border-0" style="background:#1a1a24;border-radius:20px;border:1px solid rgba(255,255,255,0.08);">
+                <div class="modal-header" style="border-bottom:1px solid rgba(255,255,255,0.06);">
+                    <h5 class="modal-title fw-bold" style="color:#F0EBE3;">Thêm Nhân Sự Mới</h5>
                     <button type="button" class="btn-close btn-close-white" @onclick="HideModal"></button>
                 </div>
                 <div class="modal-body p-4">
@@ -92,29 +94,29 @@
                     }
 
                     <div class="mb-3">
-                        <label class="form-label text-muted small fw-bold">Họ và Tên</label>
-                        <input type="text" class="form-control bg-black border-secondary text-white rounded-3" @bind="newName" placeholder="VD: Nguyễn Văn A" />
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label class="form-label text-muted small fw-bold">Email đăng nhập</label>
-                        <input type="email" class="form-control bg-black border-secondary text-white rounded-3" @bind="newEmail" placeholder="VD: vendor1@vinhkhanh.vn" />
+                        <label class="form-label" style="color:#8A8078;font-size:11px;letter-spacing:1px;font-weight:700;">HỌ VÀ TÊN</label>
+                        <input type="text" class="form-control dash-input rounded-3" @bind="newName" placeholder="VD: Nguyễn Văn A" />
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label text-muted small fw-bold">Mật khẩu</label>
-                        <input type="password" class="form-control bg-black border-secondary text-white rounded-3" @bind="newPassword" placeholder="Tạo mật khẩu cho tài khoản..." />
+                        <label class="form-label" style="color:#8A8078;font-size:11px;letter-spacing:1px;font-weight:700;">EMAIL ĐĂNG NHẬP</label>
+                        <input type="email" class="form-control dash-input rounded-3" @bind="newEmail" placeholder="VD: vendor1@vinhkhanh.vn" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label" style="color:#8A8078;font-size:11px;letter-spacing:1px;font-weight:700;">MẬT KHẨU</label>
+                        <input type="password" class="form-control dash-input rounded-3" @bind="newPassword" placeholder="Tạo mật khẩu cho tài khoản..." />
                     </div>
 
                     <div class="mb-4">
-                        <label class="form-label text-muted small fw-bold">Phân quyền (Role)</label>
-                        <select class="form-select bg-black border-secondary text-white rounded-3" @bind="newRole">
+                        <label class="form-label" style="color:#8A8078;font-size:11px;letter-spacing:1px;font-weight:700;">PHÂN QUYỀN (ROLE)</label>
+                        <select class="form-select dash-input rounded-3" @bind="newRole">
                             <option value="Vendor">Vendor (Chủ quán ăn)</option>
                             <option value="Admin">Admin (Quản trị viên hệ thống)</option>
                         </select>
                     </div>
                 </div>
-                <div class="modal-footer border-secondary">
+                <div class="modal-footer" style="border-top:1px solid rgba(255,255,255,0.06);">
                     <button type="button" class="btn btn-outline-light rounded-pill px-4" @onclick="HideModal">Hủy</button>
                     <button type="button" class="btn btn-danger rounded-pill px-4 fw-bold shadow-sm" @onclick="SaveUser" disabled="@isSaving">
                         @if (isSaving) {

@@ -111,8 +111,9 @@ h1:focus {
 }
 
 .badge-other {
-    background-color: #e9ecef;
-    color: #adb5bd;
+    background-color: rgba(74,74,90,0.3);
+    color: #9ca3af;
+    border: 1px solid rgba(107,114,128,0.3);
 }
 
 /* Table style */
@@ -239,13 +240,71 @@ a {
     border: 1px solid #ddd;
 }
 /* ========================================
-   BỔ SUNG — Dark theme cho admin cards
-   Chép đoạn này vào cuối file:
-   Admin/wwwroot/css/app.css
+   UNIFIED DARK DESIGN SYSTEM
    ======================================== */
 
+/* Page wrapper */
+.dash-page {
+    background: #0f0f13;
+    min-height: 100vh;
+}
+
+/* Card */
+.dash-card {
+    background: #1a1a24 !important;
+    border: 1px solid rgba(255,255,255,0.06) !important;
+    border-radius: 16px !important;
+    color: #F0EBE3 !important;
+    transition: box-shadow 0.2s, transform 0.2s;
+}
+.dash-card:hover {
+    box-shadow: 0 8px 24px rgba(0,0,0,0.45) !important;
+}
+
+/* Inputs & Selects */
+.dash-input,
+.dash-input:focus {
+    background: #0f0f13 !important;
+    border: 1px solid rgba(255,255,255,0.12) !important;
+    color: #d1d5db !important;
+    border-radius: 10px !important;
+    padding: 10px 14px !important;
+    outline: none !important;
+    box-shadow: none !important;
+}
+.dash-input::placeholder { color: #4a4a5a !important; }
+
+/* Section divider labels */
+.dash-label {
+    font-size: 11px;
+    letter-spacing: 2px;
+    font-weight: 700;
+    color: #4a4a5a;
+    text-transform: uppercase;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    margin-bottom: 16px;
+}
+
+/* Table */
+.dash-table { color: #d1d5db !important; }
+.dash-table thead tr { background: rgba(0,0,0,0.4) !important; }
+.dash-table thead th {
+    color: #4a4a5a !important;
+    font-size: 11px !important;
+    letter-spacing: 1.5px !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    border: none !important;
+    padding: 14px 16px !important;
+}
+.dash-table tbody tr { border-bottom: 1px solid rgba(255,255,255,0.04) !important; }
+.dash-table tbody tr:hover { background: rgba(255,255,255,0.025) !important; }
+.dash-table tbody td { border: none !important; padding: 14px 16px !important; vertical-align: middle !important; }
+
+/* Keep bg-dark-card for backward compat */
 .bg-dark-card {
-    background-color: #1E1A1A !important;
+    background-color: #1a1a24 !important;
     color: #F0EBE3 !important;
 }
 

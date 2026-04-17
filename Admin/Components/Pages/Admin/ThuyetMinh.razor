@@ -3,14 +3,28 @@
 @attribute [Authorize(Roles = "Admin")]
 @rendermode InteractiveServer
 
-<div class="container-fluid p-4">
-    <div class="card bg-dark-card border-0 shadow-sm p-4" style="border-radius: 16px;">
-        <h4 class="text-white fw-bold mb-3">THUYẾT MINH ĐÃ CHUYỂN CHO CHỦ GIAN HÀNG</h4>
-        <p class="text-muted mb-2">
-            Chức năng tạo thuyết minh TTS và tải lên file audio có sẵn hiện được thực hiện tại trang
-            <strong>Mô tả &amp; Hình ảnh</strong> của từng chủ gian hàng.
-        </p>
-        <p class="text-muted mb-0">
+<div class="dash-page p-4">
+    <div class="d-flex justify-content-between align-items-center mb-5">
+        <div>
+            <h2 class="fw-bold mb-1" style="color: #F0EBE3;">Thuyết Minh</h2>
+            <span style="color: #4a4a5a; font-size: 13px;"><i class="bi bi-mic-fill me-1"></i>Quản lý audio thuyết minh</span>
+        </div>
+    </div>
+
+    <div class="dash-card p-4">
+        <div class="d-flex align-items-center gap-3 mb-3">
+            <div style="background:rgba(13,202,240,0.12);border-radius:12px;padding:12px;">
+                <i class="bi bi-info-circle-fill" style="color:#0dcaf0;font-size:1.5rem;"></i>
+            </div>
+            <div>
+                <h5 class="fw-bold mb-1" style="color:#F0EBE3;">Chức năng đã chuyển cho Chủ gian hàng</h5>
+                <p style="color:#8A8078;" class="mb-0">
+                    Tạo thuyết minh TTS và tải lên audio có sẵn được thực hiện tại trang
+                    <strong style="color:#0dcaf0;">Mô tả &amp; Hình ảnh</strong> của từng chủ gian hàng.
+                </p>
+            </div>
+        </div>
+        <p style="color:#4a4a5a;" class="mb-0 small">
             Admin chỉ quản lý tổng quan POI, QR, người dùng và thống kê.
         </p>
     </div>

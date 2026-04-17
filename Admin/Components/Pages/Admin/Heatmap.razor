@@ -10,19 +10,22 @@
 
 <PageTitle>Heatmap - Vĩnh Khánh</PageTitle>
 
-<div class="container-fluid p-4" style="background-color: #262121; min-height: 100vh;">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h3 class="fw-bold mb-0" style="color: #F0EBE3;">
-            <i class="bi bi-fire text-danger me-2"></i>BẢN ĐỒ NHIỆT (HEATMAP)
-        </h3>
+<div class="dash-page p-4">
+    <div class="d-flex justify-content-between align-items-center mb-5">
+        <div>
+            <h2 class="fw-bold mb-1" style="color: #F0EBE3;">
+                <i class="bi bi-fire text-danger me-2"></i>BẢN ĐỒ NHIỆT (HEATMAP)
+            </h2>
+            <span style="color: #4a4a5a; font-size: 13px;"><i class="bi bi-activity me-1"></i>Phân bố vị trí thiết bị theo thời gian thực</span>
+        </div>
         <span class="badge bg-danger p-2 px-3">Real-time</span>
     </div>
 
-    <div class="card bg-dark-card border-0 p-3 mb-3 shadow-sm" style="border-radius: 12px;">
+    <div class="dash-card p-4 mb-4">
         <div class="row g-2 align-items-end">
             <div class="col-md-3">
                 <label class="text-muted small fw-bold">KHOẢNG THỜI GIAN</label>
-                <select class="form-select bg-dark text-white border-secondary" @bind="hours" @bind:after="ReloadAsync">
+                <select class="form-select dash-input" @bind="hours" @bind:after="ReloadAsync">
                     <option value="1">1 giờ qua</option>
                     <option value="6">6 giờ qua</option>
                     <option value="24">24 giờ qua</option>
@@ -33,7 +36,7 @@
             </div>
             <div class="col-md-3">
                 <label class="text-muted small fw-bold">LOẠI SỰ KIỆN</label>
-                <select class="form-select bg-dark text-white border-secondary" @bind="eventType" @bind:after="ReloadAsync">
+                <select class="form-select dash-input" @bind="eventType" @bind:after="ReloadAsync">
                     <option value="">Tất cả</option>
                     <option value="move">Di chuyển (move)</option>
                     <option value="enter">Vào POI (enter)</option>

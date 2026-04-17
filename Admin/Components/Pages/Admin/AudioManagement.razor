@@ -1,34 +1,34 @@
 @page "/admin/audio-management"
-@using Microsoft.AspNetCore.Authorization    ← THÊM MỚI
-@using global::Admin.Services                        ← THÊM MỚI  
-@using VKFoodTour.Infrastructure.Entities    ← THÊM MỚI
+@using Microsoft.AspNetCore.Authorization
+@using global::Admin.Services
+@using VKFoodTour.Infrastructure.Entities
 @attribute [Authorize(Roles = "Admin")]
+@rendermode InteractiveServer
 @inject PoiService PoiService
 @inject TtsService TtsService
 @inject IJSRuntime JS
 
 <PageTitle>Quản lý Audio Toàn Hệ Thống</PageTitle>
 
-<div class="container-fluid py-4">
-    <div class="row mb-4">
-        <div class="col">
-            <h2 class="text-white mb-1"><i class="bi bi-soundwave me-2 text-danger"></i>Quản lý Audio Toàn Hệ Thống</h2>
-            <p class="text-muted">Tạo, xem và quản lý audio thuyết minh cho tất cả gian hàng</p>
+<div class="dash-page p-4">
+    <div class="d-flex justify-content-between align-items-center mb-5">
+        <div>
+            <h2 class="fw-bold mb-1" style="color:#F0EBE3;"><i class="bi bi-soundwave me-2 text-danger"></i>Quản lý Audio Toàn Hệ Thống</h2>
+            <p class="text-muted mb-0">Tạo, xem và quản lý audio thuyết minh cho tất cả gian hàng</p>
         </div>
-        <div class="col-auto">
-            <button class="btn btn-danger rounded-pill" @onclick="GenerateAllTtsAsync" disabled="@isGeneratingAll">
-                @if (isGeneratingAll)
-                {
-                    <span class="spinner-border spinner-border-sm me-2"></span>
-                }
-                <i class="bi bi-magic me-2"></i>Tạo TTS cho tất cả quán chưa có audio
-            </button>
-        </div>
+        <button class="btn btn-danger rounded-pill" @onclick="GenerateAllTtsAsync" disabled="@isGeneratingAll">
+            @if (isGeneratingAll)
+            {
+                <span class="spinner-border spinner-border-sm me-2"></span>
+            }
+            <i class="bi bi-magic me-2"></i>Tạo TTS cho tất cả quán chưa có audio
+        </button>
     </div>
 
     @if (!string.IsNullOrEmpty(statusMessage))
     {
-        <div class="alert @(isError ? "alert-danger" : "alert-success") alert-dismissible fade show" role="alert">
+        <div class="alert alert-dismissible fade show" role="alert"
+             style="@(isError ? "background:rgba(200,55,45,0.08);border:1px solid rgba(200,55,45,0.2);border-radius:12px;" : "background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.2);border-radius:12px;")">
             @statusMessage
             <button type="button" class="btn-close" @onclick="() => statusMessage = null"></button>
         </div>
@@ -37,81 +37,68 @@
     <!-- Stats Cards -->
     <div class="row g-3 mb-4">
         <div class="col-md-3">
-            <div class="card bg-dark-card border-0 shadow-sm h-100">
-                <div class="card-body text-center">
-                    <div class="display-6 text-danger">@totalStalls</div>
-                    <div class="text-muted small">Tổng gian hàng</div>
-                </div>
+            <div class="dash-card p-4 h-100 text-center">
+                <i class="bi bi-shop mb-2" style="font-size:1.5rem;color:#C8372D;"></i>
+                <h2 class="fw-bold mb-1" style="color:#C8372D;">@totalStalls</h2>
+                <div class="text-muted small">Tổng gian hàng</div>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card bg-dark-card border-0 shadow-sm h-100">
-                <div class="card-body text-center">
-                    <div class="display-6 text-success">@stallsWithAudio</div>
-                    <div class="text-muted small">Có audio</div>
-                </div>
+            <div class="dash-card p-4 h-100 text-center">
+                <i class="bi bi-music-note-beamed mb-2" style="font-size:1.5rem;color:#22c55e;"></i>
+                <h2 class="fw-bold mb-1" style="color:#22c55e;">@stallsWithAudio</h2>
+                <div class="text-muted small">Có audio</div>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card bg-dark-card border-0 shadow-sm h-100">
-                <div class="card-body text-center">
-                    <div class="display-6 text-warning">@stallsWithoutAudio</div>
-                    <div class="text-muted small">Chưa có audio</div>
-                </div>
+            <div class="dash-card p-4 h-100 text-center">
+                <i class="bi bi-exclamation-circle mb-2" style="font-size:1.5rem;color:#f59e0b;"></i>
+                <h2 class="fw-bold mb-1" style="color:#f59e0b;">@stallsWithoutAudio</h2>
+                <div class="text-muted small">Chưa có audio</div>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card bg-dark-card border-0 shadow-sm h-100">
-                <div class="card-body text-center">
-                    <div class="display-6 text-info">@stallsWithQr</div>
-                    <div class="text-muted small">Có mã QR</div>
-                </div>
+            <div class="dash-card p-4 h-100 text-center">
+                <i class="bi bi-qr-code mb-2" style="font-size:1.5rem;color:#38bdf8;"></i>
+                <h2 class="fw-bold mb-1" style="color:#38bdf8;">@stallsWithQr</h2>
+                <div class="text-muted small">Có mã QR</div>
             </div>
         </div>
     </div>
 
     <!-- QR Code chung cho cả phố -->
-    <div class="card bg-dark-card border-0 shadow-sm mb-4">
-        <div class="card-body">
-            <div class="row align-items-center">
-                <div class="col-md-8">
-                    <h5 class="text-white mb-2"><i class="bi bi-qr-code me-2 text-danger"></i>Mã QR Chung - Tour Vĩnh Khánh</h5>
-                    <p class="text-muted mb-0">
-                        Du khách quét mã này sẽ nghe audio của <strong>TẤT CẢ</strong> gian hàng trên phố, 
-                        sắp xếp theo khoảng cách từ vị trí hiện tại. Không cần mã riêng từng quán.
-                    </p>
-                </div>
-                <div class="col-md-4 text-end">
-                    <img src="@masterQrImageUrl" alt="Master QR" class="img-fluid" style="max-width: 150px;" />
-                    <div class="mt-2">
-                        <a href="@masterQrImageUrl" download="VinhKhanh-Tour-QR.png" class="btn btn-outline-light btn-sm rounded-pill">
-                            <i class="bi bi-download me-1"></i>Tải ảnh QR
-                        </a>
-                    </div>
+    <div class="dash-card p-4 mb-4">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <div class="dash-label mb-2"><i class="bi bi-qr-code me-2"></i>Mã QR Chung - Tour Vĩnh Khánh</div>
+                <p class="text-muted mb-0">
+                    Du khách quét mã này sẽ nghe audio của <strong>TẤT CẢ</strong> gian hàng trên phố, 
+                    sắp xếp theo khoảng cách từ vị trí hiện tại. Không cần mã riêng từng quán.
+                </p>
+            </div>
+            <div class="col-md-4 text-end">
+                <img src="@masterQrImageUrl" alt="Master QR" class="img-fluid" style="max-width: 150px;" />
+                <div class="mt-2">
+                    <a href="@masterQrImageUrl" download="VinhKhanh-Tour-QR.png" class="btn btn-outline-light btn-sm rounded-pill">
+                        <i class="bi bi-download me-1"></i>Tải ảnh QR
+                    </a>
                 </div>
             </div>
         </div>
     </div>
 
     <!-- Audio List Table -->
-    <div class="card bg-dark-card border-0 shadow-sm">
-        <div class="card-header bg-transparent border-bottom border-secondary">
-            <div class="row align-items-center">
-                <div class="col">
-                    <h5 class="text-white mb-0">Danh sách Audio theo Gian hàng</h5>
-                </div>
-                <div class="col-auto">
-                    <select class="form-select form-select-sm bg-dark border-secondary text-white" style="width: auto;" @bind="filterStatus">
-                        <option value="all">Tất cả</option>
-                        <option value="with-audio">Có audio</option>
-                        <option value="without-audio">Chưa có audio</option>
-                    </select>
-                </div>
-            </div>
+    <div class="dash-card" style="overflow:hidden;">
+        <div class="p-4 d-flex justify-content-between align-items-center">
+            <div class="dash-label mb-0"><i class="bi bi-list-ul me-2"></i>Danh sách Audio theo Gian hàng</div>
+            <select class="form-select form-select-sm dash-input" style="width: auto;" @bind="filterStatus">
+                <option value="all">Tất cả</option>
+                <option value="with-audio">Có audio</option>
+                <option value="without-audio">Chưa có audio</option>
+            </select>
         </div>
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-dark table-hover mb-0">
+        <div class="table-responsive">
+            <table class="table dash-table mb-0">
                     <thead>
                         <tr class="text-muted small">
                             <th style="width: 50px;">STT</th>
@@ -199,7 +186,6 @@
                         }
                     </tbody>
                 </table>
-            </div>
         </div>
     </div>
 
@@ -418,15 +404,3 @@
         currentPlayingUrl = null;
     }
 }
-
-<style>
-    .bg-dark-card {
-        background-color: #1a1a1a;
-    }
-    .table-dark {
-        --bs-table-bg: transparent;
-    }
-    .table-dark > tbody > tr:hover {
-        background-color: rgba(200, 55, 45, 0.1);
-    }
-</style>
