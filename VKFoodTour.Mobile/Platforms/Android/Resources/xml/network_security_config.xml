@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!--
+        Cho phép cleartext (HTTP không mã hóa) tới các host phát triển:
+        - 10.0.2.2  : địa chỉ host-machine từ Android Emulator
+        - 127.0.0.1 / localhost
+        - *.devtunnels.ms : Visual Studio Dev Tunnels
+        - *.ngrok-free.app / *.ngrok.dev : ngrok tunnels (nếu dùng)
+        - 192.168.* / 10.* : LAN (Android thật kết nối cùng wifi)
+        Production: gỡ base-config cleartextTrafficPermitted.
+    -->
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </base-config>
+
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">10.0.2.2</domain>
+        <domain includeSubdomains="true">127.0.0.1</domain>
+        <domain includeSubdomains="true">localhost</domain>
+        <domain includeSubdomains="true">devtunnels.ms</domain>
+        <domain includeSubdomains="true">ngrok-free.app</domain>
+        <domain includeSubdomains="true">ngrok.dev</domain>
+    </domain-config>
+</network-security-config>

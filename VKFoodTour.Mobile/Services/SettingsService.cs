@@ -15,7 +15,7 @@ public interface ISettingsService
 public class SettingsService : ISettingsService
 {
     // Dán URL Dev Tunnel hiện tại của bạn vào đây (chỉ phần gốc, không thêm /swagger)
-    private const string DevTunnelApiBase = "https://3xr47z2x-7105.asse.devtunnels.ms";
+    private const string DevTunnelApiBase = "https://js4hsn2m-7105.asse.devtunnels.ms";
 
     /// <summary>Bỏ mọi đường dẫn sau host (tránh dán nhầm .../swagger/index.html).</summary>
     private static string NormalizeApiBase(string? url)

@@ -1,0 +1,181 @@
+@page "/admin/heatmap"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@using VKFoodTour.Infrastructure.Data
+@attribute [Authorize(Roles = "Admin")]
+@rendermode InteractiveServer
+
+@inject ApplicationDbContext Db
+@inject IJSRuntime JS
+
+<PageTitle>Heatmap - Vĩnh Khánh</PageTitle>
+
+<div class="container-fluid p-4" style="background-color: #262121; min-height: 100vh;">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3 class="fw-bold mb-0" style="color: #F0EBE3;">
+            <i class="bi bi-fire text-danger me-2"></i>BẢN ĐỒ NHIỆT (HEATMAP)
+        </h3>
+        <span class="badge bg-danger p-2 px-3">Real-time</span>
+    </div>
+
+    <div class="card bg-dark-card border-0 p-3 mb-3 shadow-sm" style="border-radius: 12px;">
+        <div class="row g-2 align-items-end">
+            <div class="col-md-3">
+                <label class="text-muted small fw-bold">KHOẢNG THỜI GIAN</label>
+                <select class="form-select bg-dark text-white border-secondary" @bind="hours" @bind:after="ReloadAsync">
+                    <option value="1">1 giờ qua</option>
+                    <option value="6">6 giờ qua</option>
+                    <option value="24">24 giờ qua</option>
+                    <option value="72">3 ngày qua</option>
+                    <option value="168">7 ngày qua</option>
+                    <option value="720">30 ngày qua</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="text-muted small fw-bold">LOẠI SỰ KIỆN</label>
+                <select class="form-select bg-dark text-white border-secondary" @bind="eventType" @bind:after="ReloadAsync">
+                    <option value="">Tất cả</option>
+                    <option value="move">Di chuyển (move)</option>
+                    <option value="enter">Vào POI (enter)</option>
+                    <option value="qr_scan">Quét QR (qr_scan)</option>
+                    <option value="listen_start">Nghe thuyết minh</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <button class="btn btn-danger fw-bold w-100" @onclick="ReloadAsync">
+                    <i class="bi bi-arrow-clockwise me-1"></i> Làm mới
+                </button>
+            </div>
+            <div class="col-md-3 text-end">
+                <div class="text-muted small">Số điểm đã tải</div>
+                <div class="text-white fw-bold fs-5">@totalPoints điểm</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="vk-heatmap"
+         style="width: 100%; height: 70vh; border-radius: 16px; overflow: hidden; box-shadow: 0 0 20px rgba(0,0,0,0.5);"></div>
+
+    <div class="mt-3 text-muted small">
+        <i class="bi bi-info-circle me-1"></i>
+        Mỗi điểm được gom cụm trong ô vuông ~11m × 11m. Vùng nóng = nơi có nhiều thiết bị ghi nhận vị trí nhất.
+    </div>
+</div>
+
+@* Leaflet + leaflet.heat (import qua CDN) *@
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+@code {
+    private int hours = 24;
+    private string eventType = "";
+    private int totalPoints = 0;
+    private bool _mapInitialized = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JS.InvokeVoidAsync("eval", @"
+                (function() {
+                    if (window.__vkHeatInit) return;
+                    window.__vkHeatInit = true;
+                    var s1 = document.createElement('script');
+                    s1.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+                    s1.onload = function() {
+                        var s2 = document.createElement('script');
+                        s2.src = 'https://cdn.jsdelivr.net/npm/leaflet.heat@0.2.0/dist/leaflet-heat.js';
+                        s2.onload = function() { window.__vkHeatReady = true; };
+                        document.head.appendChild(s2);
+                    };
+                    document.head.appendChild(s1);
+                })();
+            ");
+
+            // Chờ Leaflet load xong
+            for (int i = 0; i < 50; i++)
+            {
+                var ready = await JS.InvokeAsync<bool>("eval", "!!window.__vkHeatReady");
+                if (ready) break;
+                await Task.Delay(100);
+            }
+
+            await InitMapAsync();
+            _mapInitialized = true;
+            await ReloadAsync();
+        }
+    }
+
+    private async Task InitMapAsync()
+    {
+        await JS.InvokeVoidAsync("eval", @"
+            (function() {
+                if (window.__vkMap) { window.__vkMap.remove(); }
+                var map = L.map('vk-heatmap').setView([10.7585, 106.7055], 17);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap',
+                    maxZoom: 19
+                }).addTo(map);
+                window.__vkMap = map;
+                window.__vkHeatLayer = null;
+            })();
+        ");
+    }
+
+    private async Task ReloadAsync()
+    {
+        if (!_mapInitialized) return;
+
+        var threshold = DateTime.Now.AddHours(-hours);
+        var query = Db.TrackingLogs
+            .AsNoTracking()
+            .Where(t => t.CreatedAt >= threshold && t.Latitude != 0m && t.Longitude != 0m);
+
+        if (!string.IsNullOrWhiteSpace(eventType))
+            query = query.Where(t => t.EventType == eventType);
+
+        var raw = await query
+            .OrderByDescending(t => t.CreatedAt)
+            .Take(50_000)
+            .Select(t => new { t.Latitude, t.Longitude })
+            .ToListAsync();
+
+        var buckets = new Dictionary<(double, double), int>(raw.Count);
+        foreach (var row in raw)
+        {
+            var lat = Math.Round((double)row.Latitude, 4);
+            var lng = Math.Round((double)row.Longitude, 4);
+            var key = (lat, lng);
+            buckets[key] = buckets.TryGetValue(key, out var c) ? c + 1 : 1;
+        }
+
+        // Build array [[lat,lng,intensity], ...] — intensity 0..1
+        var maxWeight = buckets.Count > 0 ? buckets.Values.Max() : 1;
+        var jsArr = buckets
+            .Select(kvp => new double[]
+            {
+                kvp.Key.Item1,
+                kvp.Key.Item2,
+                Math.Round((double)kvp.Value / maxWeight, 3)
+            })
+            .ToArray();
+
+        totalPoints = buckets.Count;
+        StateHasChanged();
+
+        await JS.InvokeVoidAsync("eval", $@"
+            (function() {{
+                if (!window.__vkMap) return;
+                if (window.__vkHeatLayer) {{
+                    window.__vkMap.removeLayer(window.__vkHeatLayer);
+                }}
+                var data = {System.Text.Json.JsonSerializer.Serialize(jsArr)};
+                window.__vkHeatLayer = L.heatLayer(data, {{
+                    radius: 30,
+                    blur: 22,
+                    maxZoom: 19,
+                    gradient: {{ 0.1: '#0dcaf0', 0.3: '#198754', 0.5: '#E8A020', 0.8: '#C8372D', 1.0: '#ffffff' }}
+                }}).addTo(window.__vkMap);
+            }})();
+        ");
+    }
+}

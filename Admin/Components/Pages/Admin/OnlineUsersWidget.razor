@@ -1,0 +1,89 @@
+@using Microsoft.EntityFrameworkCore
+@using VKFoodTour.Infrastructure.Data
+@implements IDisposable
+@rendermode InteractiveServer
+
+@inject ApplicationDbContext Db
+
+<div class="card bg-dark-card border-0 p-3 shadow-sm"
+     style="border-radius: 12px; border-left: 4px solid #22c55e !important;">
+    <div class="d-flex justify-content-between align-items-start">
+        <div>
+            <div class="text-muted small fw-bold mb-1">
+                @if (isLive)
+                {
+                    <span class="text-success">● </span>
+                }
+                else
+                {
+                    <span class="text-secondary">○ </span>
+                }
+                ĐANG ONLINE
+            </div>
+            <h3 class="text-white fw-bold mb-0">@onlineCount</h3>
+            <small class="text-muted">trong @windowMinutes phút qua</small>
+        </div>
+        <div class="text-end">
+            <i class="bi bi-people-fill text-success" style="font-size: 2rem;"></i>
+            <div class="small text-muted mt-1">Cập nhật @secondsAgo s trước</div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public int WindowMinutes { get; set; } = 2;
+    [Parameter] public int RefreshSeconds { get; set; } = 10;
+
+    private int onlineCount = 0;
+    private int windowMinutes = 2;
+    private int secondsAgo = 0;
+    private bool isLive = false;
+    private System.Threading.Timer? _refreshTimer;
+    private System.Threading.Timer? _tickTimer;
+    private DateTime _lastRefresh = DateTime.MinValue;
+
+    protected override async Task OnInitializedAsync()
+    {
+        windowMinutes = WindowMinutes;
+        await LoadAsync();
+
+        _refreshTimer = new System.Threading.Timer(async _ =>
+        {
+            await LoadAsync();
+            await InvokeAsync(StateHasChanged);
+        }, null, TimeSpan.FromSeconds(RefreshSeconds), TimeSpan.FromSeconds(RefreshSeconds));
+
+        _tickTimer = new System.Threading.Timer(async _ =>
+        {
+            secondsAgo = (int)(DateTime.Now - _lastRefresh).TotalSeconds;
+            await InvokeAsync(StateHasChanged);
+        }, null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+    }
+
+    private async Task LoadAsync()
+    {
+        try
+        {
+            var threshold = DateTime.Now.AddMinutes(-windowMinutes);
+            onlineCount = await Db.TrackingLogs
+                .AsNoTracking()
+                .Where(t => t.CreatedAt >= threshold)
+                .Select(t => t.DeviceId)
+                .Distinct()
+                .CountAsync();
+            isLive = true;
+            _lastRefresh = DateTime.Now;
+            secondsAgo = 0;
+        }
+        catch
+        {
+            isLive = false;
+        }
+    }
+
+    public void Dispose()
+    {
+        _refreshTimer?.Dispose();
+        _tickTimer?.Dispose();
+    }
+}

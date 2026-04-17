@@ -6,7 +6,7 @@ public static class VkHttpClientExtensions
 {
     public static void ConfigureVkApiClient(this HttpClient client)
     {
-        client.Timeout = TimeSpan.FromSeconds(25);
+        client.Timeout = TimeSpan.FromSeconds(10);
         if (!client.DefaultRequestHeaders.Contains("ngrok-skip-browser-warning"))
             client.DefaultRequestHeaders.Add("ngrok-skip-browser-warning", "true");
         if (!client.DefaultRequestHeaders.Accept.Any(h => h.MediaType == "application/json"))

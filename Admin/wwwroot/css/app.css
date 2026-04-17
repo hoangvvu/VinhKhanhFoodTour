@@ -238,3 +238,43 @@ a {
     color: #8a8078;
     border: 1px solid #ddd;
 }
+/* ========================================
+   BỔ SUNG — Dark theme cho admin cards
+   Chép đoạn này vào cuối file:
+   Admin/wwwroot/css/app.css
+   ======================================== */
+
+.bg-dark-card {
+    background-color: #1E1A1A !important;
+    color: #F0EBE3 !important;
+}
+
+.bg-dark-card .text-muted {
+    color: #8A8078 !important;
+}
+
+.bg-dark-card h3,
+.bg-dark-card h4,
+.bg-dark-card h5 {
+    color: #F0EBE3 !important;
+}
+
+/* Input/select dark mode cho filter trên trang Heatmap và các page admin */
+.bg-dark-card select,
+.bg-dark-card input {
+    background-color: #2A2525 !important;
+    color: #F0EBE3 !important;
+    border-color: #3A3030 !important;
+}
+
+/* Progress bar nền tối */
+.progress {
+    background-color: #2A2525 !important;
+}
+
+/* List group items trong dark-card */
+.bg-dark-card .list-group-item {
+    background-color: transparent !important;
+    color: #F0EBE3 !important;
+    border-color: #3A3030 !important;
+}
