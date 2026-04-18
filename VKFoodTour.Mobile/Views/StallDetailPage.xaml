@@ -114,42 +114,7 @@
                 </VerticalStackLayout>
             </VerticalStackLayout>
 
-            <!-- AUDIO -->
-            <VerticalStackLayout Spacing="10" Margin="16,8,16,0">
-                <Label Text="{Binding UiAudio}"
-                       FontSize="17" FontFamily="BebasNeue"
-                       TextColor="{StaticResource VKText}" CharacterSpacing="0.5"/>
-                <Label Text="{Binding PlaybackStatus}"
-                       FontSize="12" TextColor="{StaticResource VKGold}"
-                       LineBreakMode="WordWrap"
-                       IsVisible="{Binding PlaybackStatus, Converter={x:Static conv:StringNotNullOrEmptyConverter.Instance}}"/>
-                <VerticalStackLayout BindableLayout.ItemsSource="{Binding AudioItems}">
-                    <BindableLayout.ItemTemplate>
-                        <DataTemplate x:DataType="dto:AudioItemDto">
-                            <Border Padding="14,12" Margin="0,0,0,8"
-                                    Stroke="{StaticResource VKStrokeBrush}" StrokeThickness="1"
-                                    BackgroundColor="{StaticResource VKCard}">
-                                <Border.StrokeShape><RoundRectangle CornerRadius="12"/></Border.StrokeShape>
-                                <Grid ColumnDefinitions="*, Auto">
-                                    <VerticalStackLayout Grid.Column="0" Spacing="2" VerticalOptions="Center">
-                                        <Label Text="{Binding Title}"
-                                               FontAttributes="Bold"
-                                               TextColor="{StaticResource VKText}" FontSize="14"/>
-                                        <Label Text="{Binding SourceType}"
-                                               FontSize="11" TextColor="{StaticResource VKTextFaint}"/>
-                                    </VerticalStackLayout>
-                                    <Button Grid.Column="1"
-                                            Text="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.UiListen}"
-                                            Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.OpenAudioCommand}"
-                                            CommandParameter="{Binding Url}"
-                                            BackgroundColor="{StaticResource VKGold}"
-                                            TextColor="#111111" FontAttributes="Bold"/>
-                                </Grid>
-                            </Border>
-                        </DataTemplate>
-                    </BindableLayout.ItemTemplate>
-                </VerticalStackLayout>
-            </VerticalStackLayout>
+
 
             <!-- ĐÁNH GIÁ -->
             <VerticalStackLayout Spacing="10" Margin="16,16,16,0">

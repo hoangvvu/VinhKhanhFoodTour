@@ -1,4 +1,4 @@
-﻿using System.Net.Http.Json;
+using System.Net.Http.Json;
 using VKFoodTour.Mobile.Models;
 using VKFoodTour.Shared.DTOs;
 
@@ -234,7 +234,7 @@ public class DataService : IDataService
         }
     }
 
-    public async Task TrackEventAsync(int? poiId, string eventType, int? listenedDurationSec = null, string? languageCode = null, CancellationToken cancellationToken = default)
+    public async Task TrackEventAsync(int? poiId, string eventType, int? listenedDurationSec = null, string? languageCode = null, double? latitude = null, double? longitude = null, CancellationToken cancellationToken = default)
     {
         await EnsureApiBaseResolvedAsync(cancellationToken);
         var normalizedEventType = NormalizeEventType(eventType);
@@ -248,7 +248,9 @@ public class DataService : IDataService
                     PoiId = poiId,
                     EventType = normalizedEventType,
                     ListenedDurationSec = listenedDurationSec,
-                    LanguageCode = languageCode
+                    LanguageCode = languageCode,
+                    Latitude = latitude,
+                    Longitude = longitude
                 }, cancellationToken);
         }
         catch

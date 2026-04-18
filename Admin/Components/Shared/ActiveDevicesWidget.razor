@@ -81,76 +81,12 @@
     </div>
 
     @* ── Counter row ── *@
-    <div class="row g-4 mb-4">
-        <div class="col-sm-4 col-md-3 text-center">
+    <div class="row mb-2">
+        <div class="col-12 text-center">
             <div class="adw-counter">@OnlineCount</div>
-            <div style="color:#8A8078;font-size:12px;margin-top:4px;">thiết bị online</div>
-        </div>
-        <div class="col-sm-8 col-md-9">
-            <div class="row g-3 h-100">
-                <div class="col-4">
-                    <div class="p-3 h-100" style="background:rgba(74,222,128,0.06);border:1px solid rgba(74,222,128,0.15);border-radius:12px;">
-                        <div style="font-size:1.4rem;font-weight:700;color:#4ade80;">@scanCount</div>
-                        <div style="font-size:11px;color:#6a7a6a;margin-top:2px;"><i class="bi bi-qr-code me-1"></i>Quét QR</div>
-                    </div>
-                </div>
-                <div class="col-4">
-                    <div class="p-3 h-100" style="background:rgba(96,165,250,0.06);border:1px solid rgba(96,165,250,0.15);border-radius:12px;">
-                        <div style="font-size:1.4rem;font-weight:700;color:#60a5fa;">@listenCount</div>
-                        <div style="font-size:11px;color:#4a5a7a;margin-top:2px;"><i class="bi bi-headphones me-1"></i>Nghe audio</div>
-                    </div>
-                </div>
-                <div class="col-4">
-                    <div class="p-3 h-100" style="background:rgba(232,160,32,0.06);border:1px solid rgba(232,160,32,0.15);border-radius:12px;">
-                        <div style="font-size:1.4rem;font-weight:700;color:#E8A020;">@moveCount</div>
-                        <div style="font-size:11px;color:#7a6a3a;margin-top:2px;"><i class="bi bi-geo-alt me-1"></i>Di chuyển</div>
-                    </div>
-                </div>
-            </div>
+            <div style="color:#8A8078;font-size:12px;margin-top:4px;">thiết bị online trực tuyến</div>
         </div>
     </div>
-
-    @* ── Device list ── *@
-    @if (deviceRows.Any())
-    {
-        <div style="font-size:11px;letter-spacing:1px;color:#4a5568;font-weight:600;margin-bottom:10px;">
-            DANH SÁCH THIẾT BỊ (@deviceRows.Count)
-        </div>
-        <div style="max-height:280px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;">
-            @foreach (var d in deviceRows)
-            {
-                <div class="adw-device-row p-3 d-flex align-items-center gap-3">
-                    <span class="adw-pulse" style="flex-shrink:0;"></span>
-                    <div style="flex:1;min-width:0;">
-                        <div style="font-size:13px;color:#c9c9d4;font-weight:500;font-family:monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
-                            @d.ShortId
-                        </div>
-                        <div style="font-size:11px;color:#4a5568;margin-top:1px;">
-                            Lần cuối: @d.LastSeenAgo · @d.LastEvent
-                        </div>
-                    </div>
-                    <div style="text-align:right;flex-shrink:0;">
-                        <span class="adw-badge" style="background:rgba(255,255,255,0.05);color:#8A8078;border:1px solid rgba(255,255,255,0.08);">
-                            @d.EventCount sự kiện
-                        </span>
-                        @if (d.HasPoi)
-                        {
-                            <div style="font-size:10px;color:#60a5fa;margin-top:3px;">
-                                <i class="bi bi-shop me-1"></i>@d.PoiName
-                            </div>
-                        }
-                    </div>
-                </div>
-            }
-        </div>
-    }
-    else if (!isLoading)
-    {
-        <div class="text-center py-4" style="color:#4a5568;">
-            <i class="bi bi-phone-vibrate" style="font-size:2rem;display:block;margin-bottom:8px;"></i>
-            <div style="font-size:13px;">Chưa có thiết bị nào hoạt động trong @WindowMinutes phút vừa qua</div>
-        </div>
-    }
 </div>
 
 @code {
@@ -158,10 +94,6 @@
     [Parameter] public int RefreshSeconds { get; set; } = 10;
 
     private int OnlineCount;
-    private int scanCount;
-    private int listenCount;
-    private int moveCount;
-    private List<DeviceRow> deviceRows = new();
     private DateTime? lastRefreshed;
     private string? lastError;
     private bool isLoading;
@@ -200,46 +132,11 @@
                 .Take(2000)
                 .ToListAsync();
 
-            OnlineCount = logs.Select(t => t.DeviceId).Distinct().Count();
-            scanCount   = logs.Count(t => t.EventType == "qr_scan");
-            listenCount = logs.Count(t => t.EventType is "listen_start" or "listen_end");
-            moveCount   = logs.Count(t => t.EventType == "move");
-
-            // Build danh sách thiết bị
-            var poiIds = logs.Where(l => l.PoiId.HasValue).Select(l => l.PoiId!.Value).Distinct().ToList();
-            Dictionary<int, string> poiNames = new();
-            if (poiIds.Any())
-            {
-                poiNames = await db.Pois.AsNoTracking()
-                    .Where(p => poiIds.Contains(p.PoiId))
-                    .ToDictionaryAsync(p => p.PoiId, p => p.Name);
-            }
-
-            deviceRows = logs
+            // Đếm các thiết bị mà sự kiện gần nhất KHÔNG phải là 'exit'
+            OnlineCount = logs
                 .GroupBy(t => t.DeviceId)
-                .Select(g =>
-                {
-                    var latest = g.OrderByDescending(x => x.CreatedAt).First();
-                    var ago = DateTime.Now - latest.CreatedAt;
-                    var agoStr = ago.TotalSeconds < 60
-                        ? $"{(int)ago.TotalSeconds}s trước"
-                        : $"{(int)ago.TotalMinutes}m trước";
-
-                    var poiId = g.FirstOrDefault(x => x.PoiId.HasValue)?.PoiId;
-                    var poiName = poiId.HasValue && poiNames.TryGetValue(poiId.Value, out var n) ? n : null;
-
-                    return new DeviceRow
-                    {
-                        ShortId    = g.Key.Length > 24 ? g.Key[..24] + "…" : g.Key,
-                        LastSeenAgo = agoStr,
-                        LastEvent  = EventLabel(latest.EventType),
-                        EventCount = g.Count(),
-                        HasPoi     = poiName is not null,
-                        PoiName    = poiName ?? ""
-                    };
-                })
-                .OrderByDescending(d => d.EventCount)
-                .ToList();
+                .Select(g => g.OrderByDescending(x => x.CreatedAt).First().EventType)
+                .Count(latestEvent => latestEvent != "exit");
 
             lastRefreshed = DateTime.Now;
         }
@@ -254,29 +151,8 @@
         }
     }
 
-    private static string EventLabel(string? evt) => evt switch
-    {
-        "qr_scan"      => "📲 Quét QR",
-        "listen_start" => "🎵 Bắt đầu nghe",
-        "listen_end"   => "✅ Nghe xong",
-        "enter"        => "📍 Vào quán",
-        "exit"         => "🚶 Rời quán",
-        "move"         => "🗺️ Di chuyển",
-        _              => evt ?? "—"
-    };
-
     public async ValueTask DisposeAsync()
     {
         _timer?.Dispose();
-    }
-
-    private class DeviceRow
-    {
-        public string ShortId { get; set; } = "";
-        public string LastSeenAgo { get; set; } = "";
-        public string LastEvent { get; set; } = "";
-        public int EventCount { get; set; }
-        public bool HasPoi { get; set; }
-        public string PoiName { get; set; } = "";
     }
 }

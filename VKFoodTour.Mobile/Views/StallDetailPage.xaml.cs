@@ -8,15 +8,13 @@ namespace VKFoodTour.Mobile.Views;
 public partial class StallDetailPage : ContentPage
 {
     private readonly StallDetailViewModel _vm;
-    private readonly IStallNarrationState _stallState;
     private int _poiId;
     private bool _fromQr;
 
-    public StallDetailPage(StallDetailViewModel vm, IStallNarrationState stallState)
+    public StallDetailPage(StallDetailViewModel vm)
     {
         InitializeComponent();
         BindingContext = _vm = vm;
-        _stallState = stallState;
     }
 
     public string PoiId
@@ -34,13 +32,5 @@ public partial class StallDetailPage : ContentPage
         base.OnAppearing();
         if (_poiId > 0)
             await _vm.LoadAsync(_poiId);
-
-        if (_fromQr)
-        {
-            _fromQr = false;
-            var fromQr = _stallState.Peek();
-            var qrAudio = fromQr?.PoiId == _poiId ? fromQr.AudioUrl : null;
-            await _vm.PlayPreferredAudioFromQrAsync(qrAudio);
-        }
     }
 }

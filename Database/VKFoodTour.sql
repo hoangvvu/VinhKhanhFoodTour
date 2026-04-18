@@ -378,4 +378,4 @@ BEGIN
         updated_at    DATETIME       NULL
     );
 END
-GO
+GO

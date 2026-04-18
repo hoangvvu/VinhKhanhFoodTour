@@ -21,6 +21,31 @@ public partial class App : Application
     {
         // Luôn hiển thị WelcomePage khi mở app
         var welcome = _services.GetRequiredService<WelcomePage>();
-        return new Window(new NavigationPage(welcome));
+        var window = new Window(new NavigationPage(welcome));
+
+        // Báo offline khi thoát/ẩn app
+        window.Stopped += (s, e) =>
+        {
+            var dataService = _services.GetService<IDataService>();
+            if (dataService != null)
+                _ = dataService.TrackEventAsync(poiId: null, eventType: "exit");
+        };
+
+        window.Destroying += (s, e) =>
+        {
+            var dataService = _services.GetService<IDataService>();
+            if (dataService != null)
+                _ = dataService.TrackEventAsync(poiId: null, eventType: "exit");
+        };
+
+        // Báo online lại khi mở app lên
+        window.Resumed += (s, e) =>
+        {
+            var dataService = _services.GetService<IDataService>();
+            if (dataService != null)
+                _ = dataService.TrackEventAsync(poiId: null, eventType: "move");
+        };
+
+        return window;
     }
 }

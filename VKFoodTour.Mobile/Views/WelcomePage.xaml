@@ -157,47 +157,6 @@
                        HorizontalTextAlignment="Center"
                        Margin="0,14,0,0"/>
 
-                <!-- Developer: Server URL cài đặt nhanh -->
-                <VerticalStackLayout Spacing="8" Margin="0,20,0,0">
-                    <Button x:Name="ServerToggleBtn"
-                            Text="⚙️ Máy chủ"
-                            Clicked="OnServerToggleClicked"
-                            FontSize="11"
-                            TextColor="#5A5050"
-                            BackgroundColor="Transparent"
-                            Padding="0"
-                            HorizontalOptions="Center"/>
-                    <VerticalStackLayout x:Name="ServerPanel"
-                                        IsVisible="False"
-                                        Spacing="6"
-                                        Padding="0,4,0,0">
-                        <Border BackgroundColor="#1A1A1F"
-                                Stroke="#2D2D3A" StrokeThickness="1" Padding="4">
-                            <Border.StrokeShape><RoundRectangle CornerRadius="10"/></Border.StrokeShape>
-                            <Entry x:Name="ServerUrlEntry"
-                                   Placeholder="https://your-tunnel.devtunnels.ms"
-                                   PlaceholderColor="#3A3A5A"
-                                   TextColor="#9090C0"
-                                   BackgroundColor="Transparent"
-                                   FontSize="11"
-                                   Keyboard="Url"
-                                   ReturnType="Done"/>
-                        </Border>
-                        <Button Text="Lưu URL"
-                                Clicked="OnSaveServerUrlClicked"
-                                BackgroundColor="#1E2840"
-                                TextColor="#6090F0"
-                                FontSize="12"
-                                CornerRadius="8"
-                                HeightRequest="36"
-                                Padding="0,0"/>
-                        <Label x:Name="ServerStatusLabel"
-                               Text="" FontSize="11"
-                               TextColor="#4ade80"
-                               HorizontalOptions="Center"/>
-                    </VerticalStackLayout>
-                </VerticalStackLayout>
-
             </VerticalStackLayout>
         </ScrollView>
 

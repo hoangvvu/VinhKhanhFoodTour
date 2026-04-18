@@ -9,7 +9,6 @@ namespace VKFoodTour.Mobile.ViewModels;
 public partial class StallDetailViewModel : ObservableObject
 {
     private readonly IDataService _dataService;
-    private readonly IAudioPlaybackService _audio;
     private readonly IFavoriteService _favorites;
     private readonly ILocalizationService _localization;
 
@@ -21,7 +20,6 @@ public partial class StallDetailViewModel : ObservableObject
     [ObservableProperty] private string coverEmoji = "🍜";
     [ObservableProperty] private List<ImageItemDto> galleryImages = new();
     [ObservableProperty] private List<MenuItemDto> menuItems = new();
-    [ObservableProperty] private List<AudioItemDto> audioItems = new();
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(FavoriteIcon))]
     private bool isFavorite;
@@ -31,14 +29,10 @@ public partial class StallDetailViewModel : ObservableObject
     [ObservableProperty] private string newComment = string.Empty;
     [ObservableProperty] private string reviewStatus = string.Empty;
 
-    /// <summary>Thông báo lỗi phát audio (QR / danh sách).</summary>
-    [ObservableProperty] private string playbackStatus = string.Empty;
 
     [ObservableProperty] private string uiPageTitle = string.Empty;
     [ObservableProperty] private string uiGallery = string.Empty;
     [ObservableProperty] private string uiMenu = string.Empty;
-    [ObservableProperty] private string uiAudio = string.Empty;
-    [ObservableProperty] private string uiListen = string.Empty;
     [ObservableProperty] private string uiReviews = string.Empty;
     [ObservableProperty] private string uiAddReview = string.Empty;
     [ObservableProperty] private string uiReviewPlaceholder = string.Empty;
@@ -47,10 +41,9 @@ public partial class StallDetailViewModel : ObservableObject
 
     public string FavoriteIcon => IsFavorite ? "♥" : "♡";
 
-    public StallDetailViewModel(IDataService dataService, IAudioPlaybackService audio, IFavoriteService favorites, ILocalizationService localization)
+    public StallDetailViewModel(IDataService dataService, IFavoriteService favorites, ILocalizationService localization)
     {
         _dataService = dataService;
-        _audio = audio;
         _favorites = favorites;
         _localization = localization;
         _localization.LanguageChanged += (_, _) =>
@@ -63,8 +56,6 @@ public partial class StallDetailViewModel : ObservableObject
         UiPageTitle = _localization.GetString("StallDetail_PageTitle");
         UiGallery = _localization.GetString("StallDetail_Gallery");
         UiMenu = _localization.GetString("StallDetail_Menu");
-        UiAudio = _localization.GetString("StallDetail_Audio");
-        UiListen = _localization.GetString("StallDetail_Listen");
         UiReviews = _localization.GetString("StallDetail_Reviews");
         UiAddReview = _localization.GetString("StallDetail_AddReview");
         UiReviewPlaceholder = _localization.GetString("StallDetail_ReviewPlaceholder");
@@ -83,7 +74,6 @@ public partial class StallDetailViewModel : ObservableObject
             return;
 
         IsLoading = true;
-        PlaybackStatus = string.Empty;
         try
         {
             var detail = await _dataService.GetPoiDetailAsync(id);
@@ -98,7 +88,6 @@ public partial class StallDetailViewModel : ObservableObject
             CoverEmoji = StallEmoji(detail.Name);
             GalleryImages = detail.GalleryImages;
             MenuItems = detail.MenuItems;
-            AudioItems = detail.AudioItems;
             IsFavorite = _favorites.IsFavorite(PoiId);
 
             var reviews = await _dataService.GetPoiReviewsAsync(id);
@@ -147,53 +136,6 @@ public partial class StallDetailViewModel : ObservableObject
         ReviewStatus = _localization.GetString("StallDetail_ReviewOk");
     }
 
-    [RelayCommand]
-    private async Task OpenAudioAsync(string? url)
-    {
-        PlaybackStatus = string.Empty;
-        if (string.IsNullOrWhiteSpace(url))
-            return;
-        var ok = await _audio.PlayAsync(url);
-        if (ok)
-            await _dataService.TrackEventAsync(PoiId, "listen_start");
-        else
-            PlaybackStatus = _localization.GetString("StallDetail_PlaybackFail");
-    }
-
-    public async Task PlayFirstAudioIfAnyAsync()
-    {
-        PlaybackStatus = string.Empty;
-        var first = AudioItems
-            .FirstOrDefault(a => string.Equals(a.SourceType, "auto_nearby", StringComparison.OrdinalIgnoreCase))
-            ?? AudioItems.FirstOrDefault();
-        if (first is null || string.IsNullOrWhiteSpace(first.Url))
-        {
-            PlaybackStatus = _localization.GetString("StallDetail_NoAudioFile");
-            return;
-        }
-
-        var ok = await _audio.PlayAsync(first.Url);
-        if (ok)
-            await _dataService.TrackEventAsync(PoiId, "listen_start");
-        else
-            PlaybackStatus = _localization.GetString("StallDetail_AutoPlayFail");
-    }
-
-    public async Task PlayPreferredAudioFromQrAsync(string? qrAudioUrl)
-    {
-        PlaybackStatus = string.Empty;
-        if (!string.IsNullOrWhiteSpace(qrAudioUrl))
-        {
-            var ok = await _audio.PlayAsync(qrAudioUrl);
-            if (ok)
-                await _dataService.TrackEventAsync(PoiId, "listen_start");
-            else
-                PlaybackStatus = _localization.GetString("StallDetail_QrAudioFail");
-            return;
-        }
-
-        await PlayFirstAudioIfAnyAsync();
-    }
 
     private static string StallEmoji(string name)
     {

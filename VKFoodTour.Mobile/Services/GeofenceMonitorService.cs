@@ -28,12 +28,21 @@ public class GeofenceMonitorService : IAsyncDisposable
 
     private CancellationTokenSource? _cts;
     private bool _isRunning;
+    private DateTime _lastHeartbeat = DateTime.MinValue;
+    private const double HeartbeatIntervalSec = 30;
+
+    private readonly IDataService _dataService;
 
     // ── Events ────────────────────────────────────────────────────
     public event EventHandler<int>? PoiEntered;   // fire khi dwell >= threshold
     public event EventHandler<int>? PoiExited;    // fire khi exit confirmed
 
     // ── Public API ────────────────────────────────────────────────
+
+    public GeofenceMonitorService(IDataService dataService)
+    {
+        _dataService = dataService;
+    }
 
     public void StartMonitoring(List<AudioQueueItemDto> pois)
     {
@@ -99,9 +108,15 @@ public class GeofenceMonitorService : IAsyncDisposable
         }
     }
 
-    private void ProcessLocation(double userLat, double userLon)
+    private async void ProcessLocation(double userLat, double userLon)
     {
         var now = DateTime.UtcNow;
+
+        if ((now - _lastHeartbeat).TotalSeconds >= HeartbeatIntervalSec)
+        {
+            _lastHeartbeat = now;
+            await _dataService.TrackEventAsync(poiId: null, eventType: "move", latitude: userLat, longitude: userLon);
+        }
 
         foreach (var poi in _monitoredPois)
         {
