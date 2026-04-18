@@ -1,15 +1,23 @@
 namespace VKFoodTour.Mobile.Services;
 
 /// <summary>
-/// v3 — BULLETPROOF: Tự build URL tuyệt đối không phụ thuộc MediaUrlNormalizer.
-/// Nếu URL bắt đầu bằng "/" hoặc không có scheme → tự ghép với ApiBaseUrl.
-/// Luôn log 4 dòng: INPUT → BASE → FINAL → RESULT để debug dễ.
+/// v6 — Fix lỗi "The 'file' scheme is not supported" trên Android.
+/// Trên .NET Android (Mono), Uri.TryCreate("/uploads/...", UriKind.Absolute, ...) trả về
+/// true với scheme = "file" (khác hành vi trên Windows/WinUI). Kết quả là BuildAbsoluteUrl
+/// nhánh "đã tuyệt đối" nuốt URL relative và trả nguyên chuỗi, khiến HttpClient ném
+/// NotSupportedException khi cố request "file:///uploads/...".
+///
+/// Fix: check tường minh scheme = http/https TRƯỚC khi coi là URL tuyệt đối. Ngoài ra
+/// cũng check URL bắt đầu bằng "/" → coi là relative bất kể Uri.TryCreate nói gì.
 /// </summary>
 public sealed class HttpImageService : IHttpImageService
 {
+    private static readonly TimeSpan DefaultTtl = TimeSpan.FromMinutes(2);
+
     private readonly HttpClient _http;
     private readonly ISettingsService _settings;
-    private readonly Dictionary<string, byte[]> _cache = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, CacheEntry> _cache = new(StringComparer.Ordinal);
+    private readonly object _sync = new();
 
     public HttpImageService(HttpClient http, ISettingsService settings)
     {
@@ -17,7 +25,10 @@ public sealed class HttpImageService : IHttpImageService
         _settings = settings;
     }
 
-    public async Task<ImageSource?> GetImageSourceAsync(string? url, CancellationToken cancellationToken = default)
+    public Task<ImageSource?> GetImageSourceAsync(string? url, CancellationToken cancellationToken = default)
+        => GetImageSourceAsync(url, forceReload: false, cancellationToken);
+
+    public async Task<ImageSource?> GetImageSourceAsync(string? url, bool forceReload, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(url))
             return null;
@@ -26,34 +37,46 @@ public sealed class HttpImageService : IHttpImageService
         var apiBase = (_settings.ApiBaseUrl ?? string.Empty).Trim().TrimEnd('/');
         var full = BuildAbsoluteUrl(input, apiBase);
 
-        System.Diagnostics.Debug.WriteLine($"[HttpImageService] INPUT={input}");
-        System.Diagnostics.Debug.WriteLine($"[HttpImageService] BASE={apiBase}");
-        System.Diagnostics.Debug.WriteLine($"[HttpImageService] FINAL={full}");
+        System.Diagnostics.Debug.WriteLine($"[HttpImageService] INPUT='{input}'");
+        System.Diagnostics.Debug.WriteLine($"[HttpImageService] BASE ='{apiBase}'");
+        System.Diagnostics.Debug.WriteLine($"[HttpImageService] FULL ='{full}'");
 
-        if (string.IsNullOrWhiteSpace(full) || !Uri.TryCreate(full, UriKind.Absolute, out var absUri))
+        if (string.IsNullOrWhiteSpace(full) || !Uri.TryCreate(full, UriKind.Absolute, out var absUri)
+            || (absUri.Scheme != Uri.UriSchemeHttp && absUri.Scheme != Uri.UriSchemeHttps))
         {
-            System.Diagnostics.Debug.WriteLine($"[HttpImageService] FAIL: cannot build absolute URL");
+            System.Diagnostics.Debug.WriteLine("[HttpImageService] FAIL: cannot build absolute http(s) URL");
             return null;
         }
 
-        if (_cache.TryGetValue(full, out var cachedBytes))
+        if (!forceReload && TryGetCache(full, out var cachedBytes) && cachedBytes is not null)
+        {
+            System.Diagnostics.Debug.WriteLine($"[HttpImageService] CACHE HIT ({cachedBytes.Length} bytes)");
             return ImageSource.FromStream(() => new MemoryStream(cachedBytes));
+        }
 
         try
         {
-            using var response = await _http.GetAsync(absUri, HttpCompletionOption.ResponseContentRead, cancellationToken);
+            using var request = new HttpRequestMessage(HttpMethod.Get, absUri);
+            request.Headers.CacheControl = new System.Net.Http.Headers.CacheControlHeaderValue
+            {
+                NoCache = true,
+                MaxAge = TimeSpan.Zero
+            };
 
-            System.Diagnostics.Debug.WriteLine($"[HttpImageService] Status={response.StatusCode} " +
-                $"ContentType={response.Content.Headers.ContentType?.MediaType} " +
-                $"Length={response.Content.Headers.ContentLength}");
+            using var response = await _http.SendAsync(request, HttpCompletionOption.ResponseContentRead, cancellationToken);
+
+            var ct = response.Content.Headers.ContentType?.MediaType ?? "(unknown)";
+            var len = response.Content.Headers.ContentLength?.ToString() ?? "(unknown)";
+            System.Diagnostics.Debug.WriteLine($"[HttpImageService] Status={(int)response.StatusCode} ContentType={ct} Length={len}");
 
             if (!response.IsSuccessStatusCode)
             {
-                System.Diagnostics.Debug.WriteLine($"[HttpImageService] FAIL HTTP {(int)response.StatusCode}");
+                System.Diagnostics.Debug.WriteLine($"[HttpImageService] FAIL HTTP {(int)response.StatusCode} {response.ReasonPhrase}");
                 return null;
             }
 
             var bytes = await response.Content.ReadAsByteArrayAsync(cancellationToken);
+            System.Diagnostics.Debug.WriteLine($"[HttpImageService] Got {bytes.Length} bytes");
 
             if (bytes.Length < 100)
             {
@@ -68,8 +91,8 @@ public sealed class HttpImageService : IHttpImageService
                 return null;
             }
 
-            _cache[full] = bytes;
-            System.Diagnostics.Debug.WriteLine($"[HttpImageService] OK {bytes.Length} bytes cached");
+            SetCache(full, bytes);
+            System.Diagnostics.Debug.WriteLine($"[HttpImageService] OK cached {bytes.Length} bytes");
             return ImageSource.FromStream(() => new MemoryStream(bytes));
         }
         catch (Exception ex)
@@ -79,34 +102,86 @@ public sealed class HttpImageService : IHttpImageService
         }
     }
 
-    /// <summary>Ghép URL relative với apiBase. Nếu URL đã absolute thì giữ nguyên (trừ loopback).</summary>
+    public void Invalidate(string? url)
+    {
+        if (string.IsNullOrWhiteSpace(url)) return;
+        var apiBase = (_settings.ApiBaseUrl ?? string.Empty).Trim().TrimEnd('/');
+        var full = BuildAbsoluteUrl(url.Trim(), apiBase);
+        if (string.IsNullOrWhiteSpace(full)) return;
+        lock (_sync) { _cache.Remove(full); }
+    }
+
+    public void ClearAll()
+    {
+        lock (_sync) { _cache.Clear(); }
+    }
+
+    private bool TryGetCache(string key, out byte[]? bytes)
+    {
+        lock (_sync)
+        {
+            if (_cache.TryGetValue(key, out var entry) && !entry.IsExpired)
+            {
+                bytes = entry.Bytes;
+                return true;
+            }
+            if (_cache.ContainsKey(key)) _cache.Remove(key);
+            bytes = null;
+            return false;
+        }
+    }
+
+    private void SetCache(string key, byte[] bytes)
+    {
+        lock (_sync)
+        {
+            _cache[key] = new CacheEntry(bytes, DateTime.UtcNow.Add(DefaultTtl));
+        }
+    }
+
+    /// <summary>
+    /// Ghép URL relative với apiBase.
+    ///
+    /// QUAN TRỌNG: trên Android, Uri.TryCreate("/path", UriKind.Absolute, ...) trả về
+    /// TRUE với scheme="file" (khác Windows trả về false). Nên phải check ĐÚNG scheme
+    /// http/https chứ không tin vào TryCreate thuần.
+    ///
+    /// Luồng:
+    ///   1) URL bắt đầu bằng "/" → luôn là relative → ghép với apiBase.
+    ///   2) URL có scheme http/https → giữ nguyên (rewrite loopback nếu cần).
+    ///   3) Các trường hợp khác → ghép '/' + url vào apiBase.
+    /// </summary>
     private static string BuildAbsoluteUrl(string url, string apiBase)
     {
-        if (string.IsNullOrWhiteSpace(url))
-            return string.Empty;
+        if (string.IsNullOrWhiteSpace(url)) return string.Empty;
 
         var raw = url.Trim();
         if (raw.StartsWith("~/", StringComparison.Ordinal))
             raw = raw[2..];
 
-        // Nếu đã là URL tuyệt đối
-        if (Uri.TryCreate(raw, UriKind.Absolute, out var abs))
+        // (1) URL bắt đầu bằng "/" → CHẮC CHẮN là relative → ghép apiBase.
+        //     KHÔNG dùng Uri.TryCreate ở đây vì Android coi nó là scheme="file".
+        if (raw.StartsWith('/'))
         {
-            // Nếu host là loopback thì rewrite sang apiBase
-            if (IsLoopbackHost(abs.Host) && Uri.TryCreate(apiBase, UriKind.Absolute, out var apiUri))
-                return $"{apiUri.Scheme}://{apiUri.Authority}{abs.PathAndQuery}";
+            if (string.IsNullOrWhiteSpace(apiBase)) return string.Empty;
+            return apiBase + raw;
+        }
 
+        // (2) Có scheme http/https rõ ràng → giữ nguyên (rewrite loopback nếu cần).
+        if (Uri.TryCreate(raw, UriKind.Absolute, out var abs)
+            && (abs.Scheme == Uri.UriSchemeHttp || abs.Scheme == Uri.UriSchemeHttps))
+        {
+            if (IsLoopbackHost(abs.Host) && Uri.TryCreate(apiBase, UriKind.Absolute, out var apiUri)
+                && (apiUri.Scheme == Uri.UriSchemeHttp || apiUri.Scheme == Uri.UriSchemeHttps))
+            {
+                return $"{apiUri.Scheme}://{apiUri.Authority}{abs.PathAndQuery}";
+            }
             return raw;
         }
 
-        // URL relative → cần ghép với apiBase
-        if (string.IsNullOrWhiteSpace(apiBase))
-            return string.Empty; // không có base → không thể build
-
-        if (!raw.StartsWith('/'))
-            raw = '/' + raw;
-
-        return apiBase + raw;
+        // (3) Các trường hợp khác (không scheme, không bắt đầu '/') → ghép '/' + apiBase.
+        if (string.IsNullOrWhiteSpace(apiBase)) return string.Empty;
+        return apiBase + "/" + raw;
     }
 
     private static bool IsLoopbackHost(string host) =>
@@ -128,5 +203,10 @@ public sealed class HttpImageService : IHttpImageService
         if (bytes.Length >= 12
             && bytes[4] == 0x66 && bytes[5] == 0x74 && bytes[6] == 0x79 && bytes[7] == 0x70) return true;               // HEIC
         return false;
+    }
+
+    private sealed record CacheEntry(byte[] Bytes, DateTime ExpiresAtUtc)
+    {
+        public bool IsExpired => DateTime.UtcNow >= ExpiresAtUtc;
     }
 }

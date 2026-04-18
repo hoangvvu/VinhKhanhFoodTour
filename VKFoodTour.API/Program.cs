@@ -118,7 +118,16 @@ app.UseStaticFiles(new StaticFileOptions
     OnPrepareResponse = ctx =>
     {
         ctx.Context.Response.Headers.Append("Access-Control-Allow-Origin", "*");
-        ctx.Context.Response.Headers.Append("Cache-Control", "public, max-age=3600");
+
+        // Trước đây: public, max-age=3600 → mobile/OS/proxy cache ảnh 1 giờ,
+        // vendor đổi ảnh xong người dùng vẫn thấy ảnh cũ cho tới khi cache hết hạn.
+        // Giờ: no-cache + must-revalidate → client vẫn có thể dùng ETag/Last-Modified
+        // nhưng luôn phải hỏi server trước khi hiển thị → ảnh mới được đẩy xuống ngay.
+        // Static File Middleware của ASP.NET tự sinh ETag/Last-Modified dựa trên file,
+        // nên băng thông vẫn tối ưu (trả 304 Not Modified khi file chưa đổi).
+        ctx.Context.Response.Headers["Cache-Control"] = "no-cache, must-revalidate, max-age=0";
+        ctx.Context.Response.Headers["Pragma"] = "no-cache";
+        ctx.Context.Response.Headers["Expires"] = "0";
     }
 });
 

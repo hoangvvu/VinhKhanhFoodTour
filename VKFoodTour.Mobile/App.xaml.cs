@@ -6,19 +6,25 @@ namespace VKFoodTour.Mobile;
 public partial class App : Application
 {
     private readonly AppShell _shell;
-    private readonly LoginPage _loginPage;
+    private readonly IServiceProvider _services;
     private readonly IAuthSessionService _session;
 
-    public App(AppShell shell, LoginPage loginPage, IAuthSessionService session)
+    // ✅ Không inject LoginPage trực tiếp nữa
+    public App(AppShell shell, IServiceProvider services, IAuthSessionService session)
     {
-        InitializeComponent();
+        InitializeComponent(); // ← Colors.xaml được merge TẠI ĐÂY
         _shell = shell;
-        _loginPage = loginPage;
+        _services = services;
         _session = session;
     }
 
-    protected override Window CreateWindow(IActivationState? activationState) =>
-        _session.IsLoggedIn
-            ? new Window(_shell)
-            : new Window(new NavigationPage(_loginPage));
+    protected override Window CreateWindow(IActivationState? activationState)
+    {
+        if (_session.IsLoggedIn)
+            return new Window(_shell);
+
+        // ✅ LoginPage chỉ được tạo SAU InitializeComponent()
+        var loginPage = _services.GetRequiredService<LoginPage>();
+        return new Window(new NavigationPage(loginPage));
+    }
 }

@@ -4,14 +4,23 @@ using VKFoodTour.Mobile.Services;
 namespace VKFoodTour.Mobile.Controls;
 
 /// <summary>
-/// View hiển thị ảnh từ URL (nội bộ API hoặc web ngoài).
-/// Chiến lược:
-///   1) Nếu URL là http/https hợp lệ (web ngoài: unsplash, cloudinary...) → dùng UriImageSource (MAUI tự tải, tự cache).
-///   2) Nếu URL là relative (/uploads/poi/abc.jpg) → gọi IHttpImageService để ghép ApiBaseUrl + kiểm tra content-type + tải bytes.
-/// Tự fallback về placeholder emoji nếu fail.
+/// View hiển thị ảnh từ URL.
+///
+/// v6 — LOGIC CHỌN LOADER:
+///   • Host CDN công khai (unsplash, cloudinary…) → UriImageSource (MAUI tự xử lý).
+///   • Host API của mình (devtunnels.ms, ngrok, LAN, loopback, relative) → HttpImageService.
+///
+/// Lý do: MAUI Glide trên Android đôi khi tải thất bại ảnh từ dev tunnel dù
+/// trình duyệt trên cùng emulator mở được URL đó (có thể do header Accept mà Glide
+/// gửi khiến tunnel xử lý khác, hoặc cert handshake của HttpUrlConnection nội bộ
+/// Glide không khớp). HttpClient của ta qua AndroidMessageHandler làm việc ổn định.
+///
+/// Có log chi tiết để dễ chẩn đoán: tìm tag "[NetworkImageView]" trong Logcat/Output.
 /// </summary>
 public class NetworkImageView : ContentView
 {
+    private static readonly TimeSpan ImageCacheValidity = TimeSpan.FromMinutes(2);
+
     public static readonly BindableProperty UrlProperty = BindableProperty.Create(
         nameof(Url),
         typeof(string),
@@ -79,20 +88,38 @@ public class NetworkImageView : ContentView
         _placeholder.IsVisible = true;
 
         if (string.IsNullOrWhiteSpace(url))
+        {
+            System.Diagnostics.Debug.WriteLine($"[NetworkImageView] URL null/empty → placeholder");
             return;
+        }
 
-        // ───────────────────────────────────────────────
-        //  CHIẾN LƯỢC 1: URL web tuyệt đối (http/https) và KHÔNG phải loopback
-        //  → dùng UriImageSource. MAUI có Glide (Android) / SDWebImage (iOS) xử lý
-        //    redirect + cert + cache đĩa rất tốt, KHÔNG bị chặn bởi HttpClient custom header.
-        // ───────────────────────────────────────────────
         var trimmed = url.Trim();
         if (trimmed.StartsWith("~/", StringComparison.Ordinal))
             trimmed = trimmed[2..];
 
+        System.Diagnostics.Debug.WriteLine($"[NetworkImageView] Loading url='{trimmed}'");
+
+        // Phân loại host để chọn loader:
+        //   • CDN công khai → UriImageSource (Glide/SDWebImage xử lý).
+        //   • API của mình (tunnel/LAN/loopback) → HttpImageService.
+        //   • Relative (không có host) → HttpImageService.
+        bool useHttpLoader;
         if (Uri.TryCreate(trimmed, UriKind.Absolute, out var abs)
-            && (abs.Scheme == Uri.UriSchemeHttp || abs.Scheme == Uri.UriSchemeHttps)
-            && !IsLoopbackHost(abs.Host))
+            && (abs.Scheme == Uri.UriSchemeHttp || abs.Scheme == Uri.UriSchemeHttps))
+        {
+            useHttpLoader = IsOurApiHost(abs.Host);
+            System.Diagnostics.Debug.WriteLine(
+                $"[NetworkImageView] Host='{abs.Host}' isOurApi={useHttpLoader} " +
+                $"→ loader={(useHttpLoader ? "HttpImageService" : "UriImageSource")}");
+        }
+        else
+        {
+            useHttpLoader = true;
+            System.Diagnostics.Debug.WriteLine("[NetworkImageView] Relative URL → HttpImageService");
+        }
+
+        // ─── UriImageSource: CDN công khai ───
+        if (!useHttpLoader && abs is not null)
         {
             try
             {
@@ -100,42 +127,93 @@ public class NetworkImageView : ContentView
                 {
                     Uri = abs,
                     CachingEnabled = true,
-                    CacheValidity = TimeSpan.FromDays(7)
+                    CacheValidity = ImageCacheValidity
                 };
                 _image.IsVisible = true;
                 _placeholder.IsVisible = false;
                 return;
             }
-            catch
+            catch (Exception ex)
             {
-                // Rơi về chiến lược 2 nếu vì lý do nào đó UriImageSource lỗi.
+                System.Diagnostics.Debug.WriteLine(
+                    $"[NetworkImageView] UriImageSource failed: {ex.Message} — fallback to HttpImageService");
             }
         }
 
-        // ───────────────────────────────────────────────
-        //  CHIẾN LƯỢC 2: URL relative hoặc loopback → tải qua IHttpImageService
-        //  (service này ghép ApiBaseUrl + chuyển 10.0.2.2 → Dev Tunnel nếu cần).
-        // ───────────────────────────────────────────────
+        // ─── HttpImageService: host API ───
         var services = Handler?.MauiContext?.Services ?? Application.Current?.Handler?.MauiContext?.Services;
         if (services is null)
+        {
+            System.Diagnostics.Debug.WriteLine("[NetworkImageView] FAIL: MauiContext.Services is null");
             return;
+        }
 
         var loader = services.GetService<IHttpImageService>();
         if (loader is null)
+        {
+            System.Diagnostics.Debug.WriteLine("[NetworkImageView] FAIL: IHttpImageService not registered");
             return;
+        }
 
         var source = await loader.GetImageSourceAsync(trimmed, token);
-        if (token.IsCancellationRequested || source is null)
+        if (token.IsCancellationRequested)
+        {
+            System.Diagnostics.Debug.WriteLine("[NetworkImageView] Cancelled");
             return;
+        }
+        if (source is null)
+        {
+            System.Diagnostics.Debug.WriteLine("[NetworkImageView] HttpImageService returned null → placeholder");
+            return;
+        }
 
         _image.Source = source;
         _image.IsVisible = true;
         _placeholder.IsVisible = false;
+        System.Diagnostics.Debug.WriteLine("[NetworkImageView] Image displayed OK");
     }
 
-    private static bool IsLoopbackHost(string host) =>
-        host.Equals("localhost", StringComparison.OrdinalIgnoreCase)
-        || host.Equals("127.0.0.1", StringComparison.OrdinalIgnoreCase)
-        || host.Equals("0.0.0.0", StringComparison.OrdinalIgnoreCase)
-        || host.Equals("10.0.2.2", StringComparison.OrdinalIgnoreCase);
+    /// <summary>
+    /// Host thuộc nhóm "API của mình":
+    ///   • Loopback: localhost, 127.0.0.1, 10.0.2.2
+    ///   • Dev Tunnel: *.devtunnels.ms
+    ///   • ngrok: *.ngrok-free.app, *.ngrok-free.dev, *.ngrok.dev, *.ngrok.io
+    ///   • IP LAN: 10.x / 172.16-31.x / 192.168.x
+    /// Những host trên phải đi qua HttpImageService vì cần header tùy biến
+    /// và/hoặc HttpClient của app, không dùng UriImageSource được.
+    /// </summary>
+    private static bool IsOurApiHost(string host)
+    {
+        if (string.IsNullOrWhiteSpace(host))
+            return false;
+
+        // Loopback
+        if (host.Equals("localhost", StringComparison.OrdinalIgnoreCase)) return true;
+        if (host.Equals("127.0.0.1", StringComparison.OrdinalIgnoreCase)) return true;
+        if (host.Equals("0.0.0.0", StringComparison.OrdinalIgnoreCase)) return true;
+        if (host.Equals("10.0.2.2", StringComparison.OrdinalIgnoreCase)) return true;
+
+        // Dev tunnels (Visual Studio)
+        if (host.EndsWith(".devtunnels.ms", StringComparison.OrdinalIgnoreCase)) return true;
+
+        // ngrok
+        if (host.EndsWith(".ngrok-free.app", StringComparison.OrdinalIgnoreCase)) return true;
+        if (host.EndsWith(".ngrok-free.dev", StringComparison.OrdinalIgnoreCase)) return true;
+        if (host.EndsWith(".ngrok.dev", StringComparison.OrdinalIgnoreCase)) return true;
+        if (host.EndsWith(".ngrok.io", StringComparison.OrdinalIgnoreCase)) return true;
+
+        // IP LAN private
+        if (System.Net.IPAddress.TryParse(host, out var ip))
+        {
+            var b = ip.GetAddressBytes();
+            if (b.Length == 4)
+            {
+                if (b[0] == 10) return true;                          // 10.0.0.0/8
+                if (b[0] == 172 && b[1] >= 16 && b[1] <= 31) return true; // 172.16.0.0/12
+                if (b[0] == 192 && b[1] == 168) return true;          // 192.168.0.0/16
+            }
+        }
+
+        return false;
+    }
 }
