@@ -89,24 +89,29 @@ public partial class FullMapPage : ContentPage
             var loc = new Location(p.Latitude, p.Longitude);
 
             var priorityPrefix = _localization.GetString("StallList_Priority");
-            bigMap.Pins.Add(new Pin
+            var pin = new Pin
             {
                 Label = p.Name,
-                Address = string.IsNullOrWhiteSpace(p.Address) ? $"{priorityPrefix} {p.Priority}" : p.Address,
+                Address = string.IsNullOrWhiteSpace(p.Address)
+                    ? $"{priorityPrefix} {p.Priority}"
+                    : p.Address,
                 Location = loc,
                 Type = PinType.Place,
                 BindingContext = p
-            });
-            bigMap.Pins[^1].MarkerClicked += OnPinClicked;
+            };
+            pin.MarkerClicked += OnPinClicked;
+            bigMap.Pins.Add(pin);
 
-            var radiusM = Math.Clamp(p.Radius > 0 ? p.Radius : 25, 8, 250);
+            // Vùng Geofence — cam đậm, khớp với GeofenceMonitorService (radius + 10m buffer)
+            var baseRadius = Math.Clamp(p.Radius > 0 ? p.Radius : 20, 5, 200);
+            var geofenceRadius = baseRadius + 10;
             bigMap.MapElements.Add(new Circle
             {
                 Center = loc,
-                Radius = Distance.FromMeters(radiusM),
-                StrokeColor = Color.FromRgba(200, 55, 45, 0.9f),
-                FillColor = Color.FromRgba(200, 55, 45, 0.14f),
-                StrokeWidth = 1
+                Radius = Distance.FromMeters(geofenceRadius),
+                StrokeColor = Color.FromRgba(255, 120, 0, 0.85f),   // cam đậm
+                FillColor   = Color.FromRgba(255, 140, 0, 0.22f),   // cam nhạt fill
+                StrokeWidth = 2.5f
             });
         }
     }
@@ -151,10 +156,65 @@ public partial class FullMapPage : ContentPage
 
     private async void OnPinClicked(object? sender, PinClickedEventArgs e)
     {
-        if (sender is Pin pin && pin.BindingContext is Poi poi)
+        e.HideInfoWindow = true; // Ẩn callout mặc định của Maps, ta dùng ActionSheet riêng
+
+        if (sender is not Pin pin || pin.BindingContext is not Poi poi)
+            return;
+
+        // Tính khoảng cách từ vị trí hiện tại
+        var distStr = "";
+        try
         {
-            e.HideInfoWindow = false;
-            await Shell.Current.GoToAsync($"{nameof(StallDetailPage)}?poiId={poi.PoiId}");
+            var loc = await Geolocation.GetLastKnownLocationAsync();
+            if (loc is not null)
+            {
+                var dist = CalculateDistanceMeters(loc.Latitude, loc.Longitude, poi.Latitude, poi.Longitude);
+                distStr = dist < 1000 ? $"{dist:F0}m" : $"{dist / 1000:F1}km";
+            }
         }
+        catch { /* bỏ qua */ }
+
+        var geofenceRadius = Math.Clamp(poi.Radius > 0 ? poi.Radius : 20, 5, 200) + 10;
+
+        // Header info
+        var info = new System.Text.StringBuilder();
+        info.AppendLine($"📍 {poi.Address ?? "Không có địa chỉ"}");
+        if (!string.IsNullOrEmpty(distStr))
+            info.AppendLine($"📏 Cách bạn: {distStr}");
+        if (poi.Rating > 0)
+            info.AppendLine($"⭐ Đánh giá: {poi.Rating:F1} ({poi.ReviewCount} lượt)");
+        info.AppendLine($"🔔 Vùng geofence: {geofenceRadius}m");
+
+        var action = await DisplayActionSheet(
+            poi.Name,
+            "❌ Đóng",
+            null,
+            "🎵 Xem chi tiết gian hàng",
+            "🗺️ Chỉ đường"
+        );
+
+        switch (action)
+        {
+            case "🎵 Xem chi tiết gian hàng":
+                await Shell.Current.GoToAsync($"{nameof(StallDetailPage)}?poiId={poi.PoiId}");
+                break;
+            case "🗺️ Chỉ đường":
+                var mapLoc = new Microsoft.Maui.Devices.Sensors.Location(poi.Latitude, poi.Longitude);
+                var options = new MapLaunchOptions { Name = poi.Name };
+                await Microsoft.Maui.ApplicationModel.Map.Default.OpenAsync(mapLoc, options);
+                break;
+        }
+    }
+
+    /// <summary>Tính khoảng cách Haversine (meters).</summary>
+    private static double CalculateDistanceMeters(double lat1, double lon1, double lat2, double lon2)
+    {
+        const double R = 6_371_000;
+        var dLat = (lat2 - lat1) * Math.PI / 180;
+        var dLon = (lon2 - lon1) * Math.PI / 180;
+        var a = Math.Sin(dLat / 2) * Math.Sin(dLat / 2)
+              + Math.Cos(lat1 * Math.PI / 180) * Math.Cos(lat2 * Math.PI / 180)
+              * Math.Sin(dLon / 2) * Math.Sin(dLon / 2);
+        return R * 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
     }
 }

@@ -1,4 +1,4 @@
-﻿-- ============================================================
+-- ============================================================
 --  VĨNH KHÁNH FOOD TOUR — Database Schema v2.0
 --  SQL Server | Thiết kế lại hoàn chỉnh
 -- ============================================================
@@ -364,3 +364,18 @@ SELECT COLUMN_NAME
 FROM INFORMATION_SCHEMA.COLUMNS
 WHERE TABLE_NAME = 'NARRATIONS'
   AND COLUMN_NAME IN ('audio_url_auto', 'audio_url_qr');
+
+-- ============================================================
+--  TOUR_SETTINGS — Cấu hình toàn cục tour (TTS intro phố...)
+-- ============================================================
+IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'TOUR_SETTINGS')
+BEGIN
+    CREATE TABLE TOUR_SETTINGS (
+        setting_id    INT            IDENTITY(1,1) PRIMARY KEY,
+        setting_key   NVARCHAR(100)  NOT NULL,
+            CONSTRAINT uq_tour_setting_key UNIQUE (setting_key),
+        setting_value NVARCHAR(MAX)  NULL,
+        updated_at    DATETIME       NULL
+    );
+END
+GO

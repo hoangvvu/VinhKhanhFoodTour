@@ -6,24 +6,27 @@ public partial class WelcomePage : ContentPage
 {
     private readonly AppShell _shell;
     private readonly IAuthSessionService _session;
+    private readonly ISettingsService _settings;
 
-    public WelcomePage(AppShell shell, IAuthSessionService session)
+    public WelcomePage(AppShell shell, IAuthSessionService session, ISettingsService settings)
     {
         InitializeComponent();
         _shell = shell;
         _session = session;
+        _settings = settings;
     }
 
     protected override void OnAppearing()
     {
         base.OnAppearing();
 
-        // Animation nhẹ không async void (để tránh unhandled exception vượt JNI boundary)
-        // Dùng Task.Run + ContinueWith thay vì async void OnAppearing
+        // Điền URL hiện tại vào ô input
+        ServerUrlEntry.Text = _settings.ApiBaseUrl;
+
+        // Animation nhẹ không async void
         LogoBorder.Scale = 0.8;
         LogoBorder.Opacity = 0;
 
-        // ViewExtensions này an toàn vì chỉ chạy trên UI thread qua MainThread
         MainThread.BeginInvokeOnMainThread(async () =>
         {
             try
@@ -34,7 +37,6 @@ public partial class WelcomePage : ContentPage
             }
             catch
             {
-                // Bỏ qua nếu page bị dispose trước khi animation xong
                 LogoBorder.Scale = 1.0;
                 LogoBorder.Opacity = 1.0;
             }
@@ -47,11 +49,9 @@ public partial class WelcomePage : ContentPage
 
         try
         {
-            // Nhấn animation
             await ExploreButton.ScaleTo(0.96, 70);
             await ExploreButton.ScaleTo(1.0, 70);
 
-            // Đặt session ẩn danh rồi chuyển sang Shell
             _session.EnterAnonymous();
             Application.Current!.Windows[0].Page = _shell;
         }
@@ -60,5 +60,27 @@ public partial class WelcomePage : ContentPage
             System.Diagnostics.Debug.WriteLine($"[WelcomePage] OnExploreClicked error: {ex.Message}");
             ExploreButton.IsEnabled = true;
         }
+    }
+
+    private void OnServerToggleClicked(object? sender, EventArgs e)
+    {
+        ServerPanel.IsVisible = !ServerPanel.IsVisible;
+        ServerStatusLabel.Text = string.Empty;
+    }
+
+    private void OnSaveServerUrlClicked(object? sender, EventArgs e)
+    {
+        var url = ServerUrlEntry.Text?.Trim();
+        if (string.IsNullOrWhiteSpace(url))
+        {
+            ServerStatusLabel.TextColor = Color.FromArgb("#f87171");
+            ServerStatusLabel.Text = "URL không hợp lệ";
+            return;
+        }
+
+        _settings.ApiBaseUrl = url;
+        ServerStatusLabel.TextColor = Color.FromArgb("#4ade80");
+        ServerStatusLabel.Text = $"✓ Đã lưu: {_settings.ApiBaseUrl}";
+        System.Diagnostics.Debug.WriteLine($"[WelcomePage] ApiBaseUrl updated → {_settings.ApiBaseUrl}");
     }
 }

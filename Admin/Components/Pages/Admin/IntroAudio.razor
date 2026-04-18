@@ -1,0 +1,324 @@
+@page "/admin/intro-audio"
+@rendermode InteractiveServer
+@inject TtsService TtsService
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject IWebHostEnvironment Env
+
+<PageTitle>Audio Intro Phố — VKFoodTour Admin</PageTitle>
+
+<AuthorizeView Roles="Admin">
+    <Authorized>
+
+<style>
+    .intro-card { border-radius: 18px; background: linear-gradient(135deg, #0d1117 0%, #161b22 100%); border: 1px solid rgba(255,255,255,0.07); }
+    .dash-label { font-size: 11px; letter-spacing: 1.5px; color: #8A8078; font-weight: 600; }
+    .dash-input { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color: #F0EBE3; border-radius: 10px; }
+    .dash-input:focus { background: rgba(255,255,255,0.07); border-color: #E8A020; color: #F0EBE3; box-shadow: 0 0 0 3px rgba(232,160,32,0.15); }
+    .lang-tab { cursor: pointer; border-radius: 8px; padding: 6px 16px; font-size: 13px; transition: all 0.2s; }
+    .lang-tab.active { background: #E8A020; color: #000; font-weight: 600; }
+    .lang-tab:not(.active) { background: rgba(255,255,255,0.05); color: #8A8078; }
+    .lang-tab:not(.active):hover { background: rgba(255,255,255,0.1); color: #F0EBE3; }
+    .audio-preview { background: rgba(232,160,32,0.05); border: 1px solid rgba(232,160,32,0.2); border-radius: 12px; }
+    .status-ok { color: #4ade80; }
+    .status-err { color: #f87171; }
+</style>
+
+<div class="container-fluid px-4 py-4" style="color: #F0EBE3;">
+
+    <div class="mb-4">
+        <h4 class="fw-bold mb-1" style="color:#E8A020;">
+            <i class="bi bi-broadcast me-2"></i>Audio Intro Phố Ẩm Thực
+        </h4>
+        <p class="text-muted small mb-0">
+            Audio này sẽ được phát khi du khách quét QR bắt đầu tour — trước khi hệ thống dẫn đường qua các gian hàng.
+        </p>
+    </div>
+
+    @* Language Tabs *@
+    <div class="d-flex gap-2 mb-4 flex-wrap">
+        @foreach (var lang in languages)
+        {
+            <span class="lang-tab @(selectedLang == lang.Code ? "active" : "")"
+                  @onclick="() => SelectLang(lang.Code)">
+                @FlagEmoji(lang.Code) @lang.Name
+            </span>
+        }
+    </div>
+
+    @* Status message *@
+    @if (!string.IsNullOrEmpty(statusMessage))
+    {
+        <div class="alert @(isError ? "alert-danger" : "alert-success") d-flex align-items-center gap-2 rounded-3 mb-4" style="font-size:14px;">
+            <i class="bi @(isError ? "bi-exclamation-circle" : "bi-check-circle") fs-5"></i>
+            @statusMessage
+        </div>
+    }
+
+    <div class="row g-4">
+        @* LEFT: Soạn nội dung + TTS *@
+        <div class="col-lg-7">
+            <div class="intro-card p-4 h-100">
+                <div class="dash-label mb-3">
+                    <i class="bi bi-pencil me-2"></i>NỘI DUNG GIỚI THIỆU (@selectedLang.ToUpper())
+                </div>
+
+                <label class="form-label text-muted small">Tiêu đề audio</label>
+                <input class="form-control dash-input mb-3"
+                       placeholder="VD: Chào mừng đến phố ẩm thực Vĩnh Khánh"
+                       @bind="introTitle" />
+
+                <label class="form-label text-muted small">Nội dung thuyết minh (sẽ được chuyển thành giọng đọc)</label>
+                <textarea class="form-control dash-input mb-3" rows="7"
+                          placeholder="VD: Chào mừng bạn đến với phố ẩm thực Vĩnh Khánh, con phố sầm uất tại Quận 4 TP.HCM..."
+                          @bind="introText"></textarea>
+
+                <label class="form-label text-muted small">Giọng đọc</label>
+                <select class="form-select dash-input mb-4" @bind="ttsVoice">
+                    <option value="lannhi">Nữ Miền Nam (Lan Nhi)</option>
+                    <option value="banmai">Nữ Miền Nam (Ban Mai)</option>
+                    <option value="minhquang">Nam Miền Nam (Minh Quang)</option>
+                    <option value="thuquynh">Nữ Miền Bắc (Thu Quỳnh)</option>
+                    <option value="leminh">Nam Miền Bắc (Lê Minh)</option>
+                </select>
+
+                <div class="d-flex gap-3">
+                    <button class="btn btn-warning rounded-pill px-4 fw-bold flex-grow-1"
+                            @onclick="GenerateIntroTtsAsync" disabled="@isBusy">
+                        @if (isBusy)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2"></span>
+                            <span>Đang tạo audio…</span>
+                        }
+                        else
+                        {
+                            <i class="bi bi-magic me-2"></i>
+                            <span>Tạo Audio TTS</span>
+                        }
+                    </button>
+
+                    @if (!string.IsNullOrEmpty(currentAudioUrl))
+                    {
+                        <button class="btn btn-outline-danger rounded-pill px-3"
+                                @onclick="DeleteIntroAudioAsync" disabled="@isBusy"
+                                title="Xoá audio intro">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    }
+                </div>
+            </div>
+        </div>
+
+        @* RIGHT: Preview + Trạng thái *@
+        <div class="col-lg-5">
+            <div class="intro-card p-4 mb-4">
+                <div class="dash-label mb-3"><i class="bi bi-play-circle me-2"></i>AUDIO HIỆN TẠI</div>
+
+                @if (!string.IsNullOrEmpty(currentAudioUrl))
+                {
+                    <div class="audio-preview p-3 mb-3">
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                            <span class="status-ok"><i class="bi bi-check-circle-fill"></i></span>
+                            <small class="text-muted">Đã có audio — nghe thử:</small>
+                        </div>
+                        <audio controls class="w-100" src="@currentAudioUrl" style="border-radius:8px;"></audio>
+                        <div class="mt-2">
+                            <small class="text-muted" style="font-size:11px;word-break:break-all;">
+                                <i class="bi bi-link me-1"></i>@currentAudioUrl
+                            </small>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="text-center py-4">
+                        <i class="bi bi-mic-mute" style="font-size:2.5rem; color:#4a3a2a;"></i>
+                        <p class="text-muted small mt-2 mb-0">Chưa có audio intro cho ngôn ngữ <strong>@selectedLang</strong></p>
+                    </div>
+                }
+            </div>
+
+            <div class="intro-card p-4">
+                <div class="dash-label mb-3"><i class="bi bi-info-circle me-2"></i>HƯỚNG DẪN</div>
+                <ul class="text-muted small mb-0" style="line-height:1.8;">
+                    <li>Audio này phát <strong>ngay khi du khách quét QR</strong> đầu phố</li>
+                    <li>Mỗi ngôn ngữ có một audio intro riêng</li>
+                    <li>Nên giới thiệu phố, số gian hàng, và gợi ý trải nghiệm</li>
+                    <li>Độ dài lý tưởng: <strong>30–60 giây</strong> (~75–150 từ)</li>
+                    <li>Tạo audio mới sẽ <strong>ghi đè</strong> audio cũ</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+    </Authorized>
+    <NotAuthorized>
+        <div class="d-flex align-items-center justify-content-center" style="height:60vh;">
+            <div class="text-center text-muted">
+                <i class="bi bi-lock fs-1 d-block mb-3"></i>
+                <p>Bạn không có quyền truy cập trang này.</p>
+            </div>
+        </div>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+    private List<LanguageItem> languages = new();
+    private string selectedLang = "vi";
+    private string introTitle = "";
+    private string introText = "";
+    private string ttsVoice = "lannhi";
+    private string? currentAudioUrl;
+    private bool isBusy = false;
+    private bool isError = false;
+    private string? statusMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await using var db = await DbFactory.CreateDbContextAsync();
+        languages = await db.Languages.AsNoTracking()
+            .Where(l => l.IsActive)
+            .OrderBy(l => l.Code)
+            .Select(l => new LanguageItem { Code = l.Code, Name = l.Name })
+            .ToListAsync();
+
+        if (!languages.Any())
+            languages = new List<LanguageItem> { new() { Code = "vi", Name = "Tiếng Việt" } };
+
+        await LoadCurrentSettingAsync();
+    }
+
+    private async Task SelectLang(string code)
+    {
+        selectedLang = code;
+        statusMessage = null;
+        await LoadCurrentSettingAsync();
+    }
+
+    private async Task LoadCurrentSettingAsync()
+    {
+        var audioKey = $"intro_audio_{selectedLang}";
+        var textKey  = $"intro_text_{selectedLang}";
+        var titleKey = $"intro_title_{selectedLang}";
+
+        await using var db = await DbFactory.CreateDbContextAsync();
+        var settings = await db.TourSettings.AsNoTracking()
+            .Where(s => s.SettingKey == audioKey || s.SettingKey == textKey || s.SettingKey == titleKey)
+            .ToDictionaryAsync(s => s.SettingKey, s => s.SettingValue);
+
+        currentAudioUrl = settings.GetValueOrDefault(audioKey);
+        introText  = settings.GetValueOrDefault(textKey) ?? "";
+        introTitle = settings.GetValueOrDefault(titleKey) ?? "";
+    }
+
+    private async Task GenerateIntroTtsAsync()
+    {
+        if (string.IsNullOrWhiteSpace(introText))
+        {
+            statusMessage = "Vui lòng nhập nội dung trước khi tạo audio.";
+            isError = true;
+            return;
+        }
+
+        isBusy = true;
+        statusMessage = null;
+
+        try
+        {
+            // Lưu text + title vào DB ngay cả khi chưa tạo audio
+            var stem = $"intro_{selectedLang}";
+            var result = await TtsService.GenerateAndPersistLocalAsync(introText, ttsVoice, stem);
+
+            if (!string.IsNullOrEmpty(result.ErrorMessage))
+            {
+                statusMessage = $"Lỗi TTS: {result.ErrorMessage}";
+                isError = true;
+                return;
+            }
+
+            // Lưu vào TOUR_SETTINGS
+            await UpsertSettingAsync($"intro_audio_{selectedLang}", result.Url);
+            await UpsertSettingAsync($"intro_text_{selectedLang}", introText);
+            await UpsertSettingAsync($"intro_title_{selectedLang}", introTitle);
+
+            currentAudioUrl = result.Url;
+            statusMessage = $"Đã tạo audio intro cho ngôn ngữ [{selectedLang}] thành công!";
+            isError = false;
+        }
+        catch (Exception ex)
+        {
+            statusMessage = $"Lỗi: {ex.Message}";
+            isError = true;
+        }
+        finally
+        {
+            isBusy = false;
+        }
+    }
+
+    private async Task DeleteIntroAudioAsync()
+    {
+        isBusy = true;
+        try
+        {
+            // Xoá file trên đĩa
+            if (!string.IsNullOrEmpty(currentAudioUrl))
+            {
+                var relativePath = currentAudioUrl.TrimStart('/').Replace("uploads/", "", StringComparison.OrdinalIgnoreCase);
+                var fullPath = Path.Combine(Env.ContentRootPath, "..", "UploadsData", relativePath.Replace('/', Path.DirectorySeparatorChar));
+                if (File.Exists(fullPath)) File.Delete(fullPath);
+            }
+
+            await UpsertSettingAsync($"intro_audio_{selectedLang}", null);
+            currentAudioUrl = null;
+            statusMessage = "Đã xoá audio intro.";
+            isError = false;
+        }
+        catch (Exception ex)
+        {
+            statusMessage = $"Lỗi xoá: {ex.Message}";
+            isError = true;
+        }
+        finally
+        {
+            isBusy = false;
+        }
+    }
+
+    private async Task UpsertSettingAsync(string key, string? value)
+    {
+        await using var db = await DbFactory.CreateDbContextAsync();
+        var existing = await db.TourSettings.FirstOrDefaultAsync(s => s.SettingKey == key);
+        if (existing is null)
+        {
+            db.TourSettings.Add(new TourSetting
+            {
+                SettingKey = key,
+                SettingValue = value,
+                UpdatedAt = DateTime.Now
+            });
+        }
+        else
+        {
+            existing.SettingValue = value;
+            existing.UpdatedAt = DateTime.Now;
+        }
+        await db.SaveChangesAsync();
+    }
+
+    private static string FlagEmoji(string code) => code.ToLower() switch
+    {
+        "vi" => "🇻🇳",
+        "en" => "🇬🇧",
+        "zh" => "🇨🇳",
+        "ko" => "🇰🇷",
+        "ja" => "🇯🇵",
+        _    => "🌐"
+    };
+
+    private class LanguageItem
+    {
+        public string Code { get; set; } = "";
+        public string Name { get; set; } = "";
+    }
+}

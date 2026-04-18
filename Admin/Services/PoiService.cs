@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using System.Security.Cryptography;
 using System.Text;
 using VKFoodTour.Infrastructure.Data;
@@ -329,6 +329,35 @@ public class PoiService
         }
 
         await _db.SaveChangesAsync();
+    }
+
+    /// <summary>Xoá audio thuyết minh tự động (Auto/Geo) cho POI.</summary>
+    public async Task<bool> DeleteNarrationAutoAudioAsync(int poiId)
+    {
+        var narration = await _db.Narrations
+            .FirstOrDefaultAsync(n => n.PoiId == poiId && n.IsActive);
+        if (narration is null)
+            return false;
+
+        narration.AudioUrlAuto = null;
+        narration.AudioUrl = null;
+        narration.UpdatedAt = DateTime.Now;
+        await _db.SaveChangesAsync();
+        return true;
+    }
+
+    /// <summary>Xoá audio dành riêng cho quét QR của POI.</summary>
+    public async Task<bool> DeleteNarrationQrAudioAsync(int poiId)
+    {
+        var narration = await _db.Narrations
+            .FirstOrDefaultAsync(n => n.PoiId == poiId && n.IsActive);
+        if (narration is null)
+            return false;
+
+        narration.AudioUrlQr = null;
+        narration.UpdatedAt = DateTime.Now;
+        await _db.SaveChangesAsync();
+        return true;
     }
 
     /// <summary>Ẩn gian hàng (không xóa bản ghi).</summary>

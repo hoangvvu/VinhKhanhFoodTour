@@ -94,13 +94,6 @@
                 </VerticalStackLayout>
             </Border>
 
-            <!-- LOGOUT -->
-            <Button Text="{Binding UiLogout}"
-                    Clicked="OnLogoutClicked"
-                    BackgroundColor="{StaticResource VKRedDark}"
-                    TextColor="White" FontAttributes="Bold"
-                    CornerRadius="14" HeightRequest="50"/>
-
         </VerticalStackLayout>
     </ScrollView>
 </ContentPage>

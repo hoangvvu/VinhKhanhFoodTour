@@ -1,90 +1,74 @@
 using System.Collections.ObjectModel;
-using Microsoft.Maui.Devices.Sensors;
 using VKFoodTour.Shared.DTOs;
 
 namespace VKFoodTour.Mobile.Services;
 
 /// <summary>
-/// Quản lý hàng đợi audio cho tour.
-/// Tự động phát audio tiếp theo khi audio hiện tại kết thúc.
+/// Quản lý hàng đợi audio cho tour theo mô hình Geofence-Trigger.
+///
+/// Thay vì sequential WaitUntilEnterGeofence, service này:
+///   - Nhận tín hiệu từ GeofenceMonitorService khi du khách vào zone của 1 POI
+///   - Quyết định: phát ngay / chèn tiếp theo / bỏ qua — dựa trên tiến độ track đang phát
+///
+/// Quy tắc interrupt (threshold = 60%):
+///   track hiện tại >= 60% → InsertNext(poi mới)
+///   track hiện tại <  60% → InterruptAndPlay(poi mới), chèn track cũ vào sau
 /// </summary>
 public interface IAudioQueueService
 {
-    /// <summary>Danh sách audio trong hàng đợi.</summary>
     ObservableCollection<AudioQueueItemDto> Queue { get; }
-    
-    /// <summary>Audio đang phát hiện tại.</summary>
     AudioQueueItemDto? CurrentlyPlaying { get; }
-    
-    /// <summary>Đang phát hay không.</summary>
     bool IsPlaying { get; }
-    
-    /// <summary>Đang tạm dừng hay không.</summary>
     bool IsPaused { get; }
-    
-    /// <summary>Số quán còn lại trong hàng đợi.</summary>
     int RemainingCount { get; }
-    
-    /// <summary>Tổng thời gian còn lại (giây).</summary>
     int RemainingDurationSeconds { get; }
 
-    /// <summary>Khởi tạo queue từ danh sách audio.</summary>
     Task InitializeQueueAsync(List<AudioQueueItemDto> items);
-    
-    /// <summary>Bắt đầu phát từ đầu queue.</summary>
     Task StartAsync();
-    
-    /// <summary>Phát audio tiếp theo.</summary>
-    Task PlayNextAsync();
-    
-    /// <summary>Bỏ qua audio hiện tại, chuyển sang audio tiếp theo.</summary>
     Task SkipAsync();
-    
-    /// <summary>Tạm dừng audio hiện tại.</summary>
     void Pause();
-    
-    /// <summary>Tiếp tục phát audio đã tạm dừng.</summary>
     Task ResumeAsync();
-    
-    /// <summary>Dừng và xóa toàn bộ queue.</summary>
     void Stop();
-    
-    /// <summary>Xóa queue nhưng không dừng audio đang phát.</summary>
     void ClearQueue();
 
-    /// <summary>Sự kiện khi bắt đầu phát một audio.</summary>
+    /// <summary>Gọi khi GeofenceMonitor báo du khách vào zone của poiId.</summary>
+    Task HandlePoiEnteredAsync(int poiId);
+
     event EventHandler<AudioQueueItemDto>? OnAudioStarted;
-    
-    /// <summary>Sự kiện khi kết thúc một audio.</summary>
     event EventHandler<AudioQueueItemDto>? OnAudioEnded;
-    
-    /// <summary>Sự kiện khi phát hết queue.</summary>
     event EventHandler? OnQueueCompleted;
-    
-    /// <summary>Sự kiện khi có lỗi phát audio.</summary>
     event EventHandler<string>? OnError;
 }
 
 public class AudioQueueService : IAudioQueueService, IDisposable
 {
+    // ── Dependencies ──────────────────────────────────────────────
     private readonly IAudioPlaybackService _audioPlayer;
     private readonly IDataService _dataService;
     private readonly ILocalizationService _localization;
-    
-    private readonly Queue<AudioQueueItemDto> _internalQueue = new();
-    private readonly object _lock = new();
-    private CancellationTokenSource? _playbackCts;
-    private bool _isDisposed;
-    private DateTime _currentAudioStartTime;
-    private static readonly TimeSpan GeofencePollInterval = TimeSpan.FromSeconds(4);
-    private const int GeofenceGpsTimeoutSec = 8;
+    private readonly GeofenceMonitorService _geofence;
 
+    // ── Queue state ───────────────────────────────────────────────
+    private readonly List<AudioQueueItemDto> _queue = new();   // không dùng Queue<T> vì cần InsertNext
+    private readonly object _lock = new();
+    private readonly HashSet<int> _playedPois = new();          // đã phát xong
+    private bool _disposed;
+    private bool _started;
+
+    // ── Playback state ────────────────────────────────────────────
+    private CancellationTokenSource? _playCts;
+    private DateTime _currentAudioStartTime;
+
+    // ── Constants ─────────────────────────────────────────────────
+    private const double InterruptThreshold = 0.60; // < 60% → interrupt; >= 60% → InsertNext
+
+    // ── Public properties ─────────────────────────────────────────
     public ObservableCollection<AudioQueueItemDto> Queue { get; } = new();
     public AudioQueueItemDto? CurrentlyPlaying { get; private set; }
     public bool IsPlaying => _audioPlayer.IsPlaying;
     public bool IsPaused { get; private set; }
-    public int RemainingCount => _internalQueue.Count;
-    public int RemainingDurationSeconds => _internalQueue.Sum(a => a.DurationSeconds);
+    public int RemainingCount { get { lock (_lock) return _queue.Count; } }
+    public int RemainingDurationSeconds { get { lock (_lock) return _queue.Sum(a => a.DurationSeconds); } }
 
     public event EventHandler<AudioQueueItemDto>? OnAudioStarted;
     public event EventHandler<AudioQueueItemDto>? OnAudioEnded;
@@ -92,290 +76,319 @@ public class AudioQueueService : IAudioQueueService, IDisposable
     public event EventHandler<string>? OnError;
 
     public AudioQueueService(
-        IAudioPlaybackService audioPlayer, 
+        IAudioPlaybackService audioPlayer,
         IDataService dataService,
-        ILocalizationService localization)
+        ILocalizationService localization,
+        GeofenceMonitorService geofence)
     {
         _audioPlayer = audioPlayer;
         _dataService = dataService;
         _localization = localization;
+        _geofence = geofence;
+
+        _geofence.PoiEntered += OnGeofencePoiEntered;
     }
 
+    // ═══════════════════════════════════════════════════════════════
+    //  InitializeQueueAsync — thiết lập danh sách ban đầu
+    // ═══════════════════════════════════════════════════════════════
     public Task InitializeQueueAsync(List<AudioQueueItemDto> items)
     {
         lock (_lock)
         {
-            _internalQueue.Clear();
-            Queue.Clear();
-
-            foreach (var item in items)
-            {
-                _internalQueue.Enqueue(item);
-                Queue.Add(item);
-            }
+            _queue.Clear();
+            _queue.AddRange(items);
+            _playedPois.Clear();
+            _started = false;
+            SyncObservableQueue();
         }
-
         return Task.CompletedTask;
     }
 
-    public async Task StartAsync()
+    // ═══════════════════════════════════════════════════════════════
+    //  StartAsync — kích hoạt GeofenceMonitor, không phát ngay
+    //  (sẽ phát khi du khách enter zone đầu tiên)
+    // ═══════════════════════════════════════════════════════════════
+    public Task StartAsync()
     {
-        if (_internalQueue.Count == 0)
+        List<AudioQueueItemDto> snapshot;
+        lock (_lock) snapshot = new List<AudioQueueItemDto>(_queue);
+
+        if (!snapshot.Any())
         {
             OnError?.Invoke(this, _localization.GetString("AudioQueue_Empty"));
-            return;
+            return Task.CompletedTask;
         }
 
-        _playbackCts?.Cancel();
-        _playbackCts = new CancellationTokenSource();
-
-        await PlayNextAsync();
+        _started = true;
+        _geofence.StartMonitoring(snapshot);
+        return Task.CompletedTask;
     }
 
-    public async Task PlayNextAsync()
+    // ═══════════════════════════════════════════════════════════════
+    //  HandlePoiEnteredAsync — quyết định phát / chèn / bỏ qua
+    // ═══════════════════════════════════════════════════════════════
+    public async Task HandlePoiEnteredAsync(int poiId)
     {
-        AudioQueueItemDto? nextItem;
+        if (!_started) return;
 
+        AudioQueueItemDto? item;
         lock (_lock)
         {
-            if (_internalQueue.Count == 0)
+            // Đã phát xong → bỏ qua
+            if (_playedPois.Contains(poiId)) return;
+
+            // Đang phát chính xác POI này → bỏ qua
+            if (CurrentlyPlaying?.PoiId == poiId) return;
+
+            // Tìm trong queue
+            item = _queue.FirstOrDefault(q => q.PoiId == poiId);
+        }
+
+        if (item == null) return;
+
+        if (CurrentlyPlaying != null && _audioPlayer.IsPlaying)
+        {
+            var progress = _audioPlayer.GetProgress();
+            if (progress >= InterruptThreshold)
             {
-                CurrentlyPlaying = null;
-                OnQueueCompleted?.Invoke(this, EventArgs.Empty);
-                return;
+                // Track hiện tại đã > 60% → chèn POI mới vào next slot
+                InsertNext(item);
+                System.Diagnostics.Debug.WriteLine($"[AudioQueue] InsertNext POI {poiId} (progress={progress:P0})");
             }
-
-            nextItem = _internalQueue.Dequeue();
-            
-            // Remove from observable collection
-            var toRemove = Queue.FirstOrDefault(q => q.PoiId == nextItem.PoiId);
-            if (toRemove != null)
-                Queue.Remove(toRemove);
-        }
-
-        CurrentlyPlaying = nextItem;
-        IsPaused = false;
-        var token = _playbackCts?.Token ?? default;
-        var enteredGeofence = await WaitUntilEnterGeofenceAsync(nextItem, token);
-        if (!enteredGeofence)
-            return;
-
-        _currentAudioStartTime = DateTime.UtcNow;
-
-        await _dataService.TrackEventAsync(
-            nextItem.PoiId,
-            "enter",
-            languageCode: nextItem.LanguageCode,
-            cancellationToken: token);
-
-        MainThread.BeginInvokeOnMainThread(() =>
-            OnAudioStarted?.Invoke(this, nextItem));
-
-        // Track listen start
-        await _dataService.TrackEventAsync(
-            nextItem.PoiId, 
-            "listen_start", 
-            languageCode: nextItem.LanguageCode);
-
-        // Play audio
-        var success = await _audioPlayer.PlayAsync(nextItem.AudioUrl, token);
-
-        if (!success)
-        {
-            OnError?.Invoke(this, $"Không thể phát audio: {nextItem.PoiName}");
-            // Try next audio
-            await PlayNextAsync();
-            return;
-        }
-
-        // Wait for audio to finish — wrap in a safety catch so any exception
-        // stays in managed code and never crosses the JNI boundary as JavaProxyThrowable.
-        _ = Task.Run(async () =>
-        {
-            try { await WaitForAudioCompletionAsync(nextItem); }
-            catch (OperationCanceledException) { }
-            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[AudioQueue] WaitForAudioCompletion error: {ex.Message}"); }
-        });
-    }
-
-    private async Task<bool> WaitUntilEnterGeofenceAsync(AudioQueueItemDto item, CancellationToken cancellationToken)
-    {
-        var poiRadius = Math.Clamp(item.PoiRadiusMeters, 5, 200);
-        var thresholdMeters = poiRadius + 10; // nới nhẹ sai số GPS thực tế
-
-        while (!cancellationToken.IsCancellationRequested)
-        {
-            var location = await TryGetCurrentLocationAsync(cancellationToken);
-            if (location is not null)
+            else
             {
-                var distanceMeters = CalculateDistanceMeters(
-                    location.Latitude,
-                    location.Longitude,
-                    item.Latitude,
-                    item.Longitude);
-
-                if (distanceMeters <= thresholdMeters)
-                    return true;
-            }
-
-            await Task.Delay(GeofencePollInterval, cancellationToken);
-        }
-
-        return false;
-    }
-
-    private static async Task<Location?> TryGetCurrentLocationAsync(CancellationToken cancellationToken)
-    {
-        try
-        {
-            var last = await Geolocation.GetLastKnownLocationAsync();
-            if (last is not null)
-                return last;
-
-            return await Geolocation.GetLocationAsync(
-                new GeolocationRequest(GeolocationAccuracy.Medium, TimeSpan.FromSeconds(GeofenceGpsTimeoutSec)),
-                cancellationToken);
-        }
-        catch
-        {
-            return null;
-        }
-    }
-
-    private static double CalculateDistanceMeters(double lat1, double lon1, double lat2, double lon2)
-    {
-        const double earthRadius = 6371000; // meters
-        var dLat = ToRadians(lat2 - lat1);
-        var dLon = ToRadians(lon2 - lon1);
-        var a = Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
-                Math.Cos(ToRadians(lat1)) * Math.Cos(ToRadians(lat2)) *
-                Math.Sin(dLon / 2) * Math.Sin(dLon / 2);
-        var c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
-        return earthRadius * c;
-    }
-
-    private static double ToRadians(double degrees) => degrees * (Math.PI / 180d);
-
-    private async Task WaitForAudioCompletionAsync(AudioQueueItemDto item)
-    {
-        var token = _playbackCts?.Token ?? default;
-        var maxWait = TimeSpan.FromSeconds(Math.Max(item.DurationSeconds * 1.5, 60));
-        var started = DateTime.UtcNow;
-
-        try
-        {
-            while (_audioPlayer.IsPlaying && DateTime.UtcNow - started < maxWait)
-            {
-                if (token.IsCancellationRequested)
-                    return;
-
-                await Task.Delay(500, token);
-            }
-
-            if (!token.IsCancellationRequested && CurrentlyPlaying?.PoiId == item.PoiId)
-            {
-                // Audio finished naturally
-                var listenedDuration = (int)(DateTime.UtcNow - _currentAudioStartTime).TotalSeconds;
-                
-                // Track listen end
-                await _dataService.TrackEventAsync(
-                    item.PoiId, 
-                    "listen_end", 
-                    listenedDurationSec: listenedDuration,
-                    languageCode: item.LanguageCode);
-
-                MainThread.BeginInvokeOnMainThread(() => 
-                    OnAudioEnded?.Invoke(this, item));
-
-                // Play next
-                await PlayNextAsync();
+                // Track hiện tại < 60% → ngắt, phát POI mới ngay
+                System.Diagnostics.Debug.WriteLine($"[AudioQueue] InterruptAndPlay POI {poiId} (progress={progress:P0})");
+                await InterruptAndPlayAsync(item);
             }
         }
-        catch (OperationCanceledException)
+        else
         {
-            // Playback was cancelled (skip, stop, etc.)
+            // Không có gì đang phát → phát ngay
+            lock (_lock) _queue.Remove(item);
+            SyncObservableQueue();
+            await PlayItemAsync(item);
         }
     }
 
+    // ═══════════════════════════════════════════════════════════════
+    //  Skip / Pause / Resume / Stop / Clear
+    // ═══════════════════════════════════════════════════════════════
     public async Task SkipAsync()
     {
-        if (CurrentlyPlaying == null)
-            return;
+        if (CurrentlyPlaying == null) return;
 
-        var skippedItem = CurrentlyPlaying;
-        var listenedDuration = (int)(DateTime.UtcNow - _currentAudioStartTime).TotalSeconds;
+        var skipped = CurrentlyPlaying;
+        var listenedSec = (int)(DateTime.UtcNow - _currentAudioStartTime).TotalSeconds;
 
+        CancelCurrentPlayback();
         _audioPlayer.Stop();
 
-        // Track as skipped
-        await _dataService.TrackEventAsync(
-            skippedItem.PoiId, 
-            "listen_skip", 
-            listenedDurationSec: listenedDuration,
-            languageCode: skippedItem.LanguageCode);
+        await SafeTrackAsync(skipped.PoiId, "listen_end", listenedSec, skipped.LanguageCode);
 
-        MainThread.BeginInvokeOnMainThread(() => 
-            OnAudioEnded?.Invoke(this, skippedItem));
-
-        await PlayNextAsync();
+        MainThread.BeginInvokeOnMainThread(() => OnAudioEnded?.Invoke(this, skipped));
+        await PlayNextFromQueueAsync();
     }
 
     public void Pause()
     {
-        if (!IsPlaying || IsPaused)
-            return;
-
-        // Note: Plugin.Maui.Audio doesn't have native Pause
-        // We'll stop and track position for resume
+        if (!IsPlaying || IsPaused) return;
         _audioPlayer.Stop();
         IsPaused = true;
     }
 
     public async Task ResumeAsync()
     {
-        if (!IsPaused || CurrentlyPlaying == null)
-            return;
-
+        if (!IsPaused || CurrentlyPlaying == null) return;
         IsPaused = false;
-        
-        // Replay from start (Plugin.Maui.Audio limitation)
-        var success = await _audioPlayer.PlayAsync(CurrentlyPlaying.AudioUrl);
-        if (!success)
-        {
-            OnError?.Invoke(this, $"Không thể tiếp tục phát: {CurrentlyPlaying.PoiName}");
-        }
+        await _audioPlayer.PlayAsync(CurrentlyPlaying.AudioUrl);
     }
 
     public void Stop()
     {
-        _playbackCts?.Cancel();
+        CancelCurrentPlayback();
         _audioPlayer.Stop();
-        
+        _geofence.StopMonitoring();
+
         lock (_lock)
         {
-            _internalQueue.Clear();
-            Queue.Clear();
+            _queue.Clear();
+            _playedPois.Clear();
+            _started = false;
         }
-        
+        SyncObservableQueue();
         CurrentlyPlaying = null;
         IsPaused = false;
     }
 
     public void ClearQueue()
     {
+        lock (_lock) _queue.Clear();
+        SyncObservableQueue();
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    //  Internal helpers
+    // ═══════════════════════════════════════════════════════════════
+
+    private async Task InterruptAndPlayAsync(AudioQueueItemDto newItem)
+    {
+        var interrupted = CurrentlyPlaying;
+        if (interrupted != null)
+        {
+            var listenedSec = (int)(DateTime.UtcNow - _currentAudioStartTime).TotalSeconds;
+            CancelCurrentPlayback();
+            _audioPlayer.Stop();
+
+            await SafeTrackAsync(interrupted.PoiId, "listen_end", listenedSec, interrupted.LanguageCode);
+            MainThread.BeginInvokeOnMainThread(() => OnAudioEnded?.Invoke(this, interrupted));
+
+            // Chèn track bị ngắt vào NGAY SAU newItem trong queue (sẽ phát lại sau)
+            lock (_lock)
+            {
+                _queue.Remove(newItem);
+                // Đặt interrupted vào đầu queue (newItem sẽ được phát, sau đó tới interrupted)
+                if (!_playedPois.Contains(interrupted.PoiId))
+                {
+                    _queue.Insert(0, interrupted);
+                }
+            }
+        }
+        else
+        {
+            lock (_lock) _queue.Remove(newItem);
+        }
+
+        SyncObservableQueue();
+        await PlayItemAsync(newItem);
+    }
+
+    private void InsertNext(AudioQueueItemDto item)
+    {
         lock (_lock)
         {
-            _internalQueue.Clear();
-            Queue.Clear();
+            _queue.Remove(item);
+            _queue.Insert(0, item); // đặt ngay đầu queue → phát tiếp theo
         }
+        SyncObservableQueue();
+    }
+
+    private async Task PlayNextFromQueueAsync()
+    {
+        AudioQueueItemDto? next;
+        lock (_lock)
+        {
+            if (!_queue.Any())
+            {
+                CurrentlyPlaying = null;
+                MainThread.BeginInvokeOnMainThread(() => OnQueueCompleted?.Invoke(this, EventArgs.Empty));
+                return;
+            }
+            next = _queue[0];
+            _queue.RemoveAt(0);
+        }
+        SyncObservableQueue();
+        await PlayItemAsync(next);
+    }
+
+    private async Task PlayItemAsync(AudioQueueItemDto item)
+    {
+        CancelCurrentPlayback();
+        _playCts = new CancellationTokenSource();
+        var token = _playCts.Token;
+
+        CurrentlyPlaying = item;
+        IsPaused = false;
+        _currentAudioStartTime = DateTime.UtcNow;
+
+        // Track enter + listen_start
+        _ = SafeTrackAsync(item.PoiId, "enter", null, item.LanguageCode);
+        _ = SafeTrackAsync(item.PoiId, "listen_start", null, item.LanguageCode);
+
+        MainThread.BeginInvokeOnMainThread(() => OnAudioStarted?.Invoke(this, item));
+
+        // Phát audio
+        var success = await _audioPlayer.PlayAsync(item.AudioUrl, token);
+        if (!success)
+        {
+            OnError?.Invoke(this, $"Không thể phát audio: {item.PoiName}");
+            await PlayNextFromQueueAsync();
+            return;
+        }
+
+        // Chờ kết thúc tự nhiên (background task an toàn)
+        _ = Task.Run(async () =>
+        {
+            try { await WaitForCompletionAsync(item, token); }
+            catch (OperationCanceledException) { }
+            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[AudioQueue] completion error: {ex.Message}"); }
+        });
+    }
+
+    private async Task WaitForCompletionAsync(AudioQueueItemDto item, CancellationToken token)
+    {
+        var maxWait = TimeSpan.FromSeconds(Math.Max(item.DurationSeconds * 1.5, 60));
+        var started = DateTime.UtcNow;
+
+        while (_audioPlayer.IsPlaying && DateTime.UtcNow - started < maxWait)
+        {
+            if (token.IsCancellationRequested) return;
+            await Task.Delay(500, token);
+        }
+
+        if (token.IsCancellationRequested) return;
+        if (CurrentlyPlaying?.PoiId != item.PoiId) return;
+
+        // Audio kết thúc tự nhiên
+        var listenedSec = (int)(DateTime.UtcNow - _currentAudioStartTime).TotalSeconds;
+        await SafeTrackAsync(item.PoiId, "listen_end", listenedSec, item.LanguageCode);
+
+        lock (_lock) _playedPois.Add(item.PoiId);
+        _geofence.MarkPoiPlayed(item.PoiId);
+
+        MainThread.BeginInvokeOnMainThread(() => OnAudioEnded?.Invoke(this, item));
+
+        await MainThread.InvokeOnMainThreadAsync(() => PlayNextFromQueueAsync());
+    }
+
+    private void CancelCurrentPlayback()
+    {
+        _playCts?.Cancel();
+        _playCts?.Dispose();
+        _playCts = null;
+    }
+
+    private void SyncObservableQueue()
+    {
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            Queue.Clear();
+            lock (_lock)
+            {
+                foreach (var item in _queue)
+                    Queue.Add(item);
+            }
+        });
+    }
+
+    private async Task SafeTrackAsync(int poiId, string evt, int? durationSec, string? langCode)
+    {
+        try { await _dataService.TrackEventAsync(poiId, evt, listenedDurationSec: durationSec, languageCode: langCode); }
+        catch { /* tracking không block UX */ }
+    }
+
+    /// <summary>Geofence callback — chạy trên MainThread do GeofenceMonitorService đảm bảo.</summary>
+    private void OnGeofencePoiEntered(object? sender, int poiId)
+    {
+        _ = HandlePoiEnteredAsync(poiId);
     }
 
     public void Dispose()
     {
-        if (_isDisposed) return;
-        
-        _playbackCts?.Cancel();
-        _playbackCts?.Dispose();
-        _isDisposed = true;
+        if (_disposed) return;
+        _disposed = true;
+        _geofence.PoiEntered -= OnGeofencePoiEntered;
+        CancelCurrentPlayback();
     }
 }

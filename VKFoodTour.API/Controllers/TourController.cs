@@ -169,6 +169,18 @@ public class TourController : ControllerBase
 
         var totalDuration = audioQueue.Sum(a => a.DurationSeconds);
 
+        // Lấy audio intro phố theo ngôn ngữ (key = "intro_audio_vi", "intro_audio_en", ...)
+        var introKey = $"intro_audio_{(request.LanguageCode ?? "vi").ToLowerInvariant()}";
+        var introFallbackKey = "intro_audio_vi";
+        var introSetting = await _context.TourSettings.AsNoTracking()
+            .FirstOrDefaultAsync(s => s.SettingKey == introKey)
+            ?? await _context.TourSettings.AsNoTracking()
+                .FirstOrDefaultAsync(s => s.SettingKey == introFallbackKey);
+
+        var introAudioUrl = string.IsNullOrWhiteSpace(introSetting?.SettingValue)
+            ? null
+            : NormalizeAudioUrl(introSetting.SettingValue, apiBaseUrl);
+
         return Ok(new StartTourResponseDto
         {
             Success = true,
@@ -176,7 +188,8 @@ public class TourController : ControllerBase
             AudioQueue = audioQueue,
             TotalStalls = audioQueue.Count,
             EstimatedDurationSeconds = totalDuration,
-            StartingPoiName = audioQueue.FirstOrDefault()?.PoiName
+            StartingPoiName = audioQueue.FirstOrDefault()?.PoiName,
+            IntroAudioUrl = introAudioUrl
         });
     }
 

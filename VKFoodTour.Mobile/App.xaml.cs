@@ -19,11 +19,7 @@ public partial class App : Application
 
     protected override Window CreateWindow(IActivationState? activationState)
     {
-        if (_session.IsLoggedIn)
-            return new Window(_shell);
-
-        // Tạo WelcomePage SAU khi InitializeComponent() đã chạy xong
-        // → tránh "StaticResource VKRed not found" crash khi inflate XAML
+        // Luôn hiển thị WelcomePage khi mở app
         var welcome = _services.GetRequiredService<WelcomePage>();
         return new Window(new NavigationPage(welcome));
     }

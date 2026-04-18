@@ -1,0 +1,282 @@
+@using Microsoft.EntityFrameworkCore
+@using VKFoodTour.Infrastructure.Data
+@implements IAsyncDisposable
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+
+<style>
+    .adw-card {
+        background: linear-gradient(135deg, #0d1117 0%, #161b22 100%);
+        border: 1px solid rgba(255,255,255,0.07);
+        border-radius: 18px;
+    }
+    .adw-counter {
+        font-size: 3.5rem;
+        font-weight: 900;
+        line-height: 1;
+        background: linear-gradient(135deg, #E8A020, #f83b3b);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+    .adw-pulse {
+        display: inline-block;
+        width: 10px; height: 10px;
+        border-radius: 50%;
+        background: #4ade80;
+        box-shadow: 0 0 0 0 rgba(74,222,128,0.6);
+        animation: adw-pulse-anim 1.8s infinite;
+    }
+    .adw-pulse.offline { background: #4a5568; box-shadow: none; animation: none; }
+    @@keyframes adw-pulse-anim {
+        0%   { box-shadow: 0 0 0 0 rgba(74,222,128,0.6); }
+        70%  { box-shadow: 0 0 0 9px rgba(74,222,128,0); }
+        100% { box-shadow: 0 0 0 0 rgba(74,222,128,0); }
+    }
+    .adw-device-row {
+        background: rgba(255,255,255,0.03);
+        border: 1px solid rgba(255,255,255,0.06);
+        border-radius: 10px;
+        transition: background 0.15s;
+    }
+    .adw-device-row:hover { background: rgba(255,255,255,0.06); }
+    .adw-badge {
+        font-size: 10px; letter-spacing: 0.8px; font-weight: 600;
+        padding: 3px 9px; border-radius: 20px;
+    }
+    .adw-event-dot {
+        width: 7px; height: 7px; border-radius: 50%; display: inline-block;
+    }
+</style>
+
+<div class="adw-card p-4">
+    @* ── Header ── *@
+    <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+        <div class="d-flex align-items-center gap-3">
+            <span class="adw-pulse @(OnlineCount == 0 ? "offline" : "")"></span>
+            <div>
+                <div style="font-size:11px;letter-spacing:1.5px;color:#8A8078;font-weight:600;">
+                    THIẾT BỊ ĐANG DÙNG APP
+                </div>
+                <div style="font-size:12px;color:#4a5568;margin-top:1px;">
+                    Cửa sổ: @WindowMinutes phút gần nhất · Cập nhật mỗi @RefreshSeconds giây
+                </div>
+            </div>
+        </div>
+        <div class="d-flex align-items-center gap-3">
+            @if (lastError is not null)
+            {
+                <span class="adw-badge" style="background:rgba(248,113,113,0.12);color:#f87171;border:1px solid rgba(248,113,113,0.2);">
+                    <i class="bi bi-exclamation-circle me-1"></i>Lỗi DB
+                </span>
+            }
+            <span class="text-muted" style="font-size:11px;">
+                <i class="bi bi-clock me-1"></i>@(lastRefreshed?.ToString("HH:mm:ss") ?? "--")
+            </span>
+            <button class="btn btn-sm btn-outline-secondary rounded-pill px-3"
+                    style="font-size:12px;border-color:rgba(255,255,255,0.12);"
+                    @onclick="RefreshAsync">
+                <i class="bi bi-arrow-clockwise @(isLoading ? "spin-icon" : "")"></i>
+            </button>
+        </div>
+    </div>
+
+    @* ── Counter row ── *@
+    <div class="row g-4 mb-4">
+        <div class="col-sm-4 col-md-3 text-center">
+            <div class="adw-counter">@OnlineCount</div>
+            <div style="color:#8A8078;font-size:12px;margin-top:4px;">thiết bị online</div>
+        </div>
+        <div class="col-sm-8 col-md-9">
+            <div class="row g-3 h-100">
+                <div class="col-4">
+                    <div class="p-3 h-100" style="background:rgba(74,222,128,0.06);border:1px solid rgba(74,222,128,0.15);border-radius:12px;">
+                        <div style="font-size:1.4rem;font-weight:700;color:#4ade80;">@scanCount</div>
+                        <div style="font-size:11px;color:#6a7a6a;margin-top:2px;"><i class="bi bi-qr-code me-1"></i>Quét QR</div>
+                    </div>
+                </div>
+                <div class="col-4">
+                    <div class="p-3 h-100" style="background:rgba(96,165,250,0.06);border:1px solid rgba(96,165,250,0.15);border-radius:12px;">
+                        <div style="font-size:1.4rem;font-weight:700;color:#60a5fa;">@listenCount</div>
+                        <div style="font-size:11px;color:#4a5a7a;margin-top:2px;"><i class="bi bi-headphones me-1"></i>Nghe audio</div>
+                    </div>
+                </div>
+                <div class="col-4">
+                    <div class="p-3 h-100" style="background:rgba(232,160,32,0.06);border:1px solid rgba(232,160,32,0.15);border-radius:12px;">
+                        <div style="font-size:1.4rem;font-weight:700;color:#E8A020;">@moveCount</div>
+                        <div style="font-size:11px;color:#7a6a3a;margin-top:2px;"><i class="bi bi-geo-alt me-1"></i>Di chuyển</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* ── Device list ── *@
+    @if (deviceRows.Any())
+    {
+        <div style="font-size:11px;letter-spacing:1px;color:#4a5568;font-weight:600;margin-bottom:10px;">
+            DANH SÁCH THIẾT BỊ (@deviceRows.Count)
+        </div>
+        <div style="max-height:280px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;">
+            @foreach (var d in deviceRows)
+            {
+                <div class="adw-device-row p-3 d-flex align-items-center gap-3">
+                    <span class="adw-pulse" style="flex-shrink:0;"></span>
+                    <div style="flex:1;min-width:0;">
+                        <div style="font-size:13px;color:#c9c9d4;font-weight:500;font-family:monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                            @d.ShortId
+                        </div>
+                        <div style="font-size:11px;color:#4a5568;margin-top:1px;">
+                            Lần cuối: @d.LastSeenAgo · @d.LastEvent
+                        </div>
+                    </div>
+                    <div style="text-align:right;flex-shrink:0;">
+                        <span class="adw-badge" style="background:rgba(255,255,255,0.05);color:#8A8078;border:1px solid rgba(255,255,255,0.08);">
+                            @d.EventCount sự kiện
+                        </span>
+                        @if (d.HasPoi)
+                        {
+                            <div style="font-size:10px;color:#60a5fa;margin-top:3px;">
+                                <i class="bi bi-shop me-1"></i>@d.PoiName
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    }
+    else if (!isLoading)
+    {
+        <div class="text-center py-4" style="color:#4a5568;">
+            <i class="bi bi-phone-vibrate" style="font-size:2rem;display:block;margin-bottom:8px;"></i>
+            <div style="font-size:13px;">Chưa có thiết bị nào hoạt động trong @WindowMinutes phút vừa qua</div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public int WindowMinutes { get; set; } = 2;
+    [Parameter] public int RefreshSeconds { get; set; } = 10;
+
+    private int OnlineCount;
+    private int scanCount;
+    private int listenCount;
+    private int moveCount;
+    private List<DeviceRow> deviceRows = new();
+    private DateTime? lastRefreshed;
+    private string? lastError;
+    private bool isLoading;
+    private Timer? _timer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RefreshAsync();
+        _timer = new Timer(async _ =>
+        {
+            await RefreshAsync();
+            await InvokeAsync(StateHasChanged);
+        }, null, TimeSpan.FromSeconds(RefreshSeconds), TimeSpan.FromSeconds(RefreshSeconds));
+    }
+
+    private async Task RefreshAsync()
+    {
+        isLoading = true;
+        lastError = null;
+        try
+        {
+            var threshold = DateTime.Now.AddMinutes(-WindowMinutes);
+            await using var db = await DbFactory.CreateDbContextAsync();
+
+            var logs = await db.TrackingLogs
+                .AsNoTracking()
+                .Where(t => t.CreatedAt >= threshold)
+                .Select(t => new
+                {
+                    t.DeviceId,
+                    t.EventType,
+                    t.CreatedAt,
+                    t.PoiId
+                })
+                .OrderByDescending(t => t.CreatedAt)
+                .Take(2000)
+                .ToListAsync();
+
+            OnlineCount = logs.Select(t => t.DeviceId).Distinct().Count();
+            scanCount   = logs.Count(t => t.EventType == "qr_scan");
+            listenCount = logs.Count(t => t.EventType is "listen_start" or "listen_end");
+            moveCount   = logs.Count(t => t.EventType == "move");
+
+            // Build danh sách thiết bị
+            var poiIds = logs.Where(l => l.PoiId.HasValue).Select(l => l.PoiId!.Value).Distinct().ToList();
+            Dictionary<int, string> poiNames = new();
+            if (poiIds.Any())
+            {
+                poiNames = await db.Pois.AsNoTracking()
+                    .Where(p => poiIds.Contains(p.PoiId))
+                    .ToDictionaryAsync(p => p.PoiId, p => p.Name);
+            }
+
+            deviceRows = logs
+                .GroupBy(t => t.DeviceId)
+                .Select(g =>
+                {
+                    var latest = g.OrderByDescending(x => x.CreatedAt).First();
+                    var ago = DateTime.Now - latest.CreatedAt;
+                    var agoStr = ago.TotalSeconds < 60
+                        ? $"{(int)ago.TotalSeconds}s trước"
+                        : $"{(int)ago.TotalMinutes}m trước";
+
+                    var poiId = g.FirstOrDefault(x => x.PoiId.HasValue)?.PoiId;
+                    var poiName = poiId.HasValue && poiNames.TryGetValue(poiId.Value, out var n) ? n : null;
+
+                    return new DeviceRow
+                    {
+                        ShortId    = g.Key.Length > 24 ? g.Key[..24] + "…" : g.Key,
+                        LastSeenAgo = agoStr,
+                        LastEvent  = EventLabel(latest.EventType),
+                        EventCount = g.Count(),
+                        HasPoi     = poiName is not null,
+                        PoiName    = poiName ?? ""
+                    };
+                })
+                .OrderByDescending(d => d.EventCount)
+                .ToList();
+
+            lastRefreshed = DateTime.Now;
+        }
+        catch (Exception ex)
+        {
+            lastError = ex.Message;
+            System.Diagnostics.Debug.WriteLine($"[ActiveDevicesWidget] Error: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private static string EventLabel(string? evt) => evt switch
+    {
+        "qr_scan"      => "📲 Quét QR",
+        "listen_start" => "🎵 Bắt đầu nghe",
+        "listen_end"   => "✅ Nghe xong",
+        "enter"        => "📍 Vào quán",
+        "exit"         => "🚶 Rời quán",
+        "move"         => "🗺️ Di chuyển",
+        _              => evt ?? "—"
+    };
+
+    public async ValueTask DisposeAsync()
+    {
+        _timer?.Dispose();
+    }
+
+    private class DeviceRow
+    {
+        public string ShortId { get; set; } = "";
+        public string LastSeenAgo { get; set; } = "";
+        public string LastEvent { get; set; } = "";
+        public int EventCount { get; set; }
+        public bool HasPoi { get; set; }
+        public string PoiName { get; set; } = "";
+    }
+}

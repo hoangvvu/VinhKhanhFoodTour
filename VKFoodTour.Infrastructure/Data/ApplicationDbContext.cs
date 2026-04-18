@@ -21,6 +21,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<Review> Reviews { get; set; }
     public DbSet<TrackingLog> TrackingLogs { get; set; }
     public DbSet<MenuItem> MenuItems { get; set; } = null!;
+    public DbSet<TourSetting> TourSettings { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -173,6 +174,14 @@ public class ApplicationDbContext : DbContext
 
             entity.Property(e => e.CreatedAt)
                   .HasDefaultValueSql("GETDATE()");
+        });
+
+        // ── TOUR SETTINGS ───────────────────────────
+        modelBuilder.Entity<TourSetting>(entity =>
+        {
+            entity.ToTable("TOUR_SETTINGS");
+            entity.HasKey(e => e.SettingId);
+            entity.HasIndex(e => e.SettingKey).IsUnique().HasDatabaseName("uq_tour_setting_key");
         });
     }
 }

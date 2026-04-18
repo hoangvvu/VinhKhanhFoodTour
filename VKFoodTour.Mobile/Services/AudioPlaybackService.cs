@@ -93,6 +93,21 @@ public sealed class AudioPlaybackService : IAudioPlaybackService
         _playbackBuffer = null;
     }
 
+    public double GetProgress()
+    {
+        try
+        {
+            if (_player == null || !_player.IsPlaying) return 0d;
+            var duration = _player.Duration;
+            if (duration <= 0) return 0d;
+            return Math.Clamp(_player.CurrentPosition / duration, 0d, 1d);
+        }
+        catch
+        {
+            return 0d;
+        }
+    }
+
     private string NormalizeUrl(string url) =>
         (MediaUrlNormalizer.ToAbsolute(url, _settings.ApiBaseUrl) ?? url)
             .Replace("/uploads/uploads/", "/uploads/", StringComparison.OrdinalIgnoreCase);
@@ -107,25 +122,47 @@ public sealed class AudioPlaybackService : IAudioPlaybackService
 
     private static bool LooksLikeAudioBinary(byte[] bytes)
     {
-        if (bytes.Length < 12)
+        if (bytes.Length < 4)
             return false;
 
-        // MP3 ID3
-        if (bytes[0] == (byte)'I' && bytes[1] == (byte)'D' && bytes[2] == (byte)'3')
+        // MP3 — ID3v2 tag header
+        if (bytes[0] == 'I' && bytes[1] == 'D' && bytes[2] == '3')
             return true;
 
-        // MP3 frame sync
+        // MP3 — MPEG frame sync (bất kỳ layer + bitrate hợp lệ)
+        // byte[0]=0xFF, byte[1]: bits 7-5 phải = 111 (sync), bit 4-3 != 00 (layer)
         if (bytes[0] == 0xFF && (bytes[1] & 0xE0) == 0xE0)
+        {
+            // Layer bits [4:3] != 00 (00 = reserved, invalid)
+            var layer = (bytes[1] >> 1) & 0x03;
+            if (layer != 0) return true;
+            // Nếu layer=0 thì vẫn cho qua nếu có bitrate khác 0 và 0xF
+            var bitrate = (bytes[2] >> 4) & 0x0F;
+            if (bitrate != 0 && bitrate != 0xF) return true;
+        }
+
+        // WAV — RIFF....WAVE
+        if (bytes[0] == 'R' && bytes[1] == 'I' && bytes[2] == 'F' && bytes[3] == 'F')
             return true;
 
-        // WAV RIFF
-        if (bytes[0] == (byte)'R' && bytes[1] == (byte)'I' && bytes[2] == (byte)'F' && bytes[3] == (byte)'F')
+        // MP4 / M4A / AAC — ftyp box
+        if (bytes.Length >= 8 && bytes[4] == 'f' && bytes[5] == 't' && bytes[6] == 'y' && bytes[7] == 'p')
             return true;
 
-        // MP4/M4A ftyp
-        if (bytes[4] == (byte)'f' && bytes[5] == (byte)'t' && bytes[6] == (byte)'y' && bytes[7] == (byte)'p')
+        // OGG Vorbis / OGG Opus
+        if (bytes[0] == 'O' && bytes[1] == 'g' && bytes[2] == 'g' && bytes[3] == 'S')
             return true;
 
+        // FLAC
+        if (bytes[0] == 'f' && bytes[1] == 'L' && bytes[2] == 'a' && bytes[3] == 'C')
+            return true;
+
+        // AAC ADTS — FF F* hoặc FF E*
+        if (bytes[0] == 0xFF && (bytes[1] == 0xF1 || bytes[1] == 0xF9))
+            return true;
+
+        System.Diagnostics.Debug.WriteLine(
+            $"[Audio] Binary check FAILED — first 8 bytes: {string.Join(" ", bytes.Take(Math.Min(8, bytes.Length)).Select(b => b.ToString("X2")))}");
         return false;
     }
 }

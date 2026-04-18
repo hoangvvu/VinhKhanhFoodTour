@@ -80,6 +80,13 @@ public class StartTourResponseDto
     
     /// <summary>Tên quán bắt đầu (quán gần nhất hoặc quán được quét QR).</summary>
     public string? StartingPoiName { get; set; }
+
+    /// <summary>
+    /// URL audio giới thiệu toàn bộ phố ẩm thực (do Admin tạo TTS).
+    /// Mobile phát audio này TRƯỚC khi bắt đầu hàng đợi geofence.
+    /// Null nếu Admin chưa tạo audio intro.
+    /// </summary>
+    public string? IntroAudioUrl { get; set; }
 }
 
 /// <summary>

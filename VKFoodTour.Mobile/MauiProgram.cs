@@ -55,13 +55,15 @@ public static class MauiProgram
                 sp.GetRequiredService<ISettingsService>());
         });
 
-        // Audio Queue Service - quản lý hàng đợi audio
+        // Audio Queue Service - quản lý hàng đợi audio (Geofence-Trigger model)
+        builder.Services.AddSingleton<GeofenceMonitorService>();
         builder.Services.AddSingleton<IAudioQueueService>(sp =>
         {
             return new AudioQueueService(
                 sp.GetRequiredService<IAudioPlaybackService>(),
                 sp.GetRequiredService<IDataService>(),
-                sp.GetRequiredService<ILocalizationService>());
+                sp.GetRequiredService<ILocalizationService>(),
+                sp.GetRequiredService<GeofenceMonitorService>());
         });
 
         builder.Services.AddSingleton<AppShell>();

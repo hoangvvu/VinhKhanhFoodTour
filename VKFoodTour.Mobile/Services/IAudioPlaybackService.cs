@@ -6,4 +6,6 @@ public interface IAudioPlaybackService
     Task<bool> PlayAsync(string? url, CancellationToken cancellationToken = default);
     void Stop();
     bool IsPlaying { get; }
+    /// <summary>Tiến độ phát hiện tại [0.0 – 1.0]. 0 nếu chưa phát hoặc plugin không hỗ trợ.</summary>
+    double GetProgress();
 }

@@ -1,4 +1,4 @@
-﻿@page "/vendor/thong-tin"
+@page "/vendor/thong-tin"
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Components.Forms
@@ -129,13 +129,6 @@
                 </div>
             </div>
 
-            <div class="dash-card p-4 mb-4">
-                <div class="dash-label mb-3"><i class="bi bi-qr-code me-2"></i>MÃ QR ĐẦU PHỐ</div>
-                <p class="text-muted small mb-0">
-                    Mã QR do <strong>Admin</strong> quản lý tại trang <strong>Quản lý mã QR</strong>.
-                    Gian hàng chỉ cần chuẩn bị nội dung TTS và file audio để app phát theo khoảng cách.
-                </p>
-            </div>
 
             <div class="dash-card p-4">
                 <div class="dash-label mb-3"><i class="bi bi-mic me-2"></i>THUYẾT MINH TỰ ĐỘNG KHI TỚI GẦN POI (TTS)</div>
@@ -158,7 +151,22 @@
                 @if (!string.IsNullOrEmpty(lastAutoAudioUrl))
                 {
                     <div class="mt-3 p-3 rounded" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);">
-                        <div class="text-warning small mb-2">Audio tự động gần POI — nghe thử</div>
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <div class="text-warning small">Audio tự động gần POI — nghe thử</div>
+                            <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3"
+                                    @onclick="DeleteAutoAudioAsync" disabled="@isDeletingAudio"
+                                    title="Xoá audio tự động">
+                                @if (isDeletingAudio)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-1"></span>
+                                }
+                                else
+                                {
+                                    <i class="bi bi-trash me-1"></i>
+                                }
+                                Xoá audio
+                            </button>
+                        </div>
                         <audio controls class="w-100" src="@lastAutoAudioUrl"></audio>
                     </div>
                 }
@@ -172,7 +180,22 @@
                 @if (!string.IsNullOrEmpty(lastQrAudioUrl))
                 {
                     <div class="mt-3 p-3 rounded" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);">
-                        <div class="text-warning small mb-2">Audio quét QR — nghe thử</div>
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <div class="text-warning small">Audio quét QR — nghe thử</div>
+                            <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3"
+                                    @onclick="DeleteQrAudioAsync" disabled="@isDeletingAudio"
+                                    title="Xoá audio QR">
+                                @if (isDeletingAudio)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-1"></span>
+                                }
+                                else
+                                {
+                                    <i class="bi bi-trash me-1"></i>
+                                }
+                                Xoá audio
+                            </button>
+                        </div>
                         <audio controls class="w-100" src="@lastQrAudioUrl"></audio>
                     </div>
                 }
@@ -198,6 +221,7 @@
     private int currentUserId;
     private bool isSaving;
     private bool isTtsBusy;
+    private bool isDeletingAudio;
     private bool isError;
     private string? statusMessage;
     private DotNetObjectReference<ThongTinQuan>? dotNetRef;
@@ -651,6 +675,70 @@
         latitude = lat;
         longitude = lng;
         StateHasChanged();
+    }
+
+    private async Task DeleteAutoAudioAsync()
+    {
+        if (currentPoiId == 0 || isDeletingAudio) return;
+        isDeletingAudio = true;
+        statusMessage = null;
+        try
+        {
+            var ok = await PoiService.DeleteNarrationAutoAudioAsync(currentPoiId);
+            if (ok)
+            {
+                lastAutoAudioUrl = null;
+                statusMessage = "Đã xoá audio tự động.";
+                isError = false;
+            }
+            else
+            {
+                statusMessage = "Không tìm thấy audio để xoá.";
+                isError = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            statusMessage = ex.Message;
+            isError = true;
+        }
+        finally
+        {
+            isDeletingAudio = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task DeleteQrAudioAsync()
+    {
+        if (currentPoiId == 0 || isDeletingAudio) return;
+        isDeletingAudio = true;
+        statusMessage = null;
+        try
+        {
+            var ok = await PoiService.DeleteNarrationQrAudioAsync(currentPoiId);
+            if (ok)
+            {
+                lastQrAudioUrl = null;
+                statusMessage = "Đã xoá audio QR.";
+                isError = false;
+            }
+            else
+            {
+                statusMessage = "Không tìm thấy audio QR để xoá.";
+                isError = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            statusMessage = ex.Message;
+            isError = true;
+        }
+        finally
+        {
+            isDeletingAudio = false;
+            StateHasChanged();
+        }
     }
 
     public void Dispose() => dotNetRef?.Dispose();
