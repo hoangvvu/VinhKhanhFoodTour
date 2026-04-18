@@ -109,8 +109,9 @@
                             </FormattedString>
                         </Label.FormattedText>
                     </Label>
-                    <CollectionView ItemsSource="{Binding QueueItems}" SelectionMode="None">
-                        <CollectionView.ItemTemplate>
+                    <VerticalStackLayout Spacing="0"
+                                         BindableLayout.ItemsSource="{Binding QueueItems}">
+                        <BindableLayout.ItemTemplate>
                             <DataTemplate x:DataType="dto:AudioQueueItemDto">
                                 <Border BackgroundColor="{StaticResource VKCard}"
                                         Stroke="{StaticResource VKStrokeBrush}" StrokeThickness="1"
@@ -147,8 +148,8 @@
                                     </Grid>
                                 </Border>
                             </DataTemplate>
-                        </CollectionView.ItemTemplate>
-                    </CollectionView>
+                        </BindableLayout.ItemTemplate>
+                    </VerticalStackLayout>
                 </VerticalStackLayout>
 
                 <!-- Empty State -->

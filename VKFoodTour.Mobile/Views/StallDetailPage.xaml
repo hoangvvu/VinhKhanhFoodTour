@@ -55,8 +55,16 @@
                     <CollectionView.ItemsLayout>
                         <LinearItemsLayout Orientation="Horizontal" ItemSpacing="8"/>
                     </CollectionView.ItemsLayout>
-                    <CollectionView.Header><BoxView WidthRequest="16" Color="Transparent"/></CollectionView.Header>
-                    <CollectionView.Footer><BoxView WidthRequest="16" Color="Transparent"/></CollectionView.Footer>
+                    <CollectionView.HeaderTemplate>
+                        <DataTemplate>
+                            <BoxView WidthRequest="16" Color="Transparent"/>
+                        </DataTemplate>
+                    </CollectionView.HeaderTemplate>
+                    <CollectionView.FooterTemplate>
+                        <DataTemplate>
+                            <BoxView WidthRequest="16" Color="Transparent"/>
+                        </DataTemplate>
+                    </CollectionView.FooterTemplate>
                     <CollectionView.ItemTemplate>
                         <DataTemplate x:DataType="dto:ImageItemDto">
                             <Border StrokeThickness="0">
@@ -74,8 +82,8 @@
                 <Label Text="{Binding UiMenu}"
                        FontSize="17" FontFamily="BebasNeue"
                        TextColor="{StaticResource VKText}" CharacterSpacing="0.5"/>
-                <CollectionView ItemsSource="{Binding MenuItems}">
-                    <CollectionView.ItemTemplate>
+                <VerticalStackLayout BindableLayout.ItemsSource="{Binding MenuItems}">
+                    <BindableLayout.ItemTemplate>
                         <DataTemplate x:DataType="dto:MenuItemDto">
                             <Border Padding="0" Margin="0,0,0,10"
                                     Stroke="{StaticResource VKStrokeBrush}" StrokeThickness="1"
@@ -102,8 +110,8 @@
                                 </Grid>
                             </Border>
                         </DataTemplate>
-                    </CollectionView.ItemTemplate>
-                </CollectionView>
+                    </BindableLayout.ItemTemplate>
+                </VerticalStackLayout>
             </VerticalStackLayout>
 
             <!-- AUDIO -->
@@ -115,8 +123,8 @@
                        FontSize="12" TextColor="{StaticResource VKGold}"
                        LineBreakMode="WordWrap"
                        IsVisible="{Binding PlaybackStatus, Converter={x:Static conv:StringNotNullOrEmptyConverter.Instance}}"/>
-                <CollectionView ItemsSource="{Binding AudioItems}">
-                    <CollectionView.ItemTemplate>
+                <VerticalStackLayout BindableLayout.ItemsSource="{Binding AudioItems}">
+                    <BindableLayout.ItemTemplate>
                         <DataTemplate x:DataType="dto:AudioItemDto">
                             <Border Padding="14,12" Margin="0,0,0,8"
                                     Stroke="{StaticResource VKStrokeBrush}" StrokeThickness="1"
@@ -139,8 +147,8 @@
                                 </Grid>
                             </Border>
                         </DataTemplate>
-                    </CollectionView.ItemTemplate>
-                </CollectionView>
+                    </BindableLayout.ItemTemplate>
+                </VerticalStackLayout>
             </VerticalStackLayout>
 
             <!-- ĐÁNH GIÁ -->
@@ -148,8 +156,8 @@
                 <Label Text="{Binding UiReviews}"
                        FontSize="17" FontFamily="BebasNeue"
                        TextColor="{StaticResource VKText}" CharacterSpacing="0.5"/>
-                <CollectionView ItemsSource="{Binding PoiReviews}">
-                    <CollectionView.ItemTemplate>
+                <VerticalStackLayout BindableLayout.ItemsSource="{Binding PoiReviews}">
+                    <BindableLayout.ItemTemplate>
                         <DataTemplate x:DataType="dto:ReviewListItemDto">
                             <Border BackgroundColor="{StaticResource VKCard}"
                                     Stroke="{StaticResource VKStrokeBrush}" StrokeThickness="1"
@@ -170,8 +178,8 @@
                                 </VerticalStackLayout>
                             </Border>
                         </DataTemplate>
-                    </CollectionView.ItemTemplate>
-                </CollectionView>
+                    </BindableLayout.ItemTemplate>
+                </VerticalStackLayout>
             </VerticalStackLayout>
 
             <!-- GỬI ĐÁNH GIÁ -->

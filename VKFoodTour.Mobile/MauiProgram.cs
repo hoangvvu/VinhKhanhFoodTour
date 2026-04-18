@@ -5,6 +5,10 @@ using VKFoodTour.Mobile.Services;
 using VKFoodTour.Mobile.ViewModels;
 using VKFoodTour.Mobile.Views;
 using ZXing.Net.Maui.Controls;
+#if ANDROID
+using AndroidX.RecyclerView.Widget;
+using Microsoft.Maui.Controls.Handlers.Items;
+#endif
 
 namespace VKFoodTour.Mobile;
 
@@ -83,6 +87,17 @@ public static class MauiProgram
         builder.Services.AddTransient<QrScanPage>();
         builder.Services.AddTransient<StallDetailPage>();
         builder.Services.AddSingleton<TourPlayerPage>(); // Singleton để giữ UI tour
+
+#if ANDROID
+        // CollectionView → RecyclerView trong ScrollView: tắt nested scroll (tránh crash JNI).
+        CollectionViewHandler.Mapper.AppendToMapping(
+            "VkDisableRecyclerNestedScrolling",
+            static (handler, _) =>
+            {
+                if (handler.PlatformView is RecyclerView rv)
+                    rv.NestedScrollingEnabled = false;
+            });
+#endif
 
         return builder.Build();
     }

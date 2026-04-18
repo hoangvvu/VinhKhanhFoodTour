@@ -8,19 +8,20 @@
        Shell.TabBarUnselectedColor="#5A5050">
 
     <TabBar>
-        <Tab x:Name="TabHome" Title="Khám phá" Icon="icon_map.png">
+        <!-- Không dùng Icon=*.png: nếu file không có trong Resources/Images, Android Shell hay crash khi vẽ TabBar (JavaProxyThrowable). Thêm lại khi đã có asset trong bundle. -->
+        <Tab x:Name="TabHome" Title="Khám phá">
             <ShellContent ContentTemplate="{DataTemplate pages:HomePage}" Route="home" />
         </Tab>
         <Tab x:Name="TabTour" Title="🎙️ Tour">
             <ShellContent ContentTemplate="{DataTemplate pages:TourPlayerPage}" Route="tour" />
         </Tab>
-        <Tab x:Name="TabMap" Title="Bản đồ" Icon="icon_map_big.png">
+        <Tab x:Name="TabMap" Title="Bản đồ">
             <ShellContent ContentTemplate="{DataTemplate pages:FullMapPage}" Route="fullmap" />
         </Tab>
-        <Tab x:Name="TabStalls" Title="Gian hàng" Icon="icon_stall.png">
+        <Tab x:Name="TabStalls" Title="Gian hàng">
             <ShellContent ContentTemplate="{DataTemplate pages:StallListPage}" Route="stalls" />
         </Tab>
-        <Tab x:Name="TabProfile" Title="Hồ sơ" Icon="icon_profile.png">
+        <Tab x:Name="TabProfile" Title="Hồ sơ">
             <ShellContent ContentTemplate="{DataTemplate pages:ProfilePage}" Route="profile" />
         </Tab>
     </TabBar>

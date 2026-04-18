@@ -188,8 +188,14 @@ public class AudioQueueService : IAudioQueueService, IDisposable
             return;
         }
 
-        // Wait for audio to finish
-        _ = WaitForAudioCompletionAsync(nextItem);
+        // Wait for audio to finish — wrap in a safety catch so any exception
+        // stays in managed code and never crosses the JNI boundary as JavaProxyThrowable.
+        _ = Task.Run(async () =>
+        {
+            try { await WaitForAudioCompletionAsync(nextItem); }
+            catch (OperationCanceledException) { }
+            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[AudioQueue] WaitForAudioCompletion error: {ex.Message}"); }
+        });
     }
 
     private async Task<bool> WaitUntilEnterGeofenceAsync(AudioQueueItemDto item, CancellationToken cancellationToken)

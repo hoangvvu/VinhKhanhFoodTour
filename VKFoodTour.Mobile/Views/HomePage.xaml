@@ -67,8 +67,16 @@
                     <CollectionView.ItemsLayout>
                         <LinearItemsLayout Orientation="Horizontal" ItemSpacing="12"/>
                     </CollectionView.ItemsLayout>
-                    <CollectionView.Header><BoxView WidthRequest="20" Color="Transparent"/></CollectionView.Header>
-                    <CollectionView.Footer><BoxView WidthRequest="20" Color="Transparent"/></CollectionView.Footer>
+                    <CollectionView.HeaderTemplate>
+                        <DataTemplate>
+                            <BoxView WidthRequest="20" Color="Transparent"/>
+                        </DataTemplate>
+                    </CollectionView.HeaderTemplate>
+                    <CollectionView.FooterTemplate>
+                        <DataTemplate>
+                            <BoxView WidthRequest="20" Color="Transparent"/>
+                        </DataTemplate>
+                    </CollectionView.FooterTemplate>
                     <CollectionView.ItemTemplate>
                         <DataTemplate x:DataType="models:Poi">
                             <Border WidthRequest="155"
@@ -125,8 +133,16 @@
                     <CollectionView.ItemsLayout>
                         <LinearItemsLayout Orientation="Horizontal" ItemSpacing="12"/>
                     </CollectionView.ItemsLayout>
-                    <CollectionView.Header><BoxView WidthRequest="20" Color="Transparent"/></CollectionView.Header>
-                    <CollectionView.Footer><BoxView WidthRequest="20" Color="Transparent"/></CollectionView.Footer>
+                    <CollectionView.HeaderTemplate>
+                        <DataTemplate>
+                            <BoxView WidthRequest="20" Color="Transparent"/>
+                        </DataTemplate>
+                    </CollectionView.HeaderTemplate>
+                    <CollectionView.FooterTemplate>
+                        <DataTemplate>
+                            <BoxView WidthRequest="20" Color="Transparent"/>
+                        </DataTemplate>
+                    </CollectionView.FooterTemplate>
                     <CollectionView.ItemTemplate>
                         <DataTemplate x:DataType="models:Poi">
                             <Border WidthRequest="165"
@@ -179,8 +195,10 @@
                 <Label Text="{Binding UiRecentReviews}"
                        FontSize="20" FontFamily="BebasNeue"
                        TextColor="{StaticResource VKText}" CharacterSpacing="0.5"/>
-                <CollectionView ItemsSource="{Binding RecentReviews}">
-                    <CollectionView.ItemTemplate>
+                <!-- BindableLayout avoids CollectionView (RecyclerView) inside ScrollView on Android — common JavaProxyThrowable source -->
+                <VerticalStackLayout Spacing="10"
+                                     BindableLayout.ItemsSource="{Binding RecentReviews}">
+                    <BindableLayout.ItemTemplate>
                         <DataTemplate x:DataType="dto:ReviewListItemDto">
                             <Border BackgroundColor="{StaticResource VKCard}"
                                     Stroke="{StaticResource VKStrokeBrush}"
@@ -206,8 +224,8 @@
                                 </VerticalStackLayout>
                             </Border>
                         </DataTemplate>
-                    </CollectionView.ItemTemplate>
-                </CollectionView>
+                    </BindableLayout.ItemTemplate>
+                </VerticalStackLayout>
             </VerticalStackLayout>
 
         </VerticalStackLayout>

@@ -1,4 +1,4 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using System.Collections.ObjectModel;
 using VKFoodTour.Mobile.Localization;
@@ -276,10 +276,17 @@ public partial class StallListViewModel : ObservableObject
     [RelayCommand]
     private async Task LoadPoisAsync()
     {
-        var result = await _dataService.GetPoisAsync();
-        foreach (var p in result)
-            p.IsFavorite = _favorites.IsFavorite(p.PoiId);
-        Pois = new ObservableCollection<Poi>(result);
+        try
+        {
+            var result = await _dataService.GetPoisAsync();
+            foreach (var p in result)
+                p.IsFavorite = _favorites.IsFavorite(p.PoiId);
+            Pois = new ObservableCollection<Poi>(result);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[StallListViewModel] LoadPoisAsync error: {ex.Message}");
+        }
     }
 
     [RelayCommand]
