@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage x:Class="VKFoodTour.Mobile.Views.WelcomePage"
+             xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             BackgroundColor="#0F0E0E"
+             Shell.NavBarIsVisible="False">
+
+    <Grid>
+        <!-- Decorative top accent strip -->
+        <BoxView Color="#2A0A08"
+                 VerticalOptions="Start"
+                 HeightRequest="380"/>
+
+        <ScrollView>
+            <VerticalStackLayout Spacing="0" Padding="32,64,32,48">
+
+                <!-- Logo / Icon -->
+                <Border x:Name="LogoBorder"
+                        WidthRequest="96" HeightRequest="96"
+                        StrokeThickness="0"
+                        BackgroundColor="#C8372D"
+                        HorizontalOptions="Center"
+                        Margin="0,0,0,28">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="26"/>
+                    </Border.StrokeShape>
+                    <Label Text="🍜" FontSize="46"
+                           HorizontalOptions="Center"
+                           VerticalOptions="Center"/>
+                </Border>
+
+                <!-- Brand subtitle -->
+                <Label Text="PHỐ ẨM THỰC"
+                       FontFamily="BebasNeue"
+                       FontSize="15"
+                       CharacterSpacing="6"
+                       TextColor="#E8A020"
+                       HorizontalOptions="Center"
+                       Margin="0,0,0,4"/>
+
+                <!-- Brand name -->
+                <Label Text="Vĩnh Khánh"
+                       FontFamily="BebasNeue"
+                       FontSize="48"
+                       CharacterSpacing="1"
+                       TextColor="#F0EBE3"
+                       HorizontalOptions="Center"/>
+
+                <!-- Tagline -->
+                <Label Text="Khám phá hương vị đường phố&#10;ngay trong lòng bàn tay bạn"
+                       FontSize="15"
+                       TextColor="#9A8F8F"
+                       HorizontalOptions="Center"
+                       HorizontalTextAlignment="Center"
+                       LineHeight="1.5"
+                       Margin="0,18,0,0"/>
+
+                <!-- Divider -->
+                <BoxView Color="#2A1A1A"
+                         HeightRequest="1"
+                         Margin="20,32,20,32"/>
+
+                <!-- Feature list — dùng VerticalStackLayout thay FlexLayout để tránh crash -->
+                <VerticalStackLayout Spacing="12" HorizontalOptions="Center">
+
+                    <HorizontalStackLayout Spacing="12" HorizontalOptions="Center">
+                        <!-- Pill 1 -->
+                        <Border BackgroundColor="#1E1218"
+                                StrokeThickness="1"
+                                Padding="12,7">
+                            <Border.Stroke>
+                                <SolidColorBrush Color="#3D1515"/>
+                            </Border.Stroke>
+                            <Border.StrokeShape>
+                                <RoundRectangle CornerRadius="20"/>
+                            </Border.StrokeShape>
+                            <HorizontalStackLayout Spacing="6">
+                                <Label Text="🗺️" FontSize="13" VerticalOptions="Center"/>
+                                <Label Text="Bản đồ thực tế" FontSize="12"
+                                       TextColor="#C4B5B5" VerticalOptions="Center"/>
+                            </HorizontalStackLayout>
+                        </Border>
+
+                        <!-- Pill 2 -->
+                        <Border BackgroundColor="#0F1A18"
+                                StrokeThickness="1"
+                                Padding="12,7">
+                            <Border.Stroke>
+                                <SolidColorBrush Color="#1A3D2E"/>
+                            </Border.Stroke>
+                            <Border.StrokeShape>
+                                <RoundRectangle CornerRadius="20"/>
+                            </Border.StrokeShape>
+                            <HorizontalStackLayout Spacing="6">
+                                <Label Text="🎙️" FontSize="13" VerticalOptions="Center"/>
+                                <Label Text="Audio thuyết minh" FontSize="12"
+                                       TextColor="#C4B5B5" VerticalOptions="Center"/>
+                            </HorizontalStackLayout>
+                        </Border>
+                    </HorizontalStackLayout>
+
+                    <HorizontalStackLayout Spacing="12" HorizontalOptions="Center">
+                        <!-- Pill 3 -->
+                        <Border BackgroundColor="#18150A"
+                                StrokeThickness="1"
+                                Padding="12,7">
+                            <Border.Stroke>
+                                <SolidColorBrush Color="#3D3010"/>
+                            </Border.Stroke>
+                            <Border.StrokeShape>
+                                <RoundRectangle CornerRadius="20"/>
+                            </Border.StrokeShape>
+                            <HorizontalStackLayout Spacing="6">
+                                <Label Text="📷" FontSize="13" VerticalOptions="Center"/>
+                                <Label Text="Quét QR gian hàng" FontSize="12"
+                                       TextColor="#C4B5B5" VerticalOptions="Center"/>
+                            </HorizontalStackLayout>
+                        </Border>
+
+                        <!-- Pill 4 -->
+                        <Border BackgroundColor="#100B1E"
+                                StrokeThickness="1"
+                                Padding="12,7">
+                            <Border.Stroke>
+                                <SolidColorBrush Color="#2D1B5A"/>
+                            </Border.Stroke>
+                            <Border.StrokeShape>
+                                <RoundRectangle CornerRadius="20"/>
+                            </Border.StrokeShape>
+                            <HorizontalStackLayout Spacing="6">
+                                <Label Text="⭐" FontSize="13" VerticalOptions="Center"/>
+                                <Label Text="Đánh giá món ăn" FontSize="12"
+                                       TextColor="#C4B5B5" VerticalOptions="Center"/>
+                            </HorizontalStackLayout>
+                        </Border>
+                    </HorizontalStackLayout>
+
+                </VerticalStackLayout>
+
+                <!-- CTA Button — dùng BackgroundColor thay vì LinearGradientBrush để tránh JNI crash Android -->
+                <Button x:Name="ExploreButton"
+                        Text="Khám phá ngay  →"
+                        Clicked="OnExploreClicked"
+                        FontSize="17"
+                        FontAttributes="Bold"
+                        TextColor="White"
+                        BackgroundColor="#C8372D"
+                        CornerRadius="18"
+                        HeightRequest="58"
+                        Margin="0,36,0,0"/>
+
+                <!-- Footer note -->
+                <Label Text="Không cần đăng ký  •  Miễn phí hoàn toàn"
+                       FontSize="12"
+                       TextColor="#5A5050"
+                       HorizontalOptions="Center"
+                       HorizontalTextAlignment="Center"
+                       Margin="0,14,0,0"/>
+
+            </VerticalStackLayout>
+        </ScrollView>
+
+    </Grid>
+</ContentPage>

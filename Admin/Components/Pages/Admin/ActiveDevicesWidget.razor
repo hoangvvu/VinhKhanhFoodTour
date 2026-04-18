@@ -1,9 +1,9 @@
 @using Microsoft.EntityFrameworkCore
 @using VKFoodTour.Infrastructure.Data
-@implements IDisposable
+@implements IAsyncDisposable
 @rendermode InteractiveServer
 
-@inject ApplicationDbContext Db
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
 
 <div class="realtime-card h-100 p-4" style="border-radius: 20px; background: linear-gradient(135deg, #1e0a3c 0%, #2d1b69 100%); border: 1px solid rgba(124,58,237,0.3); position: relative; overflow: hidden;">
     <div style="position: absolute; top: -20px; right: -20px; width: 100px; height: 100px; background: rgba(124,58,237,0.15); border-radius: 50%;"></div>
@@ -73,6 +73,7 @@
     private int windowMinutes = 5;
     private int secondsAgo = 0;
     private bool isLive = false;
+    private bool _disposed = false;
     private System.Threading.Timer? _refreshTimer;
     private System.Threading.Timer? _tickTimer;
     private DateTime _lastRefresh = DateTime.MinValue;
@@ -84,12 +85,14 @@
 
         _refreshTimer = new System.Threading.Timer(async _ =>
         {
+            if (_disposed) return;
             await LoadAsync();
             await InvokeAsync(StateHasChanged);
         }, null, TimeSpan.FromSeconds(RefreshSeconds), TimeSpan.FromSeconds(RefreshSeconds));
 
         _tickTimer = new System.Threading.Timer(async _ =>
         {
+            if (_disposed) return;
             secondsAgo = (int)(DateTime.Now - _lastRefresh).TotalSeconds;
             await InvokeAsync(StateHasChanged);
         }, null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
@@ -99,9 +102,11 @@
     {
         try
         {
+            // Tạo DbContext mới mỗi lần để tránh disposed context trong Timer
+            await using var db = await DbFactory.CreateDbContextAsync();
             var threshold = DateTime.Now.AddMinutes(-windowMinutes);
 
-            var latestPerDevice = await Db.TrackingLogs
+            var latestPerDevice = await db.TrackingLogs
                 .AsNoTracking()
                 .Where(t => t.CreatedAt >= threshold)
                 .GroupBy(t => t.DeviceId)
@@ -119,7 +124,7 @@
                 .ToList();
 
             var poiNames = poiIds.Any()
-                ? await Db.Pois.AsNoTracking()
+                ? await db.Pois.AsNoTracking()
                     .Where(p => poiIds.Contains(p.PoiId))
                     .ToDictionaryAsync(p => p.PoiId, p => p.Name)
                 : new Dictionary<int, string>();
@@ -140,10 +145,11 @@
         }
     }
 
-    public void Dispose()
+    public async ValueTask DisposeAsync()
     {
-        _refreshTimer?.Dispose();
-        _tickTimer?.Dispose();
+        _disposed = true;
+        if (_refreshTimer is not null) await _refreshTimer.DisposeAsync();
+        if (_tickTimer is not null) await _tickTimer.DisposeAsync();
     }
 
     private class ActiveDevice

@@ -1,4 +1,4 @@
-﻿using System.Net;
+using System.Net;
 using System.Text;
 using System.Text.Json;
 using System.Diagnostics;
@@ -237,8 +237,79 @@ public class TtsService
         return true;
     }
 
-    private static string NormalizeInputText(string input) =>
-        input.Replace("\r\n", "\n").Replace('\r', '\n').Trim();
+    private static string NormalizeInputText(string input)
+    {
+        if (string.IsNullOrEmpty(input))
+            return string.Empty;
+
+        var sb = new System.Text.StringBuilder(input.Length);
+
+        foreach (var ch in input)
+        {
+            switch (ch)
+            {
+                // ── Xuống dòng: chuẩn hóa về \n ────────────────────────
+                case '\r':
+                    // \r\n được xử lý khi gặp \n tiếp theo → bỏ qua \r đơn lẻ
+                    continue;
+
+                // ── Các dạng space đặc biệt → space thường ─────────────
+                case '\u00A0': // Non-breaking space (NBSP) — hay gặp nhất khi copy từ SSMS/Excel
+                case '\u202F': // Narrow no-break space
+                case '\u2007': // Figure space
+                case '\u2009': // Thin space
+                case '\u200A': // Hair space
+                case '\u3000': // Ideographic space (CJK)
+                    sb.Append(' ');
+                    break;
+
+                // ── Ký tự zero-width / invisible → bỏ hẳn ─────────────
+                case '\uFEFF': // BOM (Byte Order Mark) — xuất hiện ở đầu text copy từ SSMS
+                case '\u200B': // Zero-width space
+                case '\u200C': // Zero-width non-joiner
+                case '\u200D': // Zero-width joiner
+                case '\u2060': // Word joiner
+                case '\u00AD': // Soft hyphen
+                    // Bỏ qua hoàn toàn
+                    break;
+
+                // ── Smart quotes → ASCII thường (FPT TTS đọc được) ─────
+                case '\u201C': // "
+                case '\u201D': // "
+                case '\u201E': // „
+                    sb.Append('"');
+                    break;
+                case '\u2018': // '
+                case '\u2019': // '
+                case '\u201A': // ‚
+                    sb.Append('\'');
+                    break;
+
+                // ── Dấu gạch đặc biệt → hyphen thường ─────────────────
+                case '\u2013': // En dash –
+                case '\u2014': // Em dash —
+                case '\u2015': // Horizontal bar ―
+                    sb.Append('-');
+                    break;
+
+                // ── Ký tự điều khiển (ASCII < 32, trừ \t và \n) ────────
+                default:
+                    if (ch < 32 && ch != '\t' && ch != '\n')
+                        break; // bỏ qua
+                    // Ký tự Unicode điều khiển khác (U+0080–U+009F)
+                    if (ch >= '\u0080' && ch <= '\u009F')
+                        break;
+                    sb.Append(ch);
+                    break;
+            }
+        }
+
+        // Sau khi xử lý từng ký tự: chuẩn hóa xuống dòng \r\n → \n
+        return sb.ToString()
+                 .Replace("\r\n", "\n")
+                 .Replace('\r', '\n')
+                 .Trim();
+    }
 
     private static (bool Success, string? AudioUrl, string? ErrorMessage) TryParseTtsResponse(string jsonString)
     {

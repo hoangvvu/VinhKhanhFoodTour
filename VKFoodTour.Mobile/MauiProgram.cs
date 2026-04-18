@@ -1,4 +1,4 @@
-﻿using CommunityToolkit.Maui;
+using CommunityToolkit.Maui;
 using Microsoft.Extensions.Logging;
 using Plugin.Maui.Audio;
 using VKFoodTour.Mobile.Services;
@@ -78,7 +78,7 @@ public static class MauiProgram
         builder.Services.AddSingleton<TourPlayerViewModel>(); // Singleton để giữ trạng thái tour
 
         // Đăng ký Pages (Views)
-        builder.Services.AddTransient<LoginPage>();
+        builder.Services.AddTransient<WelcomePage>();
         builder.Services.AddTransient<HomePage>();
         builder.Services.AddTransient<StallListPage>();
         builder.Services.AddTransient<PlayerPage>();
