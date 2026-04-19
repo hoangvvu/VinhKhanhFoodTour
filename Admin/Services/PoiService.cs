@@ -10,10 +10,14 @@ public class PoiService
 {
     public const string MasterTourQrToken = "VINH-KHANH-TOUR";
     private readonly ApplicationDbContext _db;
+    private readonly GoogleTranslateService _translate;
+    private readonly TtsService _tts;
 
-    public PoiService(ApplicationDbContext db)
+    public PoiService(ApplicationDbContext db, GoogleTranslateService translate, TtsService tts)
     {
         _db = db;
+        _translate = translate;
+        _tts = tts;
     }
 
     public async Task<List<Poi>> GetAllAsync()
@@ -162,6 +166,10 @@ public class PoiService
             IsActive = true
         });
         await _db.SaveChangesAsync();
+
+        // TỰ ĐỘNG HÓA: Cập nhật thuyết minh đa ngôn ngữ ngay khi có QR mới
+        _ = Task.Run(() => UpdateMultilingualNarrationsAsync(poiId));
+
         return token;
     }
 
@@ -200,6 +208,10 @@ public class PoiService
         });
 
         await _db.SaveChangesAsync();
+
+        // TỰ ĐỘNG HÓA: Cập nhật thuyết minh đa ngôn ngữ ngay khi có QR mới
+        _ = Task.Run(() => UpdateMultilingualNarrationsAsync(poiId));
+
         return token;
     }
 
@@ -506,5 +518,108 @@ public class PoiService
             return string.Empty;
         var t = value.Trim();
         return t.Length <= maxLen ? t : t[..maxLen];
+    }
+
+    /// <summary>
+    /// Xóa toàn bộ audio thủ công (AudioUrl, AudioUrlQr) của tất cả quán ăn
+    /// để chuyển sang dùng hoàn toàn TTS Automation.
+    /// </summary>
+    public async Task<int> GlobalCleanupLegacyAudioAsync()
+    {
+        var narrations = await _db.Narrations.ToListAsync();
+        foreach (var n in narrations)
+        {
+            n.AudioUrl = null;
+            n.AudioUrlQr = null;
+            n.UpdatedAt = DateTime.Now;
+        }
+        return await _db.SaveChangesAsync();
+    }
+
+    /// <summary>
+    /// Tự động dịch và tạo Audio TTS cho 5 ngôn ngữ (vi, en, ja, ko, zh) từ nội dung Tiếng Việt.
+    /// </summary>
+    public async Task<List<(string Code, bool Success, string? Error)>> UpdateMultilingualNarrationsAsync(int poiId)
+    {
+        var results = new List<(string Code, bool Success, string? Error)>();
+        
+        var poi = await _db.Pois
+            .Include(p => p.Narrations)
+            .FirstOrDefaultAsync(p => p.PoiId == poiId);
+            
+        if (poi == null) return results;
+
+        // 1. Lấy nguồn Tiếng Việt
+        var viLang = await _db.Languages.AsNoTracking().FirstOrDefaultAsync(l => l.Code == "vi");
+        if (viLang == null) return results;
+
+        var sourceNar = await _db.Narrations.Include(n => n.Language).FirstOrDefaultAsync(n => n.PoiId == poiId && n.Language.Code == "vi");
+        
+        string sourceTitle = poi.Name;
+        string sourceContent = !string.IsNullOrWhiteSpace(poi.Description) ? poi.Description : (sourceNar?.Content ?? "");
+
+        if (string.IsNullOrWhiteSpace(sourceContent)) return results;
+
+        // 2. Lấy danh sách ngôn ngữ đích (active và không phải vi)
+        var targetLanguages = await _db.Languages.AsNoTracking()
+            .Where(l => l.IsActive && l.Code != "vi")
+            .ToListAsync();
+
+        foreach (var lang in targetLanguages)
+        {
+            try
+            {
+                // Dịch
+                var tTitle = await _translate.TranslateAsync(sourceTitle, "vi", lang.Code);
+                var tContent = await _translate.TranslateAsync(sourceContent, "vi", lang.Code);
+
+                // TTS
+                string? audioUrl = null;
+                if (!string.IsNullOrEmpty(lang.TtsVoice))
+                {
+                    var stem = $"auto_{lang.Code}_p{poiId}";
+                    var tts = await _tts.GenerateAndPersistLocalAsync(tContent, lang.TtsVoice, stem, lang.Code);
+                    if (string.IsNullOrEmpty(tts.ErrorMessage))
+                        audioUrl = tts.Url;
+                }
+
+                // Lưu
+                var existing = poi.Narrations.FirstOrDefault(n => n.LanguageId == lang.LanguageId);
+                if (existing != null)
+                {
+                    existing.Title = TruncateForDb(tTitle, 200);
+                    existing.Content = tContent;
+                    existing.AudioUrlAuto = audioUrl;
+                    existing.AudioUrl = null; // Cleanup legacy
+                    existing.AudioUrlQr = null; // Cleanup legacy
+                    existing.TtsVoice = lang.TtsVoice;
+                    existing.UpdatedAt = DateTime.Now;
+                    existing.IsActive = true;
+                }
+                else
+                {
+                    _db.Narrations.Add(new Narration
+                    {
+                        PoiId = poiId,
+                        LanguageId = lang.LanguageId,
+                        Title = TruncateForDb(tTitle, 200),
+                        Content = tContent,
+                        AudioUrlAuto = audioUrl,
+                        TtsVoice = lang.TtsVoice,
+                        IsActive = true,
+                        UpdatedAt = DateTime.Now
+                    });
+                }
+                
+                results.Add((lang.Code, true, null));
+            }
+            catch (Exception ex)
+            {
+                results.Add((lang.Code, false, ex.Message));
+            }
+        }
+
+        await _db.SaveChangesAsync();
+        return results;
     }
 }

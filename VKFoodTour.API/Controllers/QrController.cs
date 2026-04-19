@@ -45,12 +45,11 @@ public class QrController : ControllerBase
             .Where(n => n.PoiId == poi.PoiId && n.IsActive)
             .ToListAsync();
 
-        // Ưu tiên: đúng ngôn ngữ yêu cầu -> có AudioUrlQr -> có AudioUrl hoặc AudioUrlAuto -> vi -> bất kỳ
+        // Ưu tiên: đúng ngôn ngữ yêu cầu -> AudioUrlAuto -> vi -> bất kỳ
         var pick = narrations
             .OrderByDescending(n => !string.IsNullOrEmpty(lang) 
                 && string.Equals(n.Language?.Code, lang, StringComparison.OrdinalIgnoreCase))
-            .ThenByDescending(n => !string.IsNullOrWhiteSpace(n.AudioUrlQr))
-            .ThenByDescending(n => !string.IsNullOrWhiteSpace(n.AudioUrl ?? n.AudioUrlAuto))
+            .ThenByDescending(n => !string.IsNullOrWhiteSpace(n.AudioUrlAuto))
             .ThenByDescending(n => string.Equals(n.Language?.Code, "vi", StringComparison.OrdinalIgnoreCase))
             .ThenBy(n => n.LanguageId)
             .FirstOrDefault();

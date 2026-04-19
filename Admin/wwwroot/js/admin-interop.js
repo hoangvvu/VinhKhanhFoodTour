@@ -1,72 +1,246 @@
-﻿// ═══════════════════════════════════════════════════
-//  VK Admin — JS Interop (Leaflet.js + OpenStreetMap)
+// ═══════════════════════════════════════════════════
+//  VK Admin — JS Interop (Leaflet.js / OpenStreetMap)
 //  Đặt tại: wwwroot/js/admin-interop.js
-//
-//  Thay thế hoàn toàn Google Maps
-//  ✅ Miễn phí 100%, không cần API key
-//  ✅ Nhẹ (~40KB), nhanh
-//  ✅ Không bị deprecated
 // ═══════════════════════════════════════════════════
 
-// ── 1. Map Picker — Chọn vị trí kéo thả (ThongTinQuan.razor) ──
+// ── 1. Map Picker (Leaflet) ──
 
 let pickerMap = null;
 let pickerMarker = null;
+let searchDebounceTimer = null;
+let currentDotNetRef = null; // Lưu lại để dùng cho các hàm trigger bên ngoài
 
-window.initMapPicker = function(elementId, lat, lng, dotNetRef) {
+window.initMapPicker = function(elementId, lat, lng, searchInputId, searchBtnId, suggestionContainerId, dotNetRef) {
+    console.log('[MAP] Initializing Map Picker...', { elementId, lat, lng });
     const el = document.getElementById(elementId);
-    if (!el) { console.warn('[MAP] Element not found:', elementId); return; }
+    if (!el) return;
 
-    // Xóa map cũ nếu đã khởi tạo trước đó (tránh lỗi re-render Blazor)
+    currentDotNetRef = dotNetRef;
+
     if (pickerMap) {
         pickerMap.remove();
         pickerMap = null;
     }
 
-    pickerMap = L.map(elementId).setView([lat, lng], 17);
+    pickerMap = L.map(el, {
+        zoomControl: true,
+        attributionControl: false
+    }).setView([lat, lng], 17);
 
-    // Tile layer — OpenStreetMap (miễn phí, không key)
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap',
         maxZoom: 19
     }).addTo(pickerMap);
 
-    // Marker kéo thả được
-    pickerMarker = L.marker([lat, lng], {
-        draggable: true,
-        autoPan: true
-    }).addTo(pickerMap);
+    pickerMarker = L.marker([lat, lng], { draggable: true }).addTo(pickerMap);
 
-    pickerMarker.bindPopup('Kéo ghim để chọn vị trí').openPopup();
-
-    // Khi kéo thả xong → gửi tọa độ về Blazor
-    pickerMarker.on('dragend', function() {
+    pickerMarker.on('dragend', function (e) {
         const pos = pickerMarker.getLatLng();
-        pickerMarker.setPopupContent(
-            'Lat: ' + pos.lat.toFixed(8) + '<br>Lng: ' + pos.lng.toFixed(8)
-        ).openPopup();
         dotNetRef.invokeMethodAsync('OnMapLocationChanged', pos.lat, pos.lng);
     });
 
-    // Click vào bản đồ → di chuyển marker
-    pickerMap.on('click', function(e) {
-        pickerMarker.setLatLng(e.latlng);
-        pickerMarker.setPopupContent(
-            'Lat: ' + e.latlng.lat.toFixed(8) + '<br>Lng: ' + e.latlng.lng.toFixed(8)
-        ).openPopup();
-        dotNetRef.invokeMethodAsync('OnMapLocationChanged', e.latlng.lat, e.latlng.lng);
+    pickerMap.on('click', function (e) {
+        const pos = e.latlng;
+        pickerMarker.setLatLng(pos);
+        dotNetRef.invokeMethodAsync('OnMapLocationChanged', pos.lat, pos.lng);
+        hideSuggestions(suggestionContainerId);
     });
-};
 
-// Cập nhật marker từ Blazor (khi load POI khác)
-window.updateMapMarker = function(lat, lng) {
-    if (pickerMap && pickerMarker) {
-        pickerMarker.setLatLng([lat, lng]);
-        pickerMap.panTo([lat, lng]);
+    // ── Xử lý Autocomplete ──
+    const searchInput = document.getElementById(searchInputId);
+    const suggestionContainer = document.getElementById(suggestionContainerId);
+
+    if (searchInput && suggestionContainer) {
+        searchInput.addEventListener('input', () => {
+            clearTimeout(searchDebounceTimer);
+            const query = searchInput.value.trim();
+
+            if (query.length < 2) {
+                hideSuggestions(suggestionContainerId);
+                return;
+            }
+
+            searchDebounceTimer = setTimeout(() => {
+                fetchAutocomplete(query, suggestionContainerId, dotNetRef);
+            }, 400);
+        });
+
+        // Đóng gợi ý khi click ra ngoài
+        document.addEventListener('click', (e) => {
+            if (e.target !== searchInput && e.target !== suggestionContainer && !suggestionContainer.contains(e.target)) {
+                hideSuggestions(suggestionContainerId);
+            }
+        });
+        
+        // Xử lý Paste
+        searchInput.addEventListener('paste', (e) => {
+            const pasteData = (e.clipboardData || window.clipboardData).getData('text');
+            setTimeout(() => {
+                const result = parseGoogleLocation(pasteData);
+                if (result) {
+                    pickerMap.setView([result.lat, result.lng], 18);
+                    pickerMarker.setLatLng([result.lat, result.lng]);
+                    dotNetRef.invokeMethodAsync('OnMapLocationChanged', result.lat, result.lng);
+                }
+            }, 100);
+        });
     }
 };
 
-// ── 2. Multi-POI Overview Map (GianHang / Home) ─────
+/**
+ * Hàm trigger tìm kiếm từ Blazor
+ */
+window.triggerMapSearch = function(query, suggestionContainerId) {
+    if (!query) return;
+    performExplicitSearch(query, suggestionContainerId, currentDotNetRef);
+};
+
+/**
+ * Bóc tách tọa độ từ URL Google Maps hoặc chuỗi tọa độ
+ */
+function parseGoogleLocation(input) {
+    if (!input) return null;
+
+    // 1. Ưu TIÊN CAO: Regex tìm !3dLAT!4dLNG
+    const regexData = /!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/;
+    const matchData = input.match(regexData);
+    if (matchData) return { lat: parseFloat(matchData[1]), lng: parseFloat(matchData[2]) };
+
+    // 2. Regex tìm @lat,lng
+    const regexAt = /@(-?\d+\.\d+),(-?\d+\.\d+)/;
+    const matchAt = input.match(regexAt);
+    if (matchAt) return { lat: parseFloat(matchAt[1]), lng: parseFloat(matchAt[2]) };
+
+    // 3. Regex tìm q=lat,lng
+    const regexQuery = /[?&](query|q|ll)=(-?\d+\.\d+),(-?\d+\.\d+)/;
+    const matchQuery = input.match(regexQuery);
+    if (matchQuery) return { lat: parseFloat(matchQuery[2]), lng: parseFloat(matchQuery[3]) };
+
+    // 4. Regex tìm tọa độ thuần túy
+    const regexRaw = /(-?\d+\.\d+)\s*[,\s]\s*(-?\d+\.\d+)/;
+    const matchRaw = input.match(regexRaw);
+    if (matchRaw) return { lat: parseFloat(matchRaw[1]), lng: parseFloat(matchRaw[2]) };
+
+    return null;
+}
+
+async function performExplicitSearch(query, containerId, dotNetRef) {
+    if (!query || query.trim().length < 2) return;
+    console.log('[MAP] Explicit search trigger:', query);
+    
+    // Thử parse trước
+    const parsed = parseGoogleLocation(query);
+    if (parsed) {
+        pickerMap.setView([parsed.lat, parsed.lng], 18);
+        pickerMarker.setLatLng([parsed.lat, parsed.lng]);
+        if (dotNetRef) {
+            dotNetRef.invokeMethodAsync('OnMapLocationChanged', parsed.lat, parsed.lng);
+            dotNetRef.invokeMethodAsync('OnAddressSearchSelected', query.length > 60 ? "Vị trí từ liên kết" : query);
+        }
+        hideSuggestions(containerId);
+        return;
+    }
+
+    // Nếu không parse được thì dùng Photon API
+    const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&lang=vi&lat=10.7578&lon=106.7095&limit=1`;
+    try {
+        const response = await fetch(url);
+        const data = await response.json();
+        if (data.features && data.features.length > 0) {
+            const first = data.features[0];
+            const coords = first.geometry.coordinates;
+            const lat = coords[1];
+            const lng = coords[0];
+            
+            pickerMap.setView([lat, lng], 18);
+            pickerMarker.setLatLng([lat, lng]);
+            if (dotNetRef) {
+                dotNetRef.invokeMethodAsync('OnMapLocationChanged', lat, lng);
+                dotNetRef.invokeMethodAsync('OnAddressSearchSelected', (first.properties.name || first.properties.street || query));
+            }
+            hideSuggestions(containerId);
+        }
+    } catch (err) {
+        console.error("[OSM] Search error:", err);
+    }
+}
+
+function renderSuggestions(features, containerId, dotNetRef) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    if (!features || features.length === 0) {
+        hideSuggestions(containerId);
+        return;
+    }
+
+    container.innerHTML = '';
+    container.style.display = 'block';
+
+    features.forEach(f => {
+        const props = f.properties;
+        const coords = f.geometry.coordinates; 
+        
+        const name = props.name || "";
+        const city = props.city || props.state || "";
+        const street = props.street || "";
+        const houseNumber = props.housenumber || "";
+        
+        let displayTitle = name;
+        if (!displayTitle && street) displayTitle = (houseNumber ? houseNumber + " " : "") + street;
+        if (!displayTitle) displayTitle = "Địa điểm không tên";
+        
+        let displaySub = [props.district, city, props.country].filter(x => x).join(', ');
+
+        const li = document.createElement('li');
+        li.className = 'suggestion-item';
+        li.innerHTML = `
+            <div class="s-icon"><i class="bi bi-geo-alt"></i></div>
+            <div class="s-content">
+                <div class="s-title">${displayTitle}</div>
+                <div class="s-sub">${displaySub}</div>
+            </div>
+        `;
+
+        li.onclick = (e) => {
+            e.stopPropagation();
+            const lat = coords[1];
+            const lng = coords[0];
+            const fullName = (displayTitle + (displaySub ? ", " + displaySub : "")).trim();
+
+            pickerMap.setView([lat, lng], 18);
+            pickerMarker.setLatLng([lat, lng]);
+
+            if (dotNetRef) {
+                dotNetRef.invokeMethodAsync('OnMapLocationChanged', lat, lng);
+                dotNetRef.invokeMethodAsync('OnAddressSearchSelected', fullName);
+            }
+
+            hideSuggestions(containerId);
+            
+            const input = document.getElementById('map-search-input');
+            if (input) input.value = fullName;
+        };
+
+        container.appendChild(li);
+    });
+}
+
+function hideSuggestions(containerId) {
+    const container = document.getElementById(containerId);
+    if (container) {
+        container.style.display = 'none';
+        container.innerHTML = '';
+    }
+}
+
+window.updateMapMarker = function(lat, lng) {
+    if (pickerMap && pickerMarker) {
+        pickerMarker.setLatLng([lat, lng]);
+        pickerMap.setView([lat, lng]);
+    }
+};
+
+// ── 2. Multi-POI Overview Map (Leaflet) ──
 
 let overviewMap = null;
 
@@ -74,69 +248,58 @@ window.initPoiOverviewMap = function(elementId, pois) {
     const el = document.getElementById(elementId);
     if (!el) return;
 
-    // Xóa map cũ
     if (overviewMap) {
         overviewMap.remove();
         overviewMap = null;
     }
 
-    const vinhKhanhCenter = [10.7595, 106.7040];
+    overviewMap = L.map(el, {
+        attributionControl: false,
+        zoomControl: false
+    }).setView([10.7595, 106.7040], 16);
 
-    overviewMap = L.map(elementId).setView(vinhKhanhCenter, 16);
-
-    // Dark tile theme (CartoDB Dark Matter — miễn phí)
     L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; OpenStreetMap &copy; CARTO',
-        maxZoom: 19
+        maxZoom: 20
     }).addTo(overviewMap);
 
-    const bounds = L.latLngBounds();
+    const group = L.featureGroup();
 
-    pois.forEach(function(poi) {
-        const pos = [poi.lat, poi.lng];
-        bounds.extend(pos);
-
-        // Tạo icon tùy chỉnh với màu theo priority
+    pois.forEach(poi => {
         const color = poi.priority === 1 ? '#C8372D' : '#E8A020';
-        const icon = L.divIcon({
-            className: 'custom-poi-marker',
-            html: '<div style="' +
-                'background:' + color + ';' +
-                'color:#fff;' +
-                'width:28px;height:28px;' +
-                'border-radius:50%;' +
-                'display:flex;align-items:center;justify-content:center;' +
-                'font-size:12px;font-weight:bold;' +
-                'border:2px solid #1a1a1a;' +
-                'box-shadow:0 2px 6px rgba(0,0,0,0.4);' +
-                '">' + poi.priority + '</div>',
-            iconSize: [28, 28],
-            iconAnchor: [14, 14]
-        });
+        
+        const marker = L.circleMarker([poi.lat, poi.lng], {
+            radius: 10,
+            fillColor: color,
+            color: "#fff",
+            weight: 2,
+            opacity: 1,
+            fillOpacity: 0.9
+        }).addTo(group);
 
-        const marker = L.marker(pos, { icon: icon }).addTo(overviewMap);
-
-        marker.bindPopup(
-            '<div style="min-width:160px;">' +
-            '<strong>' + poi.name + '</strong><br/>' +
-            '<small style="color:#666;">' + (poi.address || '') + '</small><br/>' +
-            '<small>Bán kính: ' + poi.radius + 'm | Ưu tiên: ' + poi.priority + '</small>' +
-            '</div>'
-        );
+        marker.bindPopup(`
+            <div style="color: #000; padding: 5px; min-width: 150px;">
+                <b style="font-size: 14px; display: block; margin-bottom: 4px;">${poi.name}</b>
+                <div style="font-size: 11px; color: #666; line-height: 1.4;">${poi.address || ''}</div>
+                <div style="margin-top: 8px; font-size: 10px; color: #999; border-top: 1px solid #eee; padding-top: 4px;">
+                    Radius: ${poi.radius}m | Priority: ${poi.priority}
+                </div>
+            </div>
+        `);
     });
 
+    group.addTo(overviewMap);
     if (pois.length > 0) {
-        overviewMap.fitBounds(bounds, { padding: [30, 30] });
+        overviewMap.fitBounds(group.getBounds(), { padding: [30, 30] });
     }
 };
 
-// ── 3. Audio Player ──────────────────────────────────
+// ── 3. Helpers ────────────────────────────────────────
+
 window.playAudioFromUrl = function(url) {
     const audio = new Audio(url);
     audio.play();
 };
 
-// ── 4. Download helper ───────────────────────────────
 window.downloadImage = function(url, filename) {
     const a = document.createElement('a');
     a.href = url;

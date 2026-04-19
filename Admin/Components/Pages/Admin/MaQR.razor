@@ -124,8 +124,18 @@
                             <button class="btn btn-sm btn-outline-info rounded-pill" type="button" @onclick="() => DownloadQr(qr.QrToken)" title="Tải QR">
                                 <i class="bi bi-download"></i>
                             </button>
-                            <button class="btn btn-sm btn-outline-light rounded-pill" type="button" @onclick="() => RegenerateByDescription(qr)" title="Cập nhật token theo mô tả">
-                                <i class="bi bi-arrow-repeat"></i>
+                            <button class="btn btn-sm btn-outline-light rounded-pill" type="button" 
+                                    @onclick="() => RegenerateByDescription(qr)" 
+                                    disabled="@qr.IsSyncing"
+                                    title="Cập nhật QR & Đồng bộ thuyết minh AI">
+                                @if (qr.IsSyncing)
+                                {
+                                    <span class="spinner-border spinner-border-sm"></span>
+                                }
+                                else
+                                {
+                                    <i class="bi bi-arrow-repeat"></i>
+                                }
                             </button>
                             <button class="btn btn-sm @(qr.IsActive ? "btn-outline-warning" : "btn-warning text-dark") rounded-pill" type="button" @onclick="() => ToggleQr(qr.QrId)" title="Bật/Tắt">
                                 <i class="bi @(qr.IsActive ? "bi-eye-slash" : "bi-eye")"></i>
@@ -208,16 +218,33 @@
         if (qr.PoiId <= 0 || qr.OwnerUserId <= 0)
             return;
 
-        var token = await PoiService.RegenerateQrFromDescriptionAsync(
-            qr.PoiId,
-            qr.OwnerUserId,
-            qr.PoiDescription,
-            "QR dau pho (admin)");
+        qr.IsSyncing = true;
+        StateHasChanged();
 
-        if (!string.IsNullOrWhiteSpace(token))
-            pageMessage = $"Da cap nhat QR cho {qr.PoiName}: {token}";
+        try
+        {
+            // 1. Cập nhật mã QR (mô tả -> token)
+            var token = await PoiService.RegenerateQrFromDescriptionAsync(
+                qr.PoiId,
+                qr.OwnerUserId,
+                qr.PoiDescription,
+                "QR (Admin sync)");
 
-        await LoadData();
+            // 2. Cập nhật thuyết minh đa ngôn ngữ (Dịch & TTS)
+            await PoiService.UpdateMultilingualNarrationsAsync(qr.PoiId);
+
+            if (!string.IsNullOrWhiteSpace(token))
+                pageMessage = $"Đã cập nhật QR & Đồng bộ thuyết minh cho {qr.PoiName}";
+        }
+        catch (Exception ex)
+        {
+            pageMessage = $"Lỗi: {ex.Message}";
+        }
+        finally
+        {
+            qr.IsSyncing = false;
+            await LoadData();
+        }
     }
 
     private async Task DownloadQr(string token)
@@ -253,5 +280,6 @@
         public string OwnerName { get; set; } = "";
         public string OwnerEmail { get; set; } = "";
         public bool IsActive { get; set; }
+        public bool IsSyncing { get; set; }
     }
 }

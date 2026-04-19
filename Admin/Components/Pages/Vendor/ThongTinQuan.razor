@@ -16,193 +16,331 @@
 @implements IDisposable
 
 <div class="dash-page p-4">
+    <!-- HEADER -->
     <div class="d-flex justify-content-between align-items-center mb-5">
         <div>
-            <h2 class="fw-bold mb-1" style="color: #F0EBE3;">THÔNG TIN QUÁN & HÌNH ẢNH</h2>
-            <span style="color: #4a4a5a; font-size: 13px;"><i class="bi bi-shop me-1"></i>Quản lý thông tin gian hàng của bạn</span>
+            <h2 class="fw-bold mb-1" style="color: #F0EBE3;">THÔNG TIN GIAN HÀNG</h2>
+            <div class="d-flex align-items-center gap-2">
+                <span style="color: #4ade80; font-size: 13px;"><i class="bi bi-patch-check-fill me-1"></i>Đối tác chính thức</span>
+                <span class="text-muted" style="font-size: 13px;">•</span>
+                <span style="color: #4a4a5a; font-size: 13px;">Mã QR: <strong style="color:#F0EBE3;">@qrCode</strong></span>
+            </div>
         </div>
-        <button class="btn btn-danger rounded-pill px-4 shadow" @onclick="SaveChanges" disabled="@isSaving">
-            @if (isSaving)
-            {
-                <span class="spinner-border spinner-border-sm me-2"></span>
-            }
-            <i class="bi bi-floppy me-2"></i>Lưu thay đổi
-        </button>
+        <div class="d-flex gap-3">
+            <button class="btn btn-outline-light rounded-pill px-4" @onclick="LoadDataAsync">
+                <i class="bi bi-arrow-clockwise me-2"></i>Làm mới
+            </button>
+            <button class="btn btn-danger rounded-pill px-4 shadow" @onclick="SaveChanges" disabled="@isSaving">
+                @if (isSaving)
+                {
+                    <span class="spinner-border spinner-border-sm me-2"></span>
+                }
+                <i class="bi bi-floppy me-2"></i>Lưu thông tin
+            </button>
+        </div>
     </div>
 
     @if (!string.IsNullOrEmpty(statusMessage))
     {
-        <div style="@(isError ? "background:rgba(200,55,45,0.08);border:1px solid rgba(200,55,45,0.2);border-radius:12px;color:#f87171;padding:12px 16px;" : "background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.2);border-radius:12px;color:#4ade80;padding:12px 16px;") margin-bottom:16px;"
-             class="d-flex justify-content-between align-items-center">
-            <span><i class="@(isError ? "bi bi-exclamation-triangle-fill" : "bi bi-check-circle-fill") me-2"></i>@statusMessage</span>
-            <button type="button" style="background:none;border:none;color:inherit;cursor:pointer;font-size:1.1rem;padding:0;" @onclick="() => statusMessage = null"><i class="bi bi-x"></i></button>
+        <div class="alert @(isError ? "alert-danger" : "alert-success") alert-dismissible fade show border-0 rounded-4 shadow-sm mb-4" role="alert" 
+             style="background: @(isError ? "rgba(200,55,45,0.1)" : "rgba(34,197,94,0.1)"); color: @(isError ? "#f87171" : "#4ade80");">
+            <i class="bi @(isError ? "bi-exclamation-triangle-fill" : "bi-check-circle-fill") me-2"></i>
+            @statusMessage
+            <button type="button" class="btn-close" @onclick="() => statusMessage = null"></button>
         </div>
     }
 
     <div class="row g-4">
+        <!-- CỘT TRÁI: THÔNG TIN CƠ BẢN -->
         <div class="col-lg-7">
+            <!-- THÔNG TIN CHUNG -->
             <div class="dash-card p-4 mb-4">
-                <div class="dash-label mb-3"><i class="bi bi-info-circle me-2"></i>THÔNG TIN CHUNG</div>
+                <div class="dash-label mb-4 d-flex align-items-center">
+                    <div class="icon-box me-3"><i class="bi bi-shop"></i></div>
+                    NỘI DUNG GỐC (TIẾNG VIỆT)
+                </div>
 
-                <div class="mb-3">
-                    <label class="form-label text-muted small fw-bold">TÊN GIAN HÀNG</label>
+                <div class="mb-4">
+                    <label class="form-label text-muted small fw-bold mb-2">TÊN GIAN HÀNG</label>
                     <input type="text" class="form-control dash-input p-3"
                            @bind="poiName" @bind:event="oninput" placeholder="VD: Ốc Oanh Vĩnh Khánh...">
                 </div>
 
-                <div class="mb-3">
-                    <label class="form-label text-muted small fw-bold">MÔ TẢ (dùng cho thuyết minh tự động &amp; app)</label>
-                    <textarea class="form-control dash-input p-3" rows="5"
+                <div class="mb-4">
+                    <label class="form-label text-muted small fw-bold mb-2">GIỚI THIỆU QUÁN (MÔ TẢ)</label>
+                    <textarea class="form-control dash-input p-3" rows="6"
                               @bind="poiDescription" @bind:event="oninput"
-                              placeholder="Giới thiệu quán — nội dung này sẽ dùng khi tạo giọng đọc FPT..."></textarea>
+                              placeholder="Hãy viết mô tả hấp dẫn về món ăn và dịch vụ tại quán của bạn..."></textarea>
+                    <div class="form-text text-muted mt-2">Nội dung này sẽ được Admin sử dụng để tự động dịch và tạo giọng đọc AI.</div>
                 </div>
 
-                <div class="mb-3">
-                    <label class="form-label text-muted small fw-bold">ĐỊA CHỈ CHI TIẾT</label>
+                <div class="mb-0">
+                    <label class="form-label text-muted small fw-bold mb-2">ĐỊA CHỈ</label>
                     <div class="input-group">
-                        <span class="input-group-text" style="background:#0f0f13;border:1px solid rgba(255,255,255,0.1);color:#4a4a5a;border-radius:10px 0 0 10px;"><i class="bi bi-geo-alt"></i></span>
+                        <span class="input-group-text dash-input border-end-0" style="background:#0f0f13; border-radius: 12px 0 0 12px;"><i class="bi bi-geo-alt"></i></span>
                         <input type="text" class="form-control dash-input p-3"
-                               @bind="poiAddress" placeholder="Số nhà, tên đường...">
-                    </div>
-                </div>
-
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label class="form-label text-muted small fw-bold">VĨ ĐỘ</label>
-                        <input type="text" class="form-control dash-input" @bind="latitude" readonly>
-                    </div>
-                    <div class="col-md-6 mb-3">
-                        <label class="form-label text-muted small fw-bold">KINH ĐỘ</label>
-                        <input type="text" class="form-control dash-input" @bind="longitude" readonly>
+                               @bind="poiAddress" placeholder="Số nhà, tên đường Vĩnh Khánh...">
                     </div>
                 </div>
             </div>
 
-            <div class="dash-card" style="border-radius:16px;">
-                <div style="height: 400px; border-radius: 16px; overflow: hidden;">
-                    <div id="map" style="height: 400px; width: 100%; min-height: 400px; background-color: #1a1a1a; border-radius: 12px;"></div>
+            <div class="dash-card p-4">
+                <div class="dash-label mb-4 d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center">
+                        <div class="icon-box me-3"><i class="bi bi-map"></i></div>
+                        VỊ TRÍ TRÊN BẢN ĐỒ
+                    </div>
+                    <div class="flex-grow-1 ms-4 position-relative">
+                        <div class="input-group shadow-sm">
+                            <span class="input-group-text bg-black border-secondary border-end-0 text-muted" style="border-radius: 12px 0 0 12px;"><i class="bi bi-search"></i></span>
+                            <input type="text" id="map-search-input" class="form-control bg-black border-secondary text-white p-2 border-end-0" 
+                                   placeholder="Gõ địa chỉ để tìm kiếm..." style="border-radius: 0; font-size: 13px;" autocomplete="off"
+                                   @bind="mapSearchQuery" @bind:event="oninput" @onkeyup="HandleSearchKeyUp">
+                            <button class="btn btn-danger px-3" type="button" id="map-search-btn" style="border-radius: 0 12px 12px 0;"
+                                    @onclick="HandleSearchClick">
+                                <i class="bi bi-geo-alt-fill me-1"></i> Tìm
+                            </button>
+                        </div>
+                        <!-- Container gợi ý địa chỉ -->
+                        <ul id="map-suggestions" class="suggestion-list"></ul>
+                    </div>
                 </div>
-                <div class="text-center pb-3 pt-2">
-                    <small style="color:#4a4a5a;"><i class="bi bi-mouse me-1"></i>Kéo thả dấu ghim để cập nhật vị trí</small>
+                <div style="height: 400px; border-radius: 20px; overflow: hidden; border: 1px solid rgba(255,255,255,0.05);">
+                    <div id="map" style="height: 100%; width: 100%; background-color: #1a1a1a;"></div>
+                </div>
+                <div class="text-center mt-3 d-flex align-items-center justify-content-center gap-3">
+                    <small style="color:#4a4a5a;"><i class="bi bi-info-circle me-1"></i>Kéo thả điểm ghim hoặc tìm địa chỉ để cập nhật vị trí</small>
+                    <div class="vr" style="height: 20px; opacity: 0.1;"></div>
+                    <a href="https://www.google.com/maps" target="_blank" class="btn btn-sm btn-outline-warning rounded-pill px-3" style="font-size: 11px;">
+                        <i class="bi bi-google me-1"></i> Mở Google Maps để lấy tọa độ
+                    </a>
+                </div>
+                <!-- Hướng dẫn nhanh -->
+                <div class="mt-3 p-3 rounded-4" style="background: rgba(232,160,32,0.05); border: 1px solid rgba(232,160,32,0.1);">
+                    <div class="d-flex align-items-center justify-content-center flex-wrap gap-2">
+                        <span class="badge rounded-pill bg-warning text-dark px-3 py-2">Bước 1: Chọn vị trí trên Google Maps</span>
+                        <i class="bi bi-chevron-right text-muted"></i>
+                        <span class="badge rounded-pill bg-warning text-dark px-3 py-2">Bước 2: Chuột phải vào điểm đó</span>
+                        <i class="bi bi-chevron-right text-muted"></i>
+                        <span class="badge rounded-pill bg-warning text-dark px-3 py-2">Bước 3: Sao chép tọa độ</span>
+                        <i class="bi bi-chevron-right text-muted"></i>
+                        <span class="badge rounded-pill bg-warning text-dark px-3 py-2">Bước 4: Dán vào ô tìm kiếm và nhấn Tìm</span>
+                    </div>
                 </div>
             </div>
         </div>
 
+        <!-- CỘT PHẢI: MULTIMEDIA & AUTOMATION -->
         <div class="col-lg-5">
-            <div class="dash-card p-4 mb-4">
-                <div class="dash-label mb-3 text-start"><i class="bi bi-image me-2"></i>ẢNH BÌA (1 ẢNH)</div>
-                <div class="image-preview-container mb-3 position-relative mx-auto"
-                     style="width: 100%; height: 220px; background: rgba(255,255,255,0.03); border-radius: 12px; overflow: hidden; border: 2px dashed rgba(255,255,255,0.1);">
-                    @if (!string.IsNullOrEmpty(mainImageUrl))
-                    {
-                        <img src="@mainImageUrl" style="width: 100%; height: 100%; object-fit: cover;" alt="Ảnh bìa" />
-                    }
-                    else
-                    {
-                        <div class="h-100 d-flex flex-column align-items-center justify-content-center" style="color:#4a4a5a;">
-                            <i class="bi bi-cloud-arrow-up fs-1"></i>
-                            <span>Chưa có ảnh bìa</span>
-                        </div>
-                    }
+            <!-- TRẠNG THÁI QR & TTS (ADMIN QUẢN LÝ) -->
+            <div class="dash-card p-4 mb-4" style="background: linear-gradient(145deg, #18181b, #09090b); border: 1px solid rgba(255, 255, 255, 0.05);">
+                <div class="dash-label mb-4 d-flex align-items-center">
+                    <div class="icon-box me-3" style="background: rgba(45, 127, 240, 0.1); color: #2d7ff0;"><i class="bi bi-info-circle-fill"></i></div>
+                    QUẢN LÝ KỸ THUẬT
                 </div>
-                <InputFile OnChange="HandleCoverUpload" class="form-control dash-input" accept="image/*" />
-                <div class="form-text mt-2 text-start" style="color:#4a4a5a;">Tối đa 15MB (.jpg, .png, .webp)</div>
-            </div>
 
-            <div class="dash-card p-4 mb-4">
-                <div class="dash-label mb-3"><i class="bi bi-images me-2"></i>ẢNH QUÁN (NHIỀU ẢNH)</div>
-                <p class="text-muted small">Thêm nhiều ảnh không gian quán; có thể gỡ từng ảnh.</p>
-                <InputFile OnChange="HandleGalleryUpload" class="form-control dash-input mb-3" accept="image/*" multiple />
-                <div class="row g-2">
-                    @foreach (var g in galleryImages)
-                    {
-                        <div class="col-6 col-md-4">
-                            <div class="position-relative rounded overflow-hidden" style="aspect-ratio:1;border:1px solid rgba(255,255,255,0.08);">
-                                <img src="@g.ImageUrl" class="w-100 h-100 object-fit-cover" alt="" />
-                                <button type="button" class="btn btn-sm btn-danger position-absolute top-0 end-0 m-1 py-0 px-2"
-                                        @onclick="() => RemoveGalleryAsync(g.ImageId)">
-                                    <i class="bi bi-x-lg"></i>
-                                </button>
+                <div class="mb-4 p-3 rounded-4" style="background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.05);">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span class="text-white small fw-bold">TRẠNG THÁI ĐA NGÔN NGỮ</span>
+                        <span class="badge rounded-pill bg-info-subtle text-info px-2 py-1" style="font-size: 10px;">Managed by Admin</span>
+                    </div>
+                    
+                    <div class="row g-2">
+                        @foreach (var lang in langStatuses)
+                        {
+                            <div class="col-6">
+                                <div class="d-flex align-items-center p-2 rounded-3" style="background: rgba(255,255,255,0.03);">
+                                    <span class="me-2" style="font-size: 1.2rem;">@GetFlagIcon(lang.Code)</span>
+                                    <div class="flex-grow-1">
+                                        <div class="text-white" style="font-size: 11px; font-weight: 600;">@lang.Name</div>
+                                        <div class="d-flex align-items-center">
+                                            @if (lang.IsReady)
+                                            {
+                                                <i class="bi bi-check-circle-fill text-success me-1" style="font-size: 9px;"></i>
+                                                <span class="text-success" style="font-size: 9px;">Hoàn tất</span>
+                                            }
+                                            else
+                                            {
+                                                <i class="bi bi-dash-circle text-muted me-1" style="font-size: 9px;"></i>
+                                                <span class="text-muted" style="font-size: 9px;">Chưa cập nhật</span>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                    }
+                        }
+                    </div>
+                </div>
+
+                <div class="p-3 mb-0 rounded-4" style="background: rgba(232,160,32,0.05); border: 1px solid rgba(232,160,32,0.1);">
+                    <p class="text-warning small mb-0" style="font-size: 12px; line-height: 1.6;">
+                        <i class="bi bi-lightning-charge-fill me-1"></i>
+                        <strong>Lưu ý:</strong> Mã QR và thuyết minh đa ngôn ngữ sẽ được Admin hỗ trợ cập nhật sau khi bạn thay đổi nội dung mô tả của quán.
+                    </p>
                 </div>
             </div>
 
-
+            <!-- HÌNH ẢNH -->
             <div class="dash-card p-4">
-                <div class="dash-label mb-3"><i class="bi bi-mic me-2"></i>THUYẾT MINH TỰ ĐỘNG KHI TỚI GẦN POI (TTS)</div>
-                <p class="text-muted small mb-3">Dùng nội dung ô <strong>Mô tả</strong> bên trái để tạo audio tự động theo Geofence.</p>
-                <label class="form-label text-muted small fw-bold">GIỌNG ĐỌC</label>
-                <select class="form-select dash-input mb-3" @bind="ttsVoice">
-                    <option value="lannhi">Nữ Miền Nam (Lan Nhi)</option>
-                    <option value="banmai">Nữ Miền Nam (Ban Mai)</option>
-                    <option value="minhquang">Nam Miền Nam (Minh Quang)</option>
-                    <option value="thuquynh">Nữ Miền Bắc (Thu Quỳnh)</option>
-                    <option value="leminh">Nam Miền Bắc (Lê Minh)</option>
-                </select>
-                <button type="button" class="btn btn-danger w-100 rounded-pill" @onclick="GenerateTtsAsync" disabled="@isTtsBusy">
-                    @if (isTtsBusy)
-                    {
-                        <span class="spinner-border spinner-border-sm me-2"></span>
-                    }
-                    Tạo thuyết minh tự động từ mô tả
-                </button>
-                @if (!string.IsNullOrEmpty(lastAutoAudioUrl))
-                {
-                    <div class="mt-3 p-3 rounded" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);">
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <div class="text-warning small">Audio tự động gần POI — nghe thử</div>
-                            <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3"
-                                    @onclick="DeleteAutoAudioAsync" disabled="@isDeletingAudio"
-                                    title="Xoá audio tự động">
-                                @if (isDeletingAudio)
-                                {
-                                    <span class="spinner-border spinner-border-sm me-1"></span>
-                                }
-                                else
-                                {
-                                    <i class="bi bi-trash me-1"></i>
-                                }
-                                Xoá audio
-                            </button>
-                        </div>
-                        <audio controls class="w-100" src="@lastAutoAudioUrl"></audio>
-                    </div>
-                }
-
-                <div class="my-3 pt-3" style="border-top:1px solid rgba(255,255,255,0.06);">
-                    <h6 class="text-white mb-2"><i class="bi bi-qr-code-scan me-2 text-danger"></i>Audio riêng cho quét QR</h6>
-                    <label class="form-label text-muted small fw-bold">TẢI FILE AUDIO CHO QR</label>
-                    <InputFile OnChange="HandleNarrationAudioUpload" class="form-control dash-input" accept="audio/*" />
-                    <div class="form-text text-muted">Hỗ trợ .mp3/.wav/.m4a. File này chỉ dùng khi người dùng quét QR.</div>
+                <div class="dash-label mb-4 d-flex align-items-center">
+                    <div class="icon-box me-3"><i class="bi bi-images"></i></div>
+                    HÌNH ẢNH GIAN HÀNG
                 </div>
-                @if (!string.IsNullOrEmpty(lastQrAudioUrl))
-                {
-                    <div class="mt-3 p-3 rounded" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);">
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <div class="text-warning small">Audio quét QR — nghe thử</div>
-                            <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3"
-                                    @onclick="DeleteQrAudioAsync" disabled="@isDeletingAudio"
-                                    title="Xoá audio QR">
-                                @if (isDeletingAudio)
-                                {
-                                    <span class="spinner-border spinner-border-sm me-1"></span>
-                                }
-                                else
-                                {
-                                    <i class="bi bi-trash me-1"></i>
-                                }
-                                Xoá audio
-                            </button>
-                        </div>
-                        <audio controls class="w-100" src="@lastQrAudioUrl"></audio>
+                
+                <!-- ẢNH BÌA -->
+                <div class="mb-4">
+                    <label class="form-label text-muted small fw-bold mb-2">ẢNH BÌA CHÍNH</label>
+                    <div class="position-relative mb-3 rounded-4 overflow-hidden shadow-sm" style="height: 180px; background:#0f0f13; border: 1px solid rgba(255,255,255,0.05);">
+                        @if (!string.IsNullOrEmpty(mainImageUrl))
+                        {
+                            <img src="@mainImageUrl" style="width: 100%; height: 100%; object-fit: cover;" alt="Cover" />
+                        }
+                        else
+                        {
+                            <div class="h-100 d-flex flex-column align-items-center justify-content-center text-muted">
+                                <i class="bi bi-image fs-1 opacity-25"></i>
+                                <span class="small mt-2">Chưa có ảnh bìa</span>
+                            </div>
+                        }
                     </div>
-                }
+                    <InputFile OnChange="HandleCoverUpload" class="form-control dash-input rounded-pill" accept="image/*" />
+                </div>
+
+                <!-- THƯ VIỆN ẢNH -->
+                <div>
+                    <label class="form-label text-muted small fw-bold mb-2">THƯ VIỆN ẢNH (MENU/KHÔNG GIAN)</label>
+                    <InputFile OnChange="HandleGalleryUpload" class="form-control dash-input rounded-pill mb-3" accept="image/*" multiple />
+                    <div class="row g-2">
+                        @foreach (var g in galleryImages)
+                        {
+                            <div class="col-4">
+                                <div class="position-relative rounded-3 overflow-hidden shadow-sm aspect-ratio-1" style="height: 80px; border: 1px solid rgba(255,255,255,0.05);">
+                                    <img src="@g.ImageUrl" class="w-100 h-100 object-fit-cover" alt="" />
+                                    <button type="button" class="btn btn-sm btn-danger position-absolute top-0 end-0 m-1 p-0 d-flex align-items-center justify-content-center"
+                                            style="width: 20px; height: 20px; border-radius: 5px;"
+                                            @onclick="() => RemoveGalleryAsync(g.ImageId)">
+                                        <i class="bi bi-x" style="font-size: 14px;"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 </div>
+
+<style>
+    .icon-box {
+        width: 32px;
+        height: 32px;
+        background: rgba(200, 55, 45, 0.1);
+        color: #C8372D;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+    }
+    .dash-input {
+        background: #0f0f13 !important;
+        border: 1px solid rgba(255,255,255,0.08) !important;
+        color: #F0EBE3 !important;
+    }
+    .dash-input:focus {
+        border-color: #C8372D !important;
+        box-shadow: 0 0 0 0.25rem rgba(200, 55, 45, 0.1) !important;
+    }
+    .form-control::placeholder {
+        color: #4a4a5a !important;
+    }
+    .aspect-ratio-1 {
+        aspect-ratio: 1;
+    }
+    /* Style cho Google Map Autocomplete */
+    .pac-container {
+        background-color: #1a1a1b;
+        border: 1px solid #333;
+        color: white;
+        font-family: 'Inter', sans-serif;
+        border-radius: 8px;
+        margin-top: 5px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    }
+    .pac-item {
+        border-top: 1px solid #2d2d2d;
+        color: #ccc;
+        padding: 8px 12px;
+        cursor: pointer;
+    }
+    .pac-item:hover {
+        background-color: #2d2d2d;
+    }
+    .pac-item-query {
+        color: white;
+    }
+    .pac-matched {
+        color: #C8372D;
+    }
+
+    /* Suggestion List OSM */
+    .suggestion-list {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: #1a1a1b;
+        border: 1px solid #C8372D;
+        border-radius: 12px;
+        margin-top: 8px;
+        padding: 0;
+        list-style: none;
+        z-index: 2000;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+        display: none;
+        max-height: 350px;
+        overflow-y: auto;
+    }
+    .suggestion-item {
+        display: flex;
+        align-items: center;
+        padding: 12px 16px;
+        cursor: pointer;
+        border-bottom: 1px solid #2d2d2d;
+        transition: background 0.2s;
+    }
+    .suggestion-item:last-child {
+        border-bottom: none;
+    }
+    .suggestion-item:hover {
+        background: #2d2d2d;
+    }
+    .s-icon {
+        width: 32px;
+        height: 32px;
+        background: rgba(255,255,255,0.05);
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 12px;
+        color: #E8A020;
+    }
+    .s-content {
+        flex-grow: 1;
+    }
+    .s-title {
+        color: #fff;
+        font-size: 14px;
+        font-weight: 600;
+        margin-bottom: 2px;
+    }
+    .s-sub {
+        color: #888;
+        font-size: 11px;
+    }
+</style>
 
 @code {
     private string poiName = "";
@@ -211,31 +349,41 @@
     private double latitude = 10.7578;
     private double longitude = 106.7095;
     private string qrCode = "N/A";
-    private string activeQrToken = "";
     private string mainImageUrl = "";
     private List<Image> galleryImages = new();
-    private string ttsVoice = "lannhi";
-    private string? lastAutoAudioUrl;
-    private string? lastQrAudioUrl;
+    private List<LangStatusItem> langStatuses = new();
     private int currentPoiId;
     private int currentUserId;
     private bool isSaving;
     private bool isTtsBusy;
-    private bool isDeletingAudio;
     private bool isError;
     private string? statusMessage;
     private DotNetObjectReference<ThongTinQuan>? dotNetRef;
 
+    private string? mapSearchQuery;
+
+    private async Task HandleSearchClick()
+    {
+        if (string.IsNullOrWhiteSpace(mapSearchQuery)) return;
+        await JS.InvokeVoidAsync("triggerMapSearch", mapSearchQuery, "map-suggestions");
+    }
+
+    private async Task HandleSearchKeyUp(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await HandleSearchClick();
+        }
+    }
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!firstRender)
-            return;
-
+        if (!firstRender) return;
         await LoadDataAsync();
         dotNetRef = DotNetObjectReference.Create(this);
         try
         {
-            await JS.InvokeVoidAsync("initMapPicker", "map", latitude, longitude, dotNetRef);
+            await JS.InvokeVoidAsync("initMapPicker", "map", latitude, longitude, "map-search-input", "map-search-btn", "map-suggestions", dotNetRef);
         }
         catch (Exception ex)
         {
@@ -247,17 +395,14 @@
     {
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         var userIdStr = authState.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        var displayName = authState.User.Identity?.Name ?? "Quán của tôi";
-
-        if (!int.TryParse(userIdStr, out var userId))
-            return;
-
+        if (!int.TryParse(userIdStr, out var userId)) return;
         currentUserId = userId;
-        await PoiService.EnsureVendorPoiAsync(userId, displayName);
 
         var poi = await PoiService.GetPoiByOwnerIdAsync(userId);
         if (poi is null)
-            return;
+        {
+            poi = await PoiService.EnsureVendorPoiAsync(userId, authState.User.Identity?.Name ?? "Quán mới");
+        }
 
         currentPoiId = poi.PoiId;
         poiName = poi.Name;
@@ -267,311 +412,60 @@
         longitude = (double)poi.Longitude;
 
         var firstQr = poi.QrCodes.OrderByDescending(q => q.IsActive).FirstOrDefault();
-        activeQrToken = firstQr?.QrToken ?? "";
-        qrCode = string.IsNullOrEmpty(activeQrToken) ? "Chưa tạo mã QR" : activeQrToken;
-
+        qrCode = firstQr?.QrToken ?? "Chưa có";
         mainImageUrl = poi.ImageUrl ?? "";
         galleryImages = await PoiService.GetStallGalleryAsync(poi.PoiId, userId);
 
-        var viNarration = poi.Narrations?.FirstOrDefault(n => n.IsActive && n.Language != null && n.Language.Code.Equals("vi", StringComparison.OrdinalIgnoreCase));
-        lastAutoAudioUrl = viNarration?.AudioUrlAuto ?? viNarration?.AudioUrl;
-        lastQrAudioUrl = viNarration?.AudioUrlQr;
-
+        // Load lang status
+        await RefreshLangStatusesAsync(poi);
         StateHasChanged();
     }
 
-    private static string GetQrImageUrl(string token)
+    private async Task RefreshLangStatusesAsync(Poi? poi = null)
     {
-        var qrData = Uri.EscapeDataString($"vkfoodtour://{token}");
-        return $"https://api.qrserver.com/v1/create-qr-code/?size=200x200&data={qrData}";
+        if (poi == null) poi = await PoiService.GetPoiByOwnerIdAsync(currentUserId);
+        if (poi == null) return;
+
+        var activeLangs = new[] { 
+            new { Code = "en", Name = "Tiếng Anh" }, 
+            new { Code = "ja", Name = "Tiếng Nhật" }, 
+            new { Code = "ko", Name = "Tiếng Hàn" }, 
+            new { Code = "zh", Name = "Tiếng Trung" } 
+        };
+
+        langStatuses = activeLangs.Select(l => new LangStatusItem {
+            Code = l.Code,
+            Name = l.Name,
+            IsReady = poi.Narrations.Any(n => n.Language.Code == l.Code && !string.IsNullOrEmpty(n.AudioUrlAuto))
+        }).ToList();
     }
 
-    private async Task CreateQrAsync()
+    private async Task SaveChanges()
     {
-        isSaving = true;
-        statusMessage = null;
-        try
+        if (string.IsNullOrWhiteSpace(poiName))
         {
-            var token = await PoiService.EnsurePrimaryQrForVendorAsync(currentPoiId, currentUserId, "Tại quán");
-            if (string.IsNullOrEmpty(token))
-            {
-                statusMessage = "Không tạo được mã QR.";
-                isError = true;
-            }
-            else
-            {
-                activeQrToken = token;
-                qrCode = token;
-                statusMessage = "Đã tạo / cập nhật mã QR.";
-                isError = false;
-            }
-        }
-        catch (Exception ex)
-        {
-            statusMessage = ex.Message;
+            statusMessage = "Tên quán không được để trống.";
             isError = true;
-        }
-        finally
-        {
-            isSaving = false;
-            StateHasChanged();
-        }
-    }
-
-    private async Task DeleteQrAsync()
-    {
-        if (currentPoiId == 0)
             return;
-
+        }
         isSaving = true;
         try
         {
-            var ok = await PoiService.DeleteActiveQrForVendorAsync(currentPoiId, currentUserId);
-            if (!ok)
-            {
-                statusMessage = "Không xóa được mã QR.";
-                isError = true;
-                return;
-            }
-
-            activeQrToken = "";
-            qrCode = "Chưa tạo mã QR";
-            statusMessage = "Đã xóa mã QR hiện tại. Bạn có thể tạo lại mã mới.";
-            isError = false;
+            var ok = await PoiService.UpdateStallInfoAsync(currentPoiId, poiName, poiDescription, poiAddress, latitude, longitude, mainImageUrl);
+            if (!ok) { statusMessage = "Lưu thất bại."; isError = true; }
+            else { statusMessage = "Đã lưu thông tin."; isError = false; }
         }
-        catch (Exception ex)
-        {
-            statusMessage = ex.Message;
-            isError = true;
-        }
-        finally
-        {
-            isSaving = false;
-            StateHasChanged();
-        }
+        catch (Exception ex) { statusMessage = ex.Message; isError = true; }
+        finally { isSaving = false; }
     }
 
-    /// <summary>Tạo lại token QR từ mô tả + tự động tạo TTS audio để app mobile phát ngay khi quét.</summary>
-    private async Task RegenerateQrFromDescriptionOnlyAsync()
-    {
-        if (currentPoiId == 0)
-            return;
-
-        if (string.IsNullOrWhiteSpace(poiDescription))
-        {
-            statusMessage = "Nhập mô tả quán trước khi cập nhật mã QR.";
-            isError = true;
-            StateHasChanged();
-            return;
-        }
-
-        isSaving = true;
-        isTtsBusy = true;
-        statusMessage = "Đang tạo mã QR và audio thuyết minh…";
-        isError = false;
-        StateHasChanged();
-        try
-        {
-            await PoiService.UpdateStallInfoAsync(
-                currentPoiId,
-                poiName,
-                poiDescription,
-                poiAddress,
-                latitude,
-                longitude,
-                mainImageUrl);
-
-            var langId = await PoiService.GetVietnameseLanguageIdAsync();
-            var stem = $"poi{currentPoiId}_vi";
-            var tts = await TtsService.GenerateAndPersistLocalAsync(poiDescription.Trim(), ttsVoice, stem);
-            if (!string.IsNullOrEmpty(tts.ErrorMessage))
-            {
-                statusMessage = $"Tạo TTS thất bại: {tts.ErrorMessage}";
-                isError = true;
-                return;
-            }
-
-            lastAutoAudioUrl = tts.Url;
-            await PoiService.UpsertNarrationAutoAsync(
-                currentPoiId,
-                langId,
-                poiName,
-                poiDescription.Trim(),
-                ttsVoice,
-                tts.Url);
-
-            var token = await PoiService.RegenerateQrFromDescriptionAsync(
-                currentPoiId,
-                currentUserId,
-                poiDescription,
-                "Tại quán (mô tả)");
-
-            if (!string.IsNullOrWhiteSpace(token))
-            {
-                activeQrToken = token;
-                qrCode = token;
-            }
-
-            statusMessage = "Đã tạo mã QR + audio thuyết minh từ mô tả. App mobile quét QR sẽ tự động phát audio.";
-            isError = false;
-        }
-        catch (Exception ex)
-        {
-            statusMessage = FormatSaveException(ex);
-            isError = true;
-        }
-        finally
-        {
-            isSaving = false;
-            isTtsBusy = false;
-            StateHasChanged();
-        }
-    }
-
-    private async Task GenerateTtsAsync()
-    {
-        if (string.IsNullOrWhiteSpace(poiDescription))
-        {
-            statusMessage = "Hãy nhập mô tả quán trước khi tạo thuyết minh.";
-            isError = true;
-            StateHasChanged();
-            return;
-        }
-
-        isTtsBusy = true;
-        statusMessage = "Đang gọi FPT.AI và lưu file…";
-        isError = false;
-        StateHasChanged();
-
-        try
-        {
-            // Luôn đồng bộ mô tả hiện tại vào POI trước khi tạo TTS
-            // để đảm bảo thuyết minh được tạo đúng theo nội dung mới nhất.
-            await PoiService.UpdateStallInfoAsync(
-                currentPoiId,
-                poiName,
-                poiDescription,
-                poiAddress,
-                latitude,
-                longitude,
-                mainImageUrl);
-
-            var langId = await PoiService.GetVietnameseLanguageIdAsync();
-            var stem = $"poi{currentPoiId}_vi";
-            var tts = await TtsService.GenerateAndPersistLocalAsync(poiDescription.Trim(), ttsVoice, stem);
-            if (!string.IsNullOrEmpty(tts.ErrorMessage))
-            {
-                statusMessage = tts.ErrorMessage;
-                isError = true;
-                return;
-            }
-
-            lastAutoAudioUrl = tts.Url;
-            await PoiService.UpsertNarrationAutoAsync(
-                currentPoiId,
-                langId,
-                poiName,
-                poiDescription.Trim(),
-                ttsVoice,
-                tts.Url);
-
-            var refreshedToken = await PoiService.RegenerateQrFromDescriptionAsync(
-                currentPoiId,
-                currentUserId,
-                poiDescription,
-                "Tại quán (tạo từ mô tả)");
-            if (!string.IsNullOrWhiteSpace(refreshedToken))
-            {
-                activeQrToken = refreshedToken;
-                qrCode = refreshedToken;
-            }
-
-            statusMessage = "Đã lưu file MP3 trên máy chủ (/uploads) và cập nhật mã QR theo mô tả.";
-            isError = false;
-        }
-        catch (Exception ex)
-        {
-            statusMessage = FormatSaveException(ex);
-            isError = true;
-        }
-        finally
-        {
-            isTtsBusy = false;
-            StateHasChanged();
-        }
-    }
-
-    private static string FormatSaveException(Exception ex)
-    {
-        var cur = ex;
-        var parts = new List<string>();
-        while (cur is not null && parts.Count < 4)
-        {
-            if (!string.IsNullOrWhiteSpace(cur.Message))
-                parts.Add(cur.Message.Trim());
-            cur = cur.InnerException;
-        }
-
-        return parts.Count == 0 ? "Lỗi không xác định." : string.Join(" → ", parts);
-    }
-
-    private async Task HandleNarrationAudioUpload(InputFileChangeEventArgs e)
-    {
-        if (e.FileCount == 0 || currentPoiId == 0)
-            return;
-
-        try
-        {
-            isSaving = true;
-            var file = e.File;
-            var ext = Path.GetExtension(file.Name).ToLowerInvariant();
-            var fileName = $"poi{currentPoiId}_manual_{Guid.NewGuid():N}{ext}";
-            var folder = Path.GetFullPath(Path.Combine(Env.ContentRootPath, "..", "UploadsData", "narration"));
-            Directory.CreateDirectory(folder);
-
-            await using var fs = new FileStream(Path.Combine(folder, fileName), FileMode.Create);
-            await file.OpenReadStream(30 * 1024 * 1024).CopyToAsync(fs);
-
-            var url = $"/uploads/narration/{fileName}";
-            var langId = await PoiService.GetVietnameseLanguageIdAsync();
-            await PoiService.UpsertNarrationQrAsync(
-                currentPoiId,
-                langId,
-                string.IsNullOrWhiteSpace(poiName) ? "Thuyết minh QR" : $"{poiName} (QR)",
-                string.IsNullOrWhiteSpace(poiDescription) ? $"Nội dung thuyết minh của {poiName}" : poiDescription.Trim(),
-                url);
-
-            var refreshedToken = await PoiService.RegenerateQrFromDescriptionAsync(
-                currentPoiId,
-                currentUserId,
-                poiDescription,
-                "Tại quán (tạo từ mô tả)");
-            if (!string.IsNullOrWhiteSpace(refreshedToken))
-            {
-                activeQrToken = refreshedToken;
-                qrCode = refreshedToken;
-            }
-
-            lastQrAudioUrl = url;
-            statusMessage = "Đã tải audio cho kịch bản quét QR và cập nhật mã QR theo mô tả.";
-            isError = false;
-        }
-        catch (Exception ex)
-        {
-            statusMessage = $"Lỗi upload audio: {ex.Message}";
-            isError = true;
-        }
-        finally
-        {
-            isSaving = false;
-            StateHasChanged();
-        }
-    }
+    private string GetFlagIcon(string code) => code switch {
+        "en" => "🇺🇸", "ja" => "🇯🇵", "ko" => "🇰🇷", "zh" => "🇨🇳", "vi" => "🇻🇳", _ => "🌐"
+    };
 
     private async Task HandleCoverUpload(InputFileChangeEventArgs e)
     {
-        if (e.FileCount == 0 || currentPoiId == 0)
-            return;
+        if (e.FileCount == 0 || currentPoiId == 0) return;
         try
         {
             isSaving = true;
@@ -583,25 +477,16 @@
             await using var fs = new FileStream(Path.Combine(folder, fileName), FileMode.Create);
             await file.OpenReadStream(15 * 1024 * 1024).CopyToAsync(fs);
             mainImageUrl = $"/uploads/poi/{fileName}";
-            statusMessage = "Đã chọn ảnh bìa — nhấn Lưu để ghi vào hệ thống.";
+            statusMessage = "Đã chọn ảnh bìa mới — nhấn Lưu để hoàn thành.";
             isError = false;
         }
-        catch (Exception ex)
-        {
-            statusMessage = $"Lỗi upload: {ex.Message}";
-            isError = true;
-        }
-        finally
-        {
-            isSaving = false;
-            StateHasChanged();
-        }
+        catch (Exception ex) { statusMessage = $"Lỗi upload: {ex.Message}"; isError = true; }
+        finally { isSaving = false; StateHasChanged(); }
     }
 
     private async Task HandleGalleryUpload(InputFileChangeEventArgs e)
     {
-        if (e.FileCount == 0 || currentPoiId == 0)
-            return;
+        if (e.FileCount == 0 || currentPoiId == 0) return;
         try
         {
             isSaving = true;
@@ -617,129 +502,35 @@
                 var url = $"/uploads/poi/{fileName}";
                 await PoiService.AddStallGalleryImageAsync(currentPoiId, currentUserId, url);
             }
-
             galleryImages = await PoiService.GetStallGalleryAsync(currentPoiId, currentUserId);
-            statusMessage = "Đã thêm ảnh vào thư viện.";
+            statusMessage = "Đã cập nhật thư viện ảnh.";
             isError = false;
         }
-        catch (Exception ex)
-        {
-            statusMessage = ex.Message;
-            isError = true;
-        }
-        finally
-        {
-            isSaving = false;
-            StateHasChanged();
-        }
+        catch (Exception ex) { statusMessage = ex.Message; isError = true; }
+        finally { isSaving = false; StateHasChanged(); }
     }
 
-    private async Task RemoveGalleryAsync(int imageId)
+    private async Task RemoveGalleryAsync(int id)
     {
-        await PoiService.RemoveStallGalleryImageAsync(imageId, currentUserId);
+        await PoiService.RemoveStallGalleryImageAsync(id, currentUserId);
         galleryImages = await PoiService.GetStallGalleryAsync(currentPoiId, currentUserId);
         StateHasChanged();
     }
 
-    private async Task SaveChanges()
-    {
-        if (string.IsNullOrWhiteSpace(poiName))
-        {
-            statusMessage = "Tên quán không được để trống.";
-            isError = true;
-            return;
-        }
-
-        isSaving = true;
-        statusMessage = null;
-        try
-        {
-            var ok = await PoiService.UpdateStallInfoAsync(currentPoiId, poiName, poiDescription, poiAddress, latitude, longitude, mainImageUrl);
-            statusMessage = ok ? "Đã cập nhật thông tin quán." : "Lưu thất bại.";
-            isError = !ok;
-        }
-        catch (Exception ex)
-        {
-            statusMessage = ex.Message;
-            isError = true;
-        }
-        finally
-        {
-            isSaving = false;
-        }
-    }
-
-    [JSInvokable]
-    public void OnMapLocationChanged(double lat, double lng)
-    {
-        latitude = lat;
-        longitude = lng;
-        StateHasChanged();
-    }
-
-    private async Task DeleteAutoAudioAsync()
-    {
-        if (currentPoiId == 0 || isDeletingAudio) return;
-        isDeletingAudio = true;
-        statusMessage = null;
-        try
-        {
-            var ok = await PoiService.DeleteNarrationAutoAudioAsync(currentPoiId);
-            if (ok)
-            {
-                lastAutoAudioUrl = null;
-                statusMessage = "Đã xoá audio tự động.";
-                isError = false;
-            }
-            else
-            {
-                statusMessage = "Không tìm thấy audio để xoá.";
-                isError = true;
-            }
-        }
-        catch (Exception ex)
-        {
-            statusMessage = ex.Message;
-            isError = true;
-        }
-        finally
-        {
-            isDeletingAudio = false;
-            StateHasChanged();
-        }
-    }
-
-    private async Task DeleteQrAudioAsync()
-    {
-        if (currentPoiId == 0 || isDeletingAudio) return;
-        isDeletingAudio = true;
-        statusMessage = null;
-        try
-        {
-            var ok = await PoiService.DeleteNarrationQrAudioAsync(currentPoiId);
-            if (ok)
-            {
-                lastQrAudioUrl = null;
-                statusMessage = "Đã xoá audio QR.";
-                isError = false;
-            }
-            else
-            {
-                statusMessage = "Không tìm thấy audio QR để xoá.";
-                isError = true;
-            }
-        }
-        catch (Exception ex)
-        {
-            statusMessage = ex.Message;
-            isError = true;
-        }
-        finally
-        {
-            isDeletingAudio = false;
-            StateHasChanged();
-        }
+    [JSInvokable] public void OnMapLocationChanged(double lat, double lng) { latitude = lat; longitude = lng; StateHasChanged(); }
+    
+    [JSInvokable] 
+    public void OnAddressSearchSelected(string formattedAddress) 
+    { 
+        poiAddress = formattedAddress; 
+        StateHasChanged(); 
     }
 
     public void Dispose() => dotNetRef?.Dispose();
+
+    private class LangStatusItem {
+        public string Code { get; set; } = "";
+        public string Name { get; set; } = "";
+        public bool IsReady { get; set; }
+    }
 }

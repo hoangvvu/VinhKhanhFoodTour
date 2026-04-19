@@ -7,6 +7,8 @@
 @inject ApplicationDbContext Db
 @inject GoogleTranslateService TranslateService
 @inject TtsService TtsService
+@inject PoiService PoiService
+@inject IJSRuntime JS
 
 <div class="dash-page p-4">
 
@@ -310,6 +312,57 @@
                 </div>
             }
         </div>
+
+        @* ══════════════════════════════════════════════════════════
+           CỘT PHẢI: CÔNG CỤ DỊCH HÀNG LOẠT
+           ══════════════════════════════════════════════════════════ *@
+        <div class="col-lg-7">
+            <div class="dash-card p-4 h-100">
+                <div class="dash-label mb-4 d-flex align-items-center">
+                    <div class="me-3" style="width:32px;height:32px;background:rgba(200,55,45,0.1);color:#C8372D;border-radius:8px;display:flex;align-items:center;justify-content:center;">
+                        <i class="bi bi-lightning-charge-fill"></i>
+                    </div>
+                    CÔNG CỤ DỊCH HÀNG LOẠT & TTS TỰ ĐỘNG
+                </div>
+
+                <div class="p-4 rounded-4 mb-4" style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small fw-bold">NGÔN NGỮ NGUỒN</label>
+                            <select class="form-select dash-input" @bind="sourceLanguageId">
+                                @foreach (var l in languages)
+                                {
+                                    <option value="@l.LanguageId">@l.Name (@l.Code)</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small fw-bold">NGÔN NGỮ ĐÍCH (DỊCH SANG)</label>
+                            <select class="form-select dash-input" @bind="targetLanguageId">
+                                <option value="0">-- Chọn ngôn ngữ --</option>
+                                @foreach (var l in languages.Where(x => x.LanguageId != sourceLanguageId))
+                                {
+                                    <option value="@l.LanguageId">@l.Name (@l.Code)</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex gap-3 mt-4">
+                    <button class="btn btn-danger rounded-pill px-4 shadow" @onclick="StartBatchTranslate" disabled="@isProcessing">
+                        @if (isProcessing)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2"></span>
+                        }
+                        <i class="bi bi-translate me-2"></i>Dịch & Tạo Audio Hàng Loạt
+                    </button>
+                    <button class="btn btn-outline-danger rounded-pill px-4" @onclick="CleanupLegacyAudio" disabled="@isProcessing">
+                        <i class="bi bi-trash3 me-2"></i>Dọn dẹp Audio cũ
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -318,6 +371,7 @@
     private List<LanguageRow> languages = new();
     private List<Poi> pois = new();
     private bool isLoadingLanguages = true;
+    private bool isProcessing;
 
     // ── Form thêm ngôn ngữ ──
     private string newLangCode = "";
@@ -710,6 +764,39 @@
     private void ConfirmOverwrite(bool doOverwrite)
     {
         overwriteTcs?.TrySetResult(doOverwrite);
+    }
+
+    private async Task CleanupLegacyAudio()
+    {
+        if (isProcessing) return;
+        
+        var confirm = await JS.InvokeAsync<bool>("confirm", "Bạn có chắc chắn muốn xóa tất cả liên kết audio thủ công cũ của TOÀN BỘ các quán không? Hành động này không thể hoàn tác.");
+        if (!confirm) return;
+
+        isProcessing = true;
+        alertMessage = "Đang dọn dẹp dữ liệu audio cũ...";
+        alertClass = "alert-info";
+        alertIcon = "bi-info-circle";
+        StateHasChanged();
+
+        try
+        {
+            var count = await PoiService.GlobalCleanupLegacyAudioAsync();
+            alertMessage = $"Đã dọn dẹp xong! Tổng cộng {count} bản ghi narration đã được đưa về trạng thái thuần AI.";
+            alertClass = "alert-success";
+            alertIcon = "bi-check-circle";
+        }
+        catch (Exception ex)
+        {
+            alertMessage = $"Lỗi khi dọn dẹp: {ex.Message}";
+            alertClass = "alert-danger";
+            alertIcon = "bi-exclamation-triangle";
+        }
+        finally
+        {
+            isProcessing = false;
+            StateHasChanged();
+        }
     }
 
     private void CancelTranslate()
