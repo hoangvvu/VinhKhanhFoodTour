@@ -97,8 +97,16 @@ public class TtsService
     {
         byte[] bytes;
         
-        // Luồng 1: Nếu là giọng Neural (Edge) hoặc không phải tiếng Việt và không có API Key FPT
-        bool useEdge = voiceCode.Contains("Neural") || (!string.Equals(languageCode, "vi", StringComparison.OrdinalIgnoreCase) && string.IsNullOrEmpty(_apiKey));
+        // Luồng 1: Dùng Google Free TTS nếu:
+        //  - voice là Neural (Edge TTS)
+        //  - Không có API key FPT
+        //  - Ngôn ngữ không được FPT hỗ trợ (chỉ vi/en được FPT hỗ trợ)
+        var fptSupportedLanguages = new[] { "vi", "en" };
+        bool isFptSupportedLang = fptSupportedLanguages.Any(l =>
+            string.Equals(languageCode, l, StringComparison.OrdinalIgnoreCase));
+        bool useEdge = voiceCode.Contains("Neural")
+            || string.IsNullOrEmpty(_apiKey)
+            || !isFptSupportedLang;
 
         if (useEdge)
         {
