@@ -1,0 +1,417 @@
+@page "/admin/phan-hoi-app"
+@using Microsoft.AspNetCore.Authorization
+@using VKFoodTour.Infrastructure.Data
+@using VKFoodTour.Infrastructure.Entities
+@using Microsoft.EntityFrameworkCore
+@attribute [Authorize(Roles = "Admin")]
+@rendermode InteractiveServer
+
+@inject ApplicationDbContext Db
+
+<PageTitle>Phản hồi ứng dụng - Vĩnh Khánh Admin</PageTitle>
+
+<style>
+    .fb-bg { background-color: #0f0f13; min-height: 100vh; }
+
+    .stat-card {
+        border-radius: 16px;
+        border: 1px solid rgba(255,255,255,0.06);
+        background: #1a1a24;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .stat-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.4) !important; }
+
+    .section-label {
+        font-size: 11px;
+        letter-spacing: 2px;
+        font-weight: 700;
+        color: #4a4a5a;
+        text-transform: uppercase;
+        padding-bottom: 8px;
+        border-bottom: 1px solid rgba(255,255,255,0.05);
+        margin-bottom: 16px;
+    }
+
+    .fb-row {
+        background: #1a1a24;
+        border: 1px solid rgba(255,255,255,0.05);
+        border-radius: 14px;
+        transition: border-color 0.15s, background 0.15s;
+    }
+    .fb-row:hover { border-color: rgba(232,160,32,0.3); background: #1e1e2c; }
+
+    .star-filled  { color: #facc15; }
+    .star-empty   { color: #2a2a38; }
+
+    .filter-btn {
+        background: #1a1a24;
+        border: 1px solid rgba(255,255,255,0.08);
+        color: #9ca3af;
+        border-radius: 10px;
+        padding: 6px 14px;
+        font-size: 13px;
+        cursor: pointer;
+        transition: all 0.15s;
+    }
+    .filter-btn:hover, .filter-btn.active {
+        background: rgba(232,160,32,0.12);
+        border-color: rgba(232,160,32,0.4);
+        color: #E8A020;
+    }
+
+    .progress-thin { height: 6px; border-radius: 3px; background: #2a2a38; }
+
+    .device-badge {
+        background: rgba(255,255,255,0.05);
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 8px;
+        padding: 2px 8px;
+        font-size: 11px;
+        color: #6b7280;
+        font-family: monospace;
+    }
+
+    .delete-btn {
+        background: transparent;
+        border: 1px solid rgba(200,55,45,0.3);
+        color: #f87171;
+        border-radius: 8px;
+        padding: 4px 10px;
+        font-size: 12px;
+        cursor: pointer;
+        transition: all 0.15s;
+    }
+    .delete-btn:hover { background: rgba(200,55,45,0.12); border-color: #f87171; }
+</style>
+
+<div class="fb-bg p-4">
+
+    @if (isLoading)
+    {
+        <div class="d-flex flex-column align-items-center justify-content-center" style="min-height: 60vh;">
+            <div class="spinner-border text-warning mb-3" style="width: 3rem; height: 3rem;" role="status"></div>
+            <span style="color: #4a4a5a; font-size: 13px; letter-spacing: 1px;">ĐANG TẢI DỮ LIỆU…</span>
+        </div>
+    }
+    else
+    {
+        @* ── HEADER ── *@
+        <div class="d-flex justify-content-between align-items-center mb-5">
+            <div>
+                <h2 class="fw-bold mb-1" style="color: #F0EBE3; letter-spacing: -0.5px;">
+                    <i class="bi bi-chat-heart-fill me-2" style="color: #E8A020;"></i>Phản hồi ứng dụng
+                </h2>
+                <span style="color: #4a4a5a; font-size: 13px;">
+                    Đánh giá số sao và góp ý từ du khách qua tab Hồ sơ trong app
+                </span>
+            </div>
+            <button class="filter-btn" @onclick="LoadDataAsync">
+                <i class="bi bi-arrow-clockwise me-1"></i> Làm mới
+            </button>
+        </div>
+
+        @* ── SUMMARY STATS ── *@
+        <div class="section-label"><i class="bi bi-bar-chart me-2"></i>TỔNG QUAN</div>
+        <div class="row g-3 mb-5">
+            <div class="col-6 col-md-3">
+                <div class="stat-card p-4">
+                    <div style="background: rgba(232,160,32,0.12); border-radius: 10px; padding: 10px; width: fit-content; margin-bottom: 12px;">
+                        <i class="bi bi-chat-dots-fill" style="color: #E8A020; font-size: 1.3rem;"></i>
+                    </div>
+                    <h3 class="text-white fw-bold mb-1">@totalFeedbacks</h3>
+                    <div style="color: #4a4a5a; font-size: 12px; letter-spacing: 0.5px;">TỔNG PHẢN HỒI</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-card p-4">
+                    <div style="background: rgba(250,204,21,0.12); border-radius: 10px; padding: 10px; width: fit-content; margin-bottom: 12px;">
+                        <i class="bi bi-star-fill" style="color: #facc15; font-size: 1.3rem;"></i>
+                    </div>
+                    <h3 class="fw-bold mb-1" style="color: #facc15;">@avgRating.ToString("0.0") ★</h3>
+                    <div style="color: #4a4a5a; font-size: 12px; letter-spacing: 0.5px;">ĐIỂM TRUNG BÌNH</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-card p-4">
+                    <div style="background: rgba(74,222,128,0.1); border-radius: 10px; padding: 10px; width: fit-content; margin-bottom: 12px;">
+                        <i class="bi bi-emoji-smile-fill" style="color: #4ade80; font-size: 1.3rem;"></i>
+                    </div>
+                    <h3 class="fw-bold mb-1" style="color: #4ade80;">@positivePct%</h3>
+                    <div style="color: #4a4a5a; font-size: 12px; letter-spacing: 0.5px;">TÍCH CỰC (4–5 SAO)</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-card p-4">
+                    <div style="background: rgba(13,202,240,0.12); border-radius: 10px; padding: 10px; width: fit-content; margin-bottom: 12px;">
+                        <i class="bi bi-calendar-check" style="color: #0dcaf0; font-size: 1.3rem;"></i>
+                    </div>
+                    <h3 class="text-white fw-bold mb-1">@todayCount</h3>
+                    <div style="color: #4a4a5a; font-size: 12px; letter-spacing: 0.5px;">HÔM NAY</div>
+                </div>
+            </div>
+        </div>
+
+        @* ── RATING DISTRIBUTION + STAR BREAKDOWN ── *@
+        <div class="row g-4 mb-5">
+            <div class="col-md-5">
+                <div class="stat-card p-4 h-100">
+                    <div class="d-flex align-items-center gap-2 mb-4">
+                        <div style="background: rgba(250,204,21,0.12); border-radius: 10px; padding: 8px 10px;">
+                            <i class="bi bi-star-half" style="color: #facc15;"></i>
+                        </div>
+                        <span class="fw-bold" style="color: #d1d5db; letter-spacing: 0.5px; font-size: 13px;">PHÂN BỔ SỐ SAO</span>
+                    </div>
+                    @for (int star = 5; star >= 1; star--)
+                    {
+                        var s = star;
+                        var count = ratingDist.GetValueOrDefault(s, 0);
+                        var pct   = totalFeedbacks > 0 ? (int)(count * 100.0 / totalFeedbacks) : 0;
+                        <div class="d-flex align-items-center gap-3 mb-3">
+                            <button class="filter-btn @(selectedRating == s ? "active" : "")"
+                                    style="min-width: 52px; padding: 4px 8px;"
+                                    @onclick="() => SetRatingFilter(s)">
+                                @s <i class="bi bi-star-fill" style="font-size: 10px;"></i>
+                            </button>
+                            <div class="flex-grow-1 progress-thin">
+                                <div style="background: linear-gradient(90deg, #facc15, #f59e0b); width: @pct%; height: 100%; border-radius: 3px; transition: width 0.4s;"></div>
+                            </div>
+                            <span style="color: #6b7280; font-size: 12px; min-width: 36px; text-align: right;">@count</span>
+                        </div>
+                    }
+                    @if (selectedRating > 0)
+                    {
+                        <button class="filter-btn w-100 mt-2" @onclick="() => SetRatingFilter(0)">
+                            <i class="bi bi-x-circle me-1"></i> Bỏ lọc
+                        </button>
+                    }
+                </div>
+            </div>
+
+            <div class="col-md-7">
+                <div class="stat-card p-4 h-100">
+                    <div class="d-flex align-items-center gap-2 mb-4">
+                        <div style="background: rgba(232,160,32,0.12); border-radius: 10px; padding: 8px 10px;">
+                            <i class="bi bi-chat-left-quote-fill" style="color: #E8A020;"></i>
+                        </div>
+                        <span class="fw-bold" style="color: #d1d5db; letter-spacing: 0.5px; font-size: 13px;">GÓP Ý GẦN NHẤT</span>
+                    </div>
+                    @if (recentComments.Any())
+                    {
+                        @foreach (var fb in recentComments)
+                        {
+                            <div class="d-flex gap-3 mb-3 pb-3" style="border-bottom: 1px solid rgba(255,255,255,0.04);">
+                                <div>
+                                    @for (int i = 1; i <= 5; i++)
+                                    {
+                                        <i class="bi @(i <= fb.Rating ? "bi-star-fill star-filled" : "bi-star star-empty")" style="font-size: 11px;"></i>
+                                    }
+                                </div>
+                                <div>
+                                    <div style="color: #d1d5db; font-size: 13px; line-height: 1.5;">@fb.Comment</div>
+                                    <div style="color: #4a4a5a; font-size: 11px; margin-top: 4px;">@fb.CreatedAt.ToString("dd/MM/yyyy HH:mm")</div>
+                                </div>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <div class="text-center py-4" style="color: #4a4a5a;">
+                            <i class="bi bi-chat-slash fs-3 d-block mb-2"></i>Chưa có góp ý nào có nội dung
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        @* ── DANH SÁCH CHI TIẾT ── *@
+        <div class="section-label">
+            <i class="bi bi-list-ul me-2"></i>
+            TẤT CẢ PHẢN HỒI
+            @if (selectedRating > 0)
+            {
+                <span style="color: #E8A020; font-size: 11px; margin-left: 8px;">
+                    — đang lọc @selectedRating sao (@filteredList.Count kết quả)
+                </span>
+            }
+        </div>
+
+        @if (!filteredList.Any())
+        {
+            <div class="text-center py-5" style="color: #4a4a5a;">
+                <i class="bi bi-inbox fs-1 d-block mb-3"></i>
+                <div style="font-size: 15px;">Chưa có phản hồi nào</div>
+                <div style="font-size: 12px; margin-top: 4px;">Du khách gửi từ tab Hồ sơ trong app</div>
+            </div>
+        }
+        else
+        {
+            <div class="d-flex flex-column gap-3">
+                @foreach (var fb in PagedList)
+                {
+                    <div class="fb-row p-4">
+                        <div class="row align-items-center g-3">
+                            @* Sao *@
+                            <div class="col-auto">
+                                <div class="d-flex align-items-center gap-1" style="font-size: 20px;">
+                                    @for (int i = 1; i <= 5; i++)
+                                    {
+                                        <i class="bi @(i <= fb.Rating ? "bi-star-fill star-filled" : "bi-star star-empty")"></i>
+                                    }
+                                </div>
+                                <div class="text-center mt-1" style="color: #E8A020; font-size: 22px; font-weight: 700; line-height: 1;">@fb.Rating</div>
+                            </div>
+                            @* Comment *@
+                            <div class="col">
+                                @if (!string.IsNullOrWhiteSpace(fb.Comment))
+                                {
+                                    <div style="color: #e5e7eb; font-size: 14px; line-height: 1.6;">@fb.Comment</div>
+                                }
+                                else
+                                {
+                                    <div style="color: #4a4a5a; font-size: 13px; font-style: italic;">— Không có góp ý —</div>
+                                }
+                                <div class="d-flex flex-wrap gap-2 mt-2">
+                                    <span class="device-badge">
+                                        <i class="bi bi-phone me-1"></i>@MaskDevice(fb.DeviceId)
+                                    </span>
+                                    @if (!string.IsNullOrWhiteSpace(fb.AppVersion))
+                                    {
+                                        <span class="device-badge">
+                                            <i class="bi bi-app me-1"></i>v@fb.AppVersion
+                                        </span>
+                                    }
+                                    <span class="device-badge">
+                                        <i class="bi bi-clock me-1"></i>@fb.CreatedAt.ToString("dd/MM/yyyy HH:mm")
+                                    </span>
+                                </div>
+                            </div>
+                            @* Delete *@
+                            <div class="col-auto">
+                                <button class="delete-btn" @onclick="() => DeleteFeedbackAsync(fb.FeedbackId)">
+                                    <i class="bi bi-trash3"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            @* ── PAGINATION ── *@
+            @if (totalPages > 1)
+            {
+                <div class="d-flex justify-content-center align-items-center gap-2 mt-4">
+                    <button class="filter-btn" disabled="@(currentPage <= 1)" @onclick="PrevPage">
+                        <i class="bi bi-chevron-left"></i>
+                    </button>
+                    <span style="color: #9ca3af; font-size: 13px;">
+                        Trang @currentPage / @totalPages
+                    </span>
+                    <button class="filter-btn" disabled="@(currentPage >= totalPages)" @onclick="NextPage">
+                        <i class="bi bi-chevron-right"></i>
+                    </button>
+                </div>
+            }
+        }
+    }
+</div>
+
+@code {
+    private bool isLoading = true;
+
+    // Stats
+    private int   totalFeedbacks;
+    private double avgRating;
+    private int   positivePct;
+    private int   todayCount;
+    private Dictionary<int, int> ratingDist = new();
+
+    // Data
+    private List<VKFoodTour.Infrastructure.Entities.AppFeedback> allFeedbacks   = new();
+    private List<VKFoodTour.Infrastructure.Entities.AppFeedback> filteredList   = new();
+    private List<VKFoodTour.Infrastructure.Entities.AppFeedback> recentComments = new();
+
+    // Filter & paging
+    private int selectedRating = 0;   // 0 = all
+    private int currentPage    = 1;
+    private const int PageSize = 10;
+    private int totalPages => (int)Math.Ceiling(filteredList.Count / (double)PageSize);
+    private IEnumerable<VKFoodTour.Infrastructure.Entities.AppFeedback> PagedList =>
+        filteredList.Skip((currentPage - 1) * PageSize).Take(PageSize);
+
+    protected override async Task OnInitializedAsync() => await LoadDataAsync();
+
+    private async Task LoadDataAsync()
+    {
+        isLoading = true;
+        try
+        {
+            allFeedbacks = await Db.AppFeedbacks
+                .AsNoTracking()
+                .OrderByDescending(f => f.CreatedAt)
+                .ToListAsync();
+
+            // Stats
+            totalFeedbacks = allFeedbacks.Count;
+            avgRating = totalFeedbacks > 0
+                ? allFeedbacks.Average(f => (double)f.Rating) : 0;
+
+            var positive = allFeedbacks.Count(f => f.Rating >= 4);
+            positivePct = totalFeedbacks > 0 ? (int)(positive * 100.0 / totalFeedbacks) : 0;
+
+            var today = DateTime.Today;
+            todayCount = allFeedbacks.Count(f => f.CreatedAt.Date == today);
+
+            ratingDist = allFeedbacks
+                .GroupBy(f => (int)f.Rating)
+                .ToDictionary(g => g.Key, g => g.Count());
+
+            recentComments = allFeedbacks
+                .Where(f => !string.IsNullOrWhiteSpace(f.Comment))
+                .Take(4)
+                .ToList();
+
+            ApplyFilter();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[AppFeedback] Load error: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void SetRatingFilter(int star)
+    {
+        selectedRating = star;
+        currentPage    = 1;
+        ApplyFilter();
+    }
+
+    private void ApplyFilter()
+    {
+        filteredList = selectedRating > 0
+            ? allFeedbacks.Where(f => f.Rating == selectedRating).ToList()
+            : allFeedbacks.ToList();
+    }
+
+    private void PrevPage() { if (currentPage > 1) currentPage--; }
+    private void NextPage() { if (currentPage < totalPages) currentPage++; }
+
+    private async Task DeleteFeedbackAsync(int id)
+    {
+        var entity = await Db.AppFeedbacks.FindAsync(id);
+        if (entity is null) return;
+        Db.AppFeedbacks.Remove(entity);
+        await Db.SaveChangesAsync();
+        await LoadDataAsync();
+    }
+
+    /// <summary>Che bớt device ID để bảo mật — hiển thị 8 ký tự đầu + …</summary>
+    private static string MaskDevice(string deviceId)
+    {
+        if (string.IsNullOrWhiteSpace(deviceId)) return "unknown";
+        return deviceId.Length <= 12 ? deviceId : deviceId[..12] + "…";
+    }
+}

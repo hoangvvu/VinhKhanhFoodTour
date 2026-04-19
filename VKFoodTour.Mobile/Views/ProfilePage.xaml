@@ -7,145 +7,145 @@
              BackgroundColor="{StaticResource VKBg}"
              Shell.NavBarIsVisible="False">
 
-    <ScrollView>
-        <VerticalStackLayout Padding="20,52,20,32" Spacing="20">
+    <Grid>
+        <ScrollView>
+            <VerticalStackLayout Padding="20,52,20,32" Spacing="20">
 
-            <Label Text="{Binding UiTitle}"
-                   FontSize="30" FontFamily="BebasNeue"
-                   TextColor="{StaticResource VKText}" CharacterSpacing="0.5"/>
+                <Label Text="{Binding UiTitle}"
+                       FontSize="30" FontFamily="BebasNeue"
+                       TextColor="{StaticResource VKText}" CharacterSpacing="0.5"/>
 
-            <!-- AVATAR CARD -->
-            <Border BackgroundColor="{StaticResource VKCard}"
-                    Stroke="{StaticResource VKStrokeBrush}" StrokeThickness="1" Padding="20">
-                <Border.StrokeShape><RoundRectangle CornerRadius="20"/></Border.StrokeShape>
-                <Grid ColumnDefinitions="60, *" ColumnSpacing="16">
-                    <Border Grid.Column="0" WidthRequest="60" HeightRequest="60"
-                            StrokeThickness="2" Stroke="{StaticResource VKRedBrush}">
-                        <Border.StrokeShape><RoundRectangle CornerRadius="30"/></Border.StrokeShape>
-                        <Border.Background>
-                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                <GradientStop Color="{StaticResource VKRed}" Offset="0"/>
-                                <GradientStop Color="{StaticResource VKRedDark}" Offset="1"/>
-                            </LinearGradientBrush>
-                        </Border.Background>
-                        <Label Text="👤" FontSize="26"
-                               HorizontalOptions="Center" VerticalOptions="Center"/>
+                <!-- AVATAR CARD -->
+                <Border BackgroundColor="{StaticResource VKCard}"
+                        Stroke="{StaticResource VKStrokeBrush}" StrokeThickness="1" Padding="20">
+                    <Border.StrokeShape><RoundRectangle CornerRadius="20"/></Border.StrokeShape>
+                    <Grid ColumnDefinitions="60, *" ColumnSpacing="16">
+                        <Border Grid.Column="0" WidthRequest="60" HeightRequest="60"
+                                StrokeThickness="2" Stroke="{StaticResource VKRedBrush}">
+                            <Border.StrokeShape><RoundRectangle CornerRadius="30"/></Border.StrokeShape>
+                            <Border.Background>
+                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                    <GradientStop Color="{StaticResource VKRed}" Offset="0"/>
+                                    <GradientStop Color="{StaticResource VKRedDark}" Offset="1"/>
+                                </LinearGradientBrush>
+                            </Border.Background>
+                            <Label Text="👤" FontSize="26"
+                                   HorizontalOptions="Center" VerticalOptions="Center"/>
+                        </Border>
+                        <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="4">
+                            <Label Text="{Binding UiTourist}"
+                                   FontSize="18" FontAttributes="Bold"
+                                   TextColor="{StaticResource VKText}"/>
+                            <Label Text="{Binding UiIdLabel}"
+                                   FontSize="12" TextColor="{StaticResource VKTextMuted}"/>
+                        </VerticalStackLayout>
+                    </Grid>
+                </Border>
+
+                <!-- STATS -->
+                <Grid ColumnDefinitions="*, *" ColumnSpacing="12">
+                    <Border Grid.Column="0"
+                            BackgroundColor="{StaticResource VKCard}"
+                            Stroke="{StaticResource VKStrokeBrush}" StrokeThickness="1" Padding="16">
+                        <Border.StrokeShape><RoundRectangle CornerRadius="16"/></Border.StrokeShape>
+                        <VerticalStackLayout Spacing="4">
+                            <Label Text="🎧" FontSize="24"/>
+                            <Label Text="{Binding ListenCount}"
+                                   FontSize="28" FontFamily="BebasNeue"
+                                   TextColor="{StaticResource VKGold}"/>
+                            <Label Text="{Binding UiListened}"
+                                   FontSize="11" TextColor="{StaticResource VKTextMuted}"
+                                   CharacterSpacing="0.5"/>
+                        </VerticalStackLayout>
                     </Border>
-                    <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="4">
-                        <Label Text="{Binding UiTourist}"
-                               FontSize="18" FontAttributes="Bold"
-                               TextColor="{StaticResource VKText}"/>
-                        <Label Text="{Binding UiIdLabel}"
-                               FontSize="12" TextColor="{StaticResource VKTextMuted}"/>
-                    </VerticalStackLayout>
+                    <Border Grid.Column="1"
+                            BackgroundColor="{StaticResource VKCard}"
+                            Stroke="{StaticResource VKStrokeBrush}" StrokeThickness="1" Padding="16">
+                        <Border.StrokeShape><RoundRectangle CornerRadius="16"/></Border.StrokeShape>
+                        <VerticalStackLayout Spacing="4">
+                            <Label Text="❤️" FontSize="24"/>
+                            <Label Text="{Binding FavoriteCount}"
+                                   FontSize="28" FontFamily="BebasNeue"
+                                   TextColor="{StaticResource VKRed}"/>
+                            <Label Text="{Binding UiFavorites}"
+                                   FontSize="11" TextColor="{StaticResource VKTextMuted}"
+                                   CharacterSpacing="0.5"/>
+                        </VerticalStackLayout>
+                    </Border>
                 </Grid>
-            </Border>
 
-            <!-- STATS -->
-            <Grid ColumnDefinitions="*, *" ColumnSpacing="12">
-                <Border Grid.Column="0"
-                        BackgroundColor="{StaticResource VKCard}"
+                <!-- NGÔN NGỮ -->
+                <Border BackgroundColor="{StaticResource VKCard}"
                         Stroke="{StaticResource VKStrokeBrush}" StrokeThickness="1" Padding="16">
                     <Border.StrokeShape><RoundRectangle CornerRadius="16"/></Border.StrokeShape>
-                    <VerticalStackLayout Spacing="4">
-                        <Label Text="🎧" FontSize="24"/>
-                        <Label Text="{Binding ListenCount}"
-                               FontSize="28" FontFamily="BebasNeue"
-                               TextColor="{StaticResource VKGold}"/>
-                        <Label Text="{Binding UiListened}"
-                               FontSize="11" TextColor="{StaticResource VKTextMuted}"
-                               CharacterSpacing="0.5"/>
+                    <VerticalStackLayout Spacing="10">
+                        <Label Text="{Binding UiLanguageLabel}"
+                               FontSize="12" FontAttributes="Bold"
+                               TextColor="{StaticResource VKTextMuted}" CharacterSpacing="1.5"/>
+                        <Border BackgroundColor="{StaticResource VKCardDeep}"
+                                Stroke="{StaticResource VKStrokeBrush}" StrokeThickness="1" Padding="4">
+                            <Border.StrokeShape><RoundRectangle CornerRadius="10"/></Border.StrokeShape>
+                            <Picker ItemsSource="{Binding LanguageOptions}"
+                                    ItemDisplayBinding="{Binding DisplayName}"
+                                    SelectedItem="{Binding SelectedLanguageItem}"
+                                    TextColor="{StaticResource VKText}"
+                                    BackgroundColor="Transparent"
+                                    TitleColor="{StaticResource VKTextMuted}"/>
+                        </Border>
                     </VerticalStackLayout>
                 </Border>
-                <Border Grid.Column="1"
-                        BackgroundColor="{StaticResource VKCard}"
-                        Stroke="{StaticResource VKStrokeBrush}" StrokeThickness="1" Padding="16">
-                    <Border.StrokeShape><RoundRectangle CornerRadius="16"/></Border.StrokeShape>
-                    <VerticalStackLayout Spacing="4">
-                        <Label Text="❤️" FontSize="24"/>
-                        <Label Text="{Binding FavoriteCount}"
-                               FontSize="28" FontFamily="BebasNeue"
-                               TextColor="{StaticResource VKRed}"/>
-                        <Label Text="{Binding UiFavorites}"
-                               FontSize="11" TextColor="{StaticResource VKTextMuted}"
-                               CharacterSpacing="0.5"/>
-                    </VerticalStackLayout>
-                </Border>
-            </Grid>
 
-            <!-- NGÔN NGỮ -->
+                <!-- NÚT ĐĂNG XUẤT -->
+                <Button Text="{Binding UiLogout}"
+                        Clicked="OnLogoutClicked"
+                        BackgroundColor="{StaticResource VKRed}"
+                        TextColor="White" FontAttributes="Bold"
+                        CornerRadius="12" HeightRequest="48"
+                        Margin="0,20,0,0"/>
+
+            </VerticalStackLayout>
+        </ScrollView>
+
+        <!-- FEEDBACK POPUP OVERLAY -->
+        <ContentView IsVisible="{Binding IsFeedbackPopupVisible}" BackgroundColor="#CC000000" InputTransparent="False">
+            <!-- Center the popup -->
             <Border BackgroundColor="{StaticResource VKCard}"
-                    Stroke="{StaticResource VKStrokeBrush}" StrokeThickness="1" Padding="16">
-                <Border.StrokeShape><RoundRectangle CornerRadius="16"/></Border.StrokeShape>
-                <VerticalStackLayout Spacing="10">
-                    <Label Text="{Binding UiLanguageLabel}"
-                           FontSize="12" FontAttributes="Bold"
-                           TextColor="{StaticResource VKTextMuted}" CharacterSpacing="1.5"/>
-                    <Border BackgroundColor="{StaticResource VKCardDeep}"
-                            Stroke="{StaticResource VKStrokeBrush}" StrokeThickness="1" Padding="4">
-                        <Border.StrokeShape><RoundRectangle CornerRadius="10"/></Border.StrokeShape>
-                        <Picker ItemsSource="{Binding LanguageOptions}"
-                                ItemDisplayBinding="{Binding DisplayName}"
-                                SelectedItem="{Binding SelectedLanguageItem}"
-                                TextColor="{StaticResource VKText}"
-                                BackgroundColor="Transparent"
-                                TitleColor="{StaticResource VKTextMuted}"/>
-                    </Border>
-                </VerticalStackLayout>
-            </Border>
-
-            <!-- ĐÁNH GIÁ ỨNG DỤNG -->
-            <Border BackgroundColor="{StaticResource VKCard}"
-                    Stroke="{StaticResource VKStrokeBrush}" StrokeThickness="1" Padding="16">
-                <Border.StrokeShape><RoundRectangle CornerRadius="16"/></Border.StrokeShape>
-                <VerticalStackLayout Spacing="12">
-
-                    <!-- Header -->
-                    <Label Text="{Binding UiAppFeedback}"
-                           FontSize="17" FontFamily="BebasNeue"
-                           TextColor="{StaticResource VKText}" CharacterSpacing="0.5"/>
+                    Stroke="{StaticResource VKStrokeBrush}" StrokeThickness="1" 
+                    Margin="32" Padding="20" VerticalOptions="Center" HorizontalOptions="Fill">
+                <Border.StrokeShape><RoundRectangle CornerRadius="20"/></Border.StrokeShape>
+                <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="16">
+                    <!-- Close button (Logout & Exit directly) in top right -->
+                    <Button Grid.Row="0" Text="✕" HorizontalOptions="End" VerticalOptions="Start"
+                            BackgroundColor="Transparent" TextColor="{StaticResource VKTextMuted}" 
+                            FontSize="20" WidthRequest="40" HeightRequest="40" CornerRadius="20"
+                            Clicked="OnClosePopupClicked" Margin="0,-10,-10,0"/>
+                    
+                    <Label Grid.Row="0" Text="{Binding UiAppFeedback}"
+                           FontSize="20" FontFamily="BebasNeue"
+                           TextColor="{StaticResource VKText}" CharacterSpacing="0.5" 
+                           HorizontalOptions="Center" VerticalOptions="Center" Margin="0,0,0,10"/>
 
                     <!-- Star hint -->
-                    <Label Text="{Binding UiStarHint}"
-                           FontSize="12" TextColor="{StaticResource VKTextMuted}"/>
-
-                    <!-- 5 Stars (tappable) -->
-                    <HorizontalStackLayout Spacing="8" HorizontalOptions="Center">
-                        <Label Text="{Binding Star1}" FontSize="38"
-                               TextColor="{StaticResource VKGold}">
-                            <Label.GestureRecognizers>
-                                <TapGestureRecognizer Command="{Binding SetRatingCommand}" CommandParameter="1"/>
-                            </Label.GestureRecognizers>
+                    <HorizontalStackLayout Grid.Row="1" Spacing="8" HorizontalOptions="Center">
+                        <Label Text="{Binding Star1}" FontSize="42" TextColor="{StaticResource VKGold}">
+                            <Label.GestureRecognizers><TapGestureRecognizer Command="{Binding SetRatingCommand}" CommandParameter="1"/></Label.GestureRecognizers>
                         </Label>
-                        <Label Text="{Binding Star2}" FontSize="38"
-                               TextColor="{StaticResource VKGold}">
-                            <Label.GestureRecognizers>
-                                <TapGestureRecognizer Command="{Binding SetRatingCommand}" CommandParameter="2"/>
-                            </Label.GestureRecognizers>
+                        <Label Text="{Binding Star2}" FontSize="42" TextColor="{StaticResource VKGold}">
+                            <Label.GestureRecognizers><TapGestureRecognizer Command="{Binding SetRatingCommand}" CommandParameter="2"/></Label.GestureRecognizers>
                         </Label>
-                        <Label Text="{Binding Star3}" FontSize="38"
-                               TextColor="{StaticResource VKGold}">
-                            <Label.GestureRecognizers>
-                                <TapGestureRecognizer Command="{Binding SetRatingCommand}" CommandParameter="3"/>
-                            </Label.GestureRecognizers>
+                        <Label Text="{Binding Star3}" FontSize="42" TextColor="{StaticResource VKGold}">
+                            <Label.GestureRecognizers><TapGestureRecognizer Command="{Binding SetRatingCommand}" CommandParameter="3"/></Label.GestureRecognizers>
                         </Label>
-                        <Label Text="{Binding Star4}" FontSize="38"
-                               TextColor="{StaticResource VKGold}">
-                            <Label.GestureRecognizers>
-                                <TapGestureRecognizer Command="{Binding SetRatingCommand}" CommandParameter="4"/>
-                            </Label.GestureRecognizers>
+                        <Label Text="{Binding Star4}" FontSize="42" TextColor="{StaticResource VKGold}">
+                            <Label.GestureRecognizers><TapGestureRecognizer Command="{Binding SetRatingCommand}" CommandParameter="4"/></Label.GestureRecognizers>
                         </Label>
-                        <Label Text="{Binding Star5}" FontSize="38"
-                               TextColor="{StaticResource VKGold}">
-                            <Label.GestureRecognizers>
-                                <TapGestureRecognizer Command="{Binding SetRatingCommand}" CommandParameter="5"/>
-                            </Label.GestureRecognizers>
+                        <Label Text="{Binding Star5}" FontSize="42" TextColor="{StaticResource VKGold}">
+                            <Label.GestureRecognizers><TapGestureRecognizer Command="{Binding SetRatingCommand}" CommandParameter="5"/></Label.GestureRecognizers>
                         </Label>
                     </HorizontalStackLayout>
 
-                    <!-- Comment box -->
-                    <Border BackgroundColor="{StaticResource VKCardDeep}"
-                            Stroke="{StaticResource VKStrokeBrush}" StrokeThickness="1" Padding="2">
+                    <Border Grid.Row="2" BackgroundColor="{StaticResource VKCardDeep}"
+                            Stroke="{StaticResource VKStrokeBrush}" StrokeThickness="1" Padding="4">
                         <Border.StrokeShape><RoundRectangle CornerRadius="10"/></Border.StrokeShape>
                         <Editor Placeholder="{Binding UiFeedbackPlaceholder}"
                                 Text="{Binding AppFeedbackComment}"
@@ -155,30 +155,19 @@
                     </Border>
 
                     <!-- Status message -->
-                    <Label Text="{Binding FeedbackStatus}"
+                    <Label Grid.Row="3" Text="{Binding FeedbackStatus}"
                            FontSize="12" TextColor="{StaticResource VKTextMuted}"
-                           IsVisible="{Binding FeedbackStatus, Converter={StaticResource StringNotEmptyConverter}}"/>
+                           IsVisible="{Binding FeedbackStatus, Converter={StaticResource StringNotEmptyConverter}}"
+                           HorizontalOptions="Center"/>
 
                     <!-- Send button -->
-                    <Button Text="{Binding UiSendFeedback}"
+                    <Button Grid.Row="4" Text="{Binding UiSendFeedback}"
                             Command="{Binding SubmitAppFeedbackCommand}"
                             BackgroundColor="{StaticResource VKGold}"
                             TextColor="#1A1818" FontAttributes="Bold"
                             CornerRadius="12" HeightRequest="48"/>
-                </VerticalStackLayout>
+                </Grid>
             </Border>
-
-            <!-- THOÁT ỨNG DỤNG -->
-            <Button x:Name="BtnExitApp"
-                    Text="{Binding UiExitApp}"
-                    Clicked="OnExitAppClicked"
-                    BackgroundColor="Transparent"
-                    BorderColor="{StaticResource VKStroke}" BorderWidth="1"
-                    TextColor="{StaticResource VKTextMuted}"
-                    FontSize="13" FontAttributes="Bold"
-                    CornerRadius="12" HeightRequest="48"
-                    CharacterSpacing="1"/>
-
-        </VerticalStackLayout>
-    </ScrollView>
+        </ContentView>
+    </Grid>
 </ContentPage>

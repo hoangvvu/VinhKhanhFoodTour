@@ -22,6 +22,7 @@ public partial class ProfilePage : ContentPage
         if (BindingContext is ProfileViewModel vm)
         {
             vm.SyncApiUrlFromSettings();
+            vm.OnFeedbackCompleted = LogOutAndExitApp;
 
             // Bọc fire-and-forget trong try/catch để không gây JavaProxyThrowable
             _ = Task.Run(async () =>
@@ -40,24 +41,23 @@ public partial class ProfilePage : ContentPage
 
     private void OnLogoutClicked(object? sender, EventArgs e)
     {
-        _session.Logout();
-
-        // Sau khi bỏ đăng nhập, quay về WelcomePage thay vì LoginPage
-        var welcome = _services.GetRequiredService<WelcomePage>();
-        Application.Current!.Windows[0].Page = new NavigationPage(welcome);
+        if (BindingContext is ProfileViewModel vm)
+        {
+            vm.IsFeedbackPopupVisible = true;
+        }
     }
 
-    /// <summary>Hiện hộp thoại xác nhận rồi thoát ứng dụng.</summary>
-    private async void OnExitAppClicked(object? sender, EventArgs e)
+    private void OnClosePopupClicked(object? sender, EventArgs e)
     {
-        var vm = BindingContext as ProfileViewModel;
-        var title   = vm?.UiExitConfirmTitle ?? "Thoát ứng dụng";
-        var message = vm?.UiExitConfirmMsg   ?? "Bạn có chắc muốn thoát không?";
-        var yes     = vm?.UiExitYes          ?? "Thoát";
-        var no      = vm?.UiExitNo           ?? "Hủy";
+        LogOutAndExitApp();
+    }
 
-        var confirm = await DisplayAlert(title, message, yes, no);
-        if (confirm)
-            Application.Current!.Quit();
+    private void LogOutAndExitApp()
+    {
+        // 1. Đăng xuất
+        _session.Logout();
+        
+        // 2. Thoát ứng dụng
+        Application.Current?.Quit();
     }
 }

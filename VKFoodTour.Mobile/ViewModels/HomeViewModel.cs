@@ -445,6 +445,9 @@ public partial class ProfileViewModel : ObservableObject
 
     [ObservableProperty] private string appFeedbackComment = string.Empty;
     [ObservableProperty] private string feedbackStatus = string.Empty;
+    [ObservableProperty] private bool isFeedbackPopupVisible = false;
+
+    public Action? OnFeedbackCompleted { get; set; }
 
     public string Star1 => AppRating >= 1 ? "★" : "☆";
     public string Star2 => AppRating >= 2 ? "★" : "☆";
@@ -521,7 +524,11 @@ public partial class ProfileViewModel : ObservableObject
             : _localization.GetString("Profile_FeedbackFail");
 
         if (ok)
+        {
             AppFeedbackComment = string.Empty;
+            IsFeedbackPopupVisible = false;
+            OnFeedbackCompleted?.Invoke();
+        }
     }
 
     private void RefreshProfileUiStrings()
