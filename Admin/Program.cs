@@ -132,6 +132,7 @@ builder.Services.AddHttpClient(TtsService.HttpClientFptDownload, client =>
 });
 
 builder.Services.AddTransient<TtsService>();
+builder.Services.AddTransient<EdgeTtsService>();
 builder.Services.AddHttpClient<GoogleTranslateService>();
 
 builder.Services.AddScoped<PoiService>();

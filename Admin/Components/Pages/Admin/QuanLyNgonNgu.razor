@@ -6,6 +6,7 @@
 
 @inject ApplicationDbContext Db
 @inject GoogleTranslateService TranslateService
+@inject TtsService TtsService
 
 <div class="dash-page p-4">
 
@@ -148,6 +149,17 @@
                             <span class="text-white">@previewError</span>
                         </div>
                     }
+
+                    <div class="mt-4">
+                        <label class="form-label text-muted small fw-bold">GỢI Ý NHANH</label>
+                        <div class="d-flex flex-wrap gap-2">
+                            <button class="btn btn-sm btn-outline-secondary rounded-pill" @onclick='() => SetLangSuggest("en", "en-US-AriaNeural", "English")'>🇺🇸 English</button>
+                            <button class="btn btn-sm btn-outline-secondary rounded-pill" @onclick='() => SetLangSuggest("ja", "ja-JP-NanamiNeural", "日本語")'>🇯🇵 Japanese</button>
+                            <button class="btn btn-sm btn-outline-secondary rounded-pill" @onclick='() => SetLangSuggest("ko", "ko-KR-SunHiNeural", "한국어")'>🇰🇷 Korean</button>
+                            <button class="btn btn-sm btn-outline-secondary rounded-pill" @onclick='() => SetLangSuggest("zh-cn", "zh-CN-XiaoxiaoNeural", "简体中文")'>🇨🇳 Chinese</button>
+                            <button class="btn btn-sm btn-outline-secondary rounded-pill" @onclick='() => SetLangSuggest("vi", "vi-VN-HoaiMyNeural", "Tiếng Việt (Edge)")'>🇻🇳 Việt Neural</button>
+                        </div>
+                    </div>
 
                     <button class="btn btn-danger rounded-pill px-4 fw-bold mt-4 d-flex align-items-center gap-2"
                             @onclick="AddLanguage"
@@ -627,11 +639,25 @@
                 var translatedContent = await TranslateService.TranslateAsync(
                     narration.Content, sourceLang.Code, targetLang.Code);
 
+                // ── TỰ ĐỘNG SINH TTS ──
+                string? autoAudioUrl = null;
+                var voice = targetLang.TtsVoice;
+                if (!string.IsNullOrEmpty(voice) && !string.IsNullOrEmpty(translatedContent))
+                {
+                    var stem = $"auto_{targetLang.Code}_{narration.PoiId}";
+                    var tts = await TtsService.GenerateAndPersistLocalAsync(
+                        translatedContent, voice, stem, targetLang.Code);
+                    
+                    if (string.IsNullOrEmpty(tts.ErrorMessage))
+                        autoAudioUrl = tts.Url;
+                }
+
                 if (existingNarration != null)
                 {
                     // Ghi đè
                     existingNarration.Title = translatedTitle;
                     existingNarration.Content = translatedContent;
+                    existingNarration.AudioUrlAuto = autoAudioUrl ?? existingNarration.AudioUrlAuto;
                     existingNarration.UpdatedAt = DateTime.Now;
                     Db.Narrations.Update(existingNarration);
                 }
@@ -644,6 +670,7 @@
                         LanguageId = targetLanguageId,
                         Title = translatedTitle,
                         Content = translatedContent,
+                        AudioUrlAuto = autoAudioUrl,
                         TtsVoice = targetLang.TtsVoice,
                         IsActive = true,
                         UpdatedAt = DateTime.Now
@@ -706,6 +733,15 @@
             "warning" => "bi-exclamation-triangle-fill",
             _ => "bi-exclamation-triangle"
         };
+    }
+
+    private void SetLangSuggest(string code, string voice, string name)
+    {
+        newLangCode = code;
+        newTtsVoice = voice;
+        newLangDisplayName = name;
+        previewLangName = name;
+        previewError = null;
     }
 
     // ── View Models ──

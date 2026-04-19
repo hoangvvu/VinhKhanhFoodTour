@@ -1,6 +1,7 @@
 @page "/admin/intro-audio"
 @rendermode InteractiveServer
 @inject TtsService TtsService
+@inject GoogleTranslateService TranslateService
 @inject IDbContextFactory<ApplicationDbContext> DbFactory
 @inject IWebHostEnvironment Env
 
@@ -67,19 +68,30 @@
                        placeholder="VD: Chào mừng đến phố ẩm thực Vĩnh Khánh"
                        @bind="introTitle" />
 
-                <label class="form-label text-muted small">Nội dung thuyết minh (sẽ được chuyển thành giọng đọc)</label>
+                <div class="d-flex justify-content-between align-items-end mb-2">
+                    <label class="form-label text-muted small mb-0">Nội dung thuyết minh (sẽ được chuyển thành giọng đọc)</label>
+                    @if (selectedLang != "vi")
+                    {
+                        <button class="btn btn-sm btn-outline-warning" @onclick="AutoTranslateIntroAsync" disabled="@isTranslating">
+                            @if (isTranslating)
+                            {
+                                <span class="spinner-border spinner-border-sm me-1"></span>
+                            }
+                            else
+                            {
+                                <i class="bi bi-translate me-1"></i>
+                            }
+                            Dịch nội dung từ Tiếng Việt
+                        </button>
+                    }
+                </div>
                 <textarea class="form-control dash-input mb-3" rows="7"
                           placeholder="VD: Chào mừng bạn đến với phố ẩm thực Vĩnh Khánh, con phố sầm uất tại Quận 4 TP.HCM..."
                           @bind="introText"></textarea>
 
-                <label class="form-label text-muted small">Giọng đọc</label>
-                <select class="form-select dash-input mb-4" @bind="ttsVoice">
-                    <option value="lannhi">Nữ Miền Nam (Lan Nhi)</option>
-                    <option value="banmai">Nữ Miền Nam (Ban Mai)</option>
-                    <option value="minhquang">Nam Miền Nam (Minh Quang)</option>
-                    <option value="thuquynh">Nữ Miền Bắc (Thu Quỳnh)</option>
-                    <option value="leminh">Nam Miền Bắc (Lê Minh)</option>
-                </select>
+                <label class="form-label text-muted small">Cấu hình Giọng đọc (TTS Voice)</label>
+                <input type="text" class="form-control dash-input mb-4" @bind="ttsVoice" 
+                       placeholder="Ví dụ: lannhi (FPT), en-US-AriaNeural (Edge)" />
 
                 <div class="d-flex gap-3">
                     <button class="btn btn-warning rounded-pill px-4 fw-bold flex-grow-1"
@@ -171,6 +183,7 @@
     private string? currentAudioUrl;
     private bool isBusy = false;
     private bool isError = false;
+    private bool isTranslating = false;
     private string? statusMessage;
 
     protected override async Task OnInitializedAsync()
@@ -179,7 +192,7 @@
         languages = await db.Languages.AsNoTracking()
             .Where(l => l.IsActive)
             .OrderBy(l => l.Code)
-            .Select(l => new LanguageItem { Code = l.Code, Name = l.Name })
+            .Select(l => new LanguageItem { Code = l.Code, Name = l.Name, TtsVoice = l.TtsVoice })
             .ToListAsync();
 
         if (!languages.Any())
@@ -209,6 +222,59 @@
         currentAudioUrl = settings.GetValueOrDefault(audioKey);
         introText  = settings.GetValueOrDefault(textKey) ?? "";
         introTitle = settings.GetValueOrDefault(titleKey) ?? "";
+
+        // Fill default voice from language
+        var langItem = languages.FirstOrDefault(l => l.Code == selectedLang);
+        if (langItem != null && !string.IsNullOrEmpty(langItem.TtsVoice))
+        {
+            ttsVoice = langItem.TtsVoice;
+        }
+        else
+        {
+            ttsVoice = selectedLang == "vi" ? "lannhi" : "";
+        }
+    }
+
+    private async Task AutoTranslateIntroAsync()
+    {
+        isTranslating = true;
+        statusMessage = null;
+        StateHasChanged();
+
+        try
+        {
+            await using var db = await DbFactory.CreateDbContextAsync();
+            var viTitleKey = "intro_title_vi";
+            var viTextKey = "intro_text_vi";
+            
+            var viTitle = await db.TourSettings.AsNoTracking().FirstOrDefaultAsync(s => s.SettingKey == viTitleKey);
+            var viText = await db.TourSettings.AsNoTracking().FirstOrDefaultAsync(s => s.SettingKey == viTextKey);
+
+            if (viText == null || string.IsNullOrWhiteSpace(viText.SettingValue))
+            {
+                statusMessage = "Chưa có nội dung tiếng Việt để dịch, hãy soạn tiếng Việt trước!";
+                isError = true;
+                return;
+            }
+
+            introText = await TranslateService.TranslateAsync(viText.SettingValue, "vi", selectedLang);
+            if (viTitle != null && !string.IsNullOrWhiteSpace(viTitle.SettingValue))
+            {
+                introTitle = await TranslateService.TranslateAsync(viTitle.SettingValue, "vi", selectedLang);
+            }
+
+            statusMessage = "Đã dịch tự động từ tiếng Việt thành công! Bạn có thể chỉnh sửa lại text trước khi tạo Audio.";
+            isError = false;
+        }
+        catch (Exception ex)
+        {
+            statusMessage = $"Lỗi khi dịch: {ex.Message}";
+            isError = true;
+        }
+        finally
+        {
+            isTranslating = false;
+        }
     }
 
     private async Task GenerateIntroTtsAsync()
@@ -227,7 +293,7 @@
         {
             // Lưu text + title vào DB ngay cả khi chưa tạo audio
             var stem = $"intro_{selectedLang}";
-            var result = await TtsService.GenerateAndPersistLocalAsync(introText, ttsVoice, stem);
+            var result = await TtsService.GenerateAndPersistLocalAsync(introText, ttsVoice, stem, selectedLang);
 
             if (!string.IsNullOrEmpty(result.ErrorMessage))
             {
@@ -320,5 +386,6 @@
     {
         public string Code { get; set; } = "";
         public string Name { get; set; } = "";
+        public string? TtsVoice { get; set; } = "";
     }
 }

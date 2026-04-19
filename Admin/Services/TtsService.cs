@@ -24,12 +24,14 @@ public class TtsService
 
     private readonly IHttpClientFactory _httpFactory;
     private readonly IWebHostEnvironment _env;
+    private readonly EdgeTtsService _edgeTts;
     private readonly string _apiKey;
 
-    public TtsService(IHttpClientFactory httpFactory, IWebHostEnvironment env, IConfiguration configuration)
+    public TtsService(IHttpClientFactory httpFactory, IWebHostEnvironment env, IConfiguration configuration, EdgeTtsService edgeTts)
     {
         _httpFactory = httpFactory;
         _env = env;
+        _edgeTts = edgeTts;
         _apiKey = configuration["FptAi:Tts:ApiKey"]
                   ?? Environment.GetEnvironmentVariable("FPT_AI_TTS_API_KEY")
                   ?? string.Empty;
@@ -90,30 +92,49 @@ public class TtsService
         return new TtsResult { Url = audioUrl };
     }
 
-    /// <summary>Gọi FPT TTS rồi tải file về thư mục UploadsData/narration. Chỉ trả về URL /uploads/... khi đã có file trên đĩa.</summary>
-    public async Task<TtsResult> GenerateAndPersistLocalAsync(string text, string voiceCode, string fileNameStem, CancellationToken cancellationToken = default)
+    /// <summary>Gọi TTS (FPT hoặc Edge) rồi tải file về thư mục UploadsData/narration.</summary>
+    public async Task<TtsResult> GenerateAndPersistLocalAsync(string text, string voiceCode, string fileNameStem, string? languageCode = null, CancellationToken cancellationToken = default)
     {
-        var remote = await GenerateAudioAsync(text, voiceCode, cancellationToken);
-        if (!string.IsNullOrEmpty(remote.ErrorMessage) || string.IsNullOrWhiteSpace(remote.Url))
-            return remote;
-
-        // FPT thường cần vài giây (đôi khi 10–20s) mới phục vụ file ổn định trên CDN.
-        await Task.Delay(TimeSpan.FromSeconds(4), cancellationToken);
-
         byte[] bytes;
-        try
+        
+        // Luồng 1: Nếu là giọng Neural (Edge) hoặc không phải tiếng Việt và không có API Key FPT
+        bool useEdge = voiceCode.Contains("Neural") || (!string.Equals(languageCode, "vi", StringComparison.OrdinalIgnoreCase) && string.IsNullOrEmpty(_apiKey));
+
+        if (useEdge)
         {
-            bytes = await DownloadAudioWithRetryAsync(remote.Url!, cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"[TTS] Tải MP3 từ FPT thất bại: {ex}");
-            return new TtsResult
+            try
             {
-                ErrorMessage =
-                    "Không tải được file âm thanh từ FPT sau nhiều lần thử (file có thể chưa sẵn sàng hoặc mạng/CDN chặn). " +
-                    "Hãy bấm tạo lại sau 15–30 giây. Chi tiết: " + ex.Message
-            };
+                bytes = await _edgeTts.SynthesizeAsync(text, voiceCode, cancellationToken);
+                if (bytes == null || bytes.Length == 0)
+                    return new TtsResult { ErrorMessage = "Edge TTS không trả về dữ liệu âm thanh." };
+            }
+            catch (Exception ex)
+            {
+                return new TtsResult { ErrorMessage = $"Lỗi Edge TTS: {ex.Message}" };
+            }
+        }
+        else
+        {
+            // Luồng 2: FPT.AI
+            var remote = await GenerateAudioAsync(text, voiceCode, cancellationToken);
+            if (!string.IsNullOrEmpty(remote.ErrorMessage) || string.IsNullOrWhiteSpace(remote.Url))
+                return remote;
+
+            // FPT thường cần vài giây mới phục vụ file ổn định trên CDN.
+            await Task.Delay(TimeSpan.FromSeconds(4), cancellationToken);
+
+            try
+            {
+                bytes = await DownloadAudioWithRetryAsync(remote.Url!, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[TTS] Tải MP3 từ FPT thất bại: {ex}");
+                return new TtsResult
+                {
+                    ErrorMessage = "Không tải được file từ FPT sau nhiều lần thử. Chi tiết: " + ex.Message
+                };
+            }
         }
 
         try

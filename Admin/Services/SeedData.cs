@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using VKFoodTour.Infrastructure.Data;
 using VKFoodTour.Infrastructure.Entities;
 
@@ -39,8 +39,8 @@ public static class SeedData
         if (!await db.Languages.AnyAsync())
         {
             db.Languages.AddRange(
-                new Language { Code = "vi", Name = "Tiếng Việt", IsActive = true },
-                new Language { Code = "en", Name = "English", IsActive = true });
+                new Language { Code = "vi", Name = "Tiếng Việt", IsActive = true, TtsVoice = "lannhi" },
+                new Language { Code = "en", Name = "English", IsActive = true, TtsVoice = "en-US-AriaNeural" });
             await db.SaveChangesAsync();
         }
 
