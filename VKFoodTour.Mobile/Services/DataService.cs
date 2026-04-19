@@ -300,7 +300,7 @@ public class DataService : IDataService
             new LanguageListItemDto { Code = "en", Name = "English" }
         };
 
-    public async Task<QrResolveDto?> ResolveQrAsync(string scannedPayload, CancellationToken cancellationToken = default)
+    public async Task<QrResolveDto?> ResolveQrAsync(string scannedPayload, string? languageCode = null, CancellationToken cancellationToken = default)
     {
         await EnsureApiBaseResolvedAsync(cancellationToken);
         var token = ExtractQrToken(scannedPayload);
@@ -310,7 +310,8 @@ public class DataService : IDataService
         try
         {
             var encoded = Uri.EscapeDataString(token);
-            var response = await _http.GetAsync($"{ApiRoot}/api/Qr/resolve/{encoded}", cancellationToken);
+            var langQuery = string.IsNullOrEmpty(languageCode) ? "" : $"?lang={Uri.EscapeDataString(languageCode)}";
+            var response = await _http.GetAsync($"{ApiRoot}/api/Qr/resolve/{encoded}{langQuery}", cancellationToken);
             if (!response.IsSuccessStatusCode)
                 return null;
 

@@ -11,6 +11,8 @@ public partial class StallDetailViewModel : ObservableObject
     private readonly IDataService _dataService;
     private readonly IFavoriteService _favorites;
     private readonly ILocalizationService _localization;
+    private readonly IAudioPlaybackService _audioPlayback;
+    private readonly IStallNarrationState _narrationState;
 
     [ObservableProperty] private int poiId;
     [ObservableProperty] private string name = string.Empty;
@@ -28,6 +30,7 @@ public partial class StallDetailViewModel : ObservableObject
     [ObservableProperty] private double newRating = 5;
     [ObservableProperty] private string newComment = string.Empty;
     [ObservableProperty] private string reviewStatus = string.Empty;
+    [ObservableProperty] private string? narrationAudioUrl;
 
 
     [ObservableProperty] private string uiPageTitle = string.Empty;
@@ -41,11 +44,13 @@ public partial class StallDetailViewModel : ObservableObject
 
     public string FavoriteIcon => IsFavorite ? "♥" : "♡";
 
-    public StallDetailViewModel(IDataService dataService, IFavoriteService favorites, ILocalizationService localization)
+    public StallDetailViewModel(IDataService dataService, IFavoriteService favorites, ILocalizationService localization, IAudioPlaybackService audioPlayback, IStallNarrationState narrationState)
     {
         _dataService = dataService;
         _favorites = favorites;
         _localization = localization;
+        _audioPlayback = audioPlayback;
+        _narrationState = narrationState;
         _localization.LanguageChanged += (_, _) =>
             MainThread.BeginInvokeOnMainThread(RefreshStallDetailUiStrings);
         RefreshStallDetailUiStrings();
@@ -68,7 +73,7 @@ public partial class StallDetailViewModel : ObservableObject
     private void UpdateRatingLabel() =>
         RatingLabel = _localization.GetString("StallDetail_RatingFmt", NewRating);
 
-    public async Task LoadAsync(int id)
+    public async Task LoadAsync(int id, bool fromQr = false)
     {
         if (id <= 0)
             return;
@@ -89,6 +94,28 @@ public partial class StallDetailViewModel : ObservableObject
             GalleryImages = detail.GalleryImages;
             MenuItems = detail.MenuItems;
             IsFavorite = _favorites.IsFavorite(PoiId);
+
+            // Tìm audio phù hợp ngôn ngữ hiện tại
+            var langCode = _localization.CurrentLanguageCode;
+            var matchedAudio = detail.AudioItems
+                .Where(a => string.Equals(a.LanguageCode, langCode, StringComparison.OrdinalIgnoreCase))
+                .FirstOrDefault()
+                ?? detail.AudioItems.FirstOrDefault(); // fallback audio đầu tiên
+
+            NarrationAudioUrl = matchedAudio?.Url;
+
+            // Auto-play nếu từ QR scan
+            if (fromQr)
+            {
+                // Ưu tiên audio URL cụ thể từ QR resolve nếu có
+                var url = _narrationState.PendingAudioUrl ?? NarrationAudioUrl;
+                _narrationState.PendingAudioUrl = null;
+
+                if (!string.IsNullOrEmpty(url))
+                {
+                    await _audioPlayback.PlayAsync(url);
+                }
+            }
 
             var reviews = await _dataService.GetPoiReviewsAsync(id);
             PoiReviews = new ObservableCollection<ReviewListItemDto>(reviews);

@@ -8,14 +8,16 @@ public partial class WelcomePage : ContentPage
     private readonly IAuthSessionService _session;
     private readonly ISettingsService _settings;
     private readonly IDataService _dataService;
+    private readonly IServiceProvider _serviceProvider;
 
-    public WelcomePage(AppShell shell, IAuthSessionService session, ISettingsService settings, IDataService dataService)
+    public WelcomePage(AppShell shell, IAuthSessionService session, ISettingsService settings, IDataService dataService, IServiceProvider serviceProvider)
     {
         InitializeComponent();
         _shell = shell;
         _session = session;
         _settings = settings;
         _dataService = dataService;
+        _serviceProvider = serviceProvider;
     }
 
     protected override void OnAppearing()
@@ -56,7 +58,8 @@ public partial class WelcomePage : ContentPage
             // Ghi nhận log active khi vùa vào app
             await _dataService.TrackEventAsync(poiId: null, eventType: "move");
 
-            Application.Current!.Windows[0].Page = _shell;
+            // Luôn đi đến màn hình chọn ngôn ngữ khi nhấn Khám phá
+            Application.Current!.Windows[0].Page = _serviceProvider.GetRequiredService<LanguagePickerPage>();
         }
         catch (Exception ex)
         {

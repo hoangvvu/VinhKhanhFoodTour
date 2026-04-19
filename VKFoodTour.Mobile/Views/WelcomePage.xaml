@@ -139,7 +139,7 @@
 
                 <!-- CTA Button -->
                 <Button x:Name="ExploreButton"
-                        Text="Khám phá ngay  →"
+                        Text="Explore  →"
                         Clicked="OnExploreClicked"
                         FontSize="17"
                         FontAttributes="Bold"

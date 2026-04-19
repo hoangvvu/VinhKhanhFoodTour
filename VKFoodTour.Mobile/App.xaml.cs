@@ -8,17 +8,25 @@ public partial class App : Application
     private readonly AppShell _shell;
     private readonly IServiceProvider _services;
     private readonly IAuthSessionService _session;
+    private readonly ILocalizationService _localization;
+    private readonly ISettingsService _settings;
 
-    public App(AppShell shell, IServiceProvider services, IAuthSessionService session)
+    public App(AppShell shell, IServiceProvider services, IAuthSessionService session, ILocalizationService localization, ISettingsService settings)
     {
         InitializeComponent(); // Colors.xaml / Styles.xaml được merge tại đây
         _shell = shell;
         _services = services;
         _session = session;
+        _localization = localization;
+        _settings = settings;
     }
 
     protected override Window CreateWindow(IActivationState? activationState)
     {
+        // Mỗi lần mở app mới (Cold Start) -> Reset về Tiếng Anh và bắt đầu chọn lại
+        _localization.SetLanguageCode("en");
+        _settings.HasPickedLanguage = false;
+
         // Luôn hiển thị WelcomePage khi mở app
         var welcome = _services.GetRequiredService<WelcomePage>();
         var window = new Window(new NavigationPage(welcome));

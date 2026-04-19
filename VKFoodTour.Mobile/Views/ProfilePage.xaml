@@ -74,27 +74,6 @@
                     </Border>
                 </Grid>
 
-                <!-- NGÔN NGỮ -->
-                <Border BackgroundColor="{StaticResource VKCard}"
-                        Stroke="{StaticResource VKStrokeBrush}" StrokeThickness="1" Padding="16">
-                    <Border.StrokeShape><RoundRectangle CornerRadius="16"/></Border.StrokeShape>
-                    <VerticalStackLayout Spacing="10">
-                        <Label Text="{Binding UiLanguageLabel}"
-                               FontSize="12" FontAttributes="Bold"
-                               TextColor="{StaticResource VKTextMuted}" CharacterSpacing="1.5"/>
-                        <Border BackgroundColor="{StaticResource VKCardDeep}"
-                                Stroke="{StaticResource VKStrokeBrush}" StrokeThickness="1" Padding="4">
-                            <Border.StrokeShape><RoundRectangle CornerRadius="10"/></Border.StrokeShape>
-                            <Picker ItemsSource="{Binding LanguageOptions}"
-                                    ItemDisplayBinding="{Binding DisplayName}"
-                                    SelectedItem="{Binding SelectedLanguageItem}"
-                                    TextColor="{StaticResource VKText}"
-                                    BackgroundColor="Transparent"
-                                    TitleColor="{StaticResource VKTextMuted}"/>
-                        </Border>
-                    </VerticalStackLayout>
-                </Border>
-
                 <!-- NÚT ĐĂNG XUẤT -->
                 <Button Text="{Binding UiLogout}"
                         Clicked="OnLogoutClicked"

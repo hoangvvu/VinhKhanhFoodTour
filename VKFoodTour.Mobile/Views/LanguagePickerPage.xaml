@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="VKFoodTour.Mobile.Views.LanguagePickerPage"
+             BackgroundColor="#0F0E0E"
+             Shell.NavBarIsVisible="False">
+
+    <Grid RowDefinitions="Auto, *, Auto" Padding="30, 60, 30, 40">
+        
+        <!-- Header -->
+        <VerticalStackLayout Grid.Row="0" Spacing="8" HorizontalOptions="Center" Margin="0,0,0,40">
+            <Label Text="🌐" FontSize="48" HorizontalOptions="Center"/>
+            <Label Text="Language / Ngôn ngữ" 
+                   FontSize="24" 
+                   FontAttributes="Bold" 
+                   TextColor="#F0EBE3" 
+                   HorizontalOptions="Center"/>
+            <Label Text="Select your preferred language to begin" 
+                   FontSize="14" 
+                   TextColor="#9A8F8F" 
+                   HorizontalOptions="Center"/>
+        </VerticalStackLayout>
+
+        <!-- Language List -->
+        <ScrollView Grid.Row="1">
+            <VerticalStackLayout x:Name="LanguageListContainer" Spacing="12">
+                <!-- Items will be populated in code-behind -->
+                <ActivityIndicator x:Name="Loader" IsRunning="True" Color="#C8372D"/>
+            </VerticalStackLayout>
+        </ScrollView>
+
+        <!-- Footer / Action -->
+        <Button Grid.Row="2"
+                x:Name="ContinueButton"
+                Text="Continue / Tiếp tục"
+                IsEnabled="False"
+                Clicked="OnContinueClicked"
+                BackgroundColor="#C8372D"
+                TextColor="White"
+                FontAttributes="Bold"
+                CornerRadius="18"
+                HeightRequest="58"
+                Margin="0,20,0,0"/>
+
+    </Grid>
+</ContentPage>

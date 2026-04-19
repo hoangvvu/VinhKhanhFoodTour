@@ -31,7 +31,7 @@ public partial class StallDetailPage : ContentPage
     {
         base.OnAppearing();
         if (_poiId > 0)
-            await _vm.LoadAsync(_poiId);
+            await _vm.LoadAsync(_poiId, _fromQr);
     }
 
     private async void OnBackClicked(object? sender, EventArgs e)

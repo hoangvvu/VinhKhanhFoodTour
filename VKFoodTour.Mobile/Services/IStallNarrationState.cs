@@ -10,4 +10,5 @@ public interface IStallNarrationState
     QrResolveDto? Peek();
     /// <summary>Đọc và xóa — chỉ consumer cuối cùng mới gọi.</summary>
     QrResolveDto? Consume();
+    string? PendingAudioUrl { get; set; }
 }

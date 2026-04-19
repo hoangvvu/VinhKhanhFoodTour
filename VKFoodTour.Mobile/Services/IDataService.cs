@@ -17,8 +17,8 @@ public interface IDataService
     Task<AuthResponseDto?> RegisterAsync(string name, string email, string password, CancellationToken cancellationToken = default);
     Task TrackEventAsync(int? poiId, string eventType, int? listenedDurationSec = null, string? languageCode = null, double? latitude = null, double? longitude = null, CancellationToken cancellationToken = default);
 
-    /// <summary>Chuỗi quét được (vd vkfoodtour://VK-XXX hoặc chỉ token).</summary>
-    Task<QrResolveDto?> ResolveQrAsync(string scannedPayload, CancellationToken cancellationToken = default);
+    /// <summary>Chuỗi quét được (vd vkfoodtour://VK-XXX hoặc chỉ token). Có kèm mã ngôn ngữ để lấy nội dung phù hợp.</summary>
+    Task<QrResolveDto?> ResolveQrAsync(string scannedPayload, string? languageCode = null, CancellationToken cancellationToken = default);
 
     /// <summary>Ngôn ngữ đang bật trên máy chủ (picker giao diện).</summary>
     Task<List<LanguageListItemDto>> GetLanguagesAsync(CancellationToken cancellationToken = default);

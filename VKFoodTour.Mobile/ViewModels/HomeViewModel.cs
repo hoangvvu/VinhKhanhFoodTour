@@ -413,8 +413,6 @@ public partial class ProfileViewModel : ObservableObject
 
     [ObservableProperty] private int listenCount = 5;
     [ObservableProperty] private int favoriteCount;
-    [ObservableProperty] private ObservableCollection<LanguagePickerItem> languageOptions = new();
-    [ObservableProperty] private LanguagePickerItem? selectedLanguageItem;
 
     // ── UI strings ───────────────────────────────────────
     [ObservableProperty] private string uiTitle = string.Empty;
@@ -423,7 +421,6 @@ public partial class ProfileViewModel : ObservableObject
     [ObservableProperty] private string uiListened = string.Empty;
     [ObservableProperty] private string uiFavorites = string.Empty;
     [ObservableProperty] private string uiLogout = string.Empty;
-    [ObservableProperty] private string uiLanguageLabel = string.Empty;
     [ObservableProperty] private string uiAppFeedback = string.Empty;
     [ObservableProperty] private string uiFeedbackPlaceholder = string.Empty;
     [ObservableProperty] private string uiSendFeedback = string.Empty;
@@ -464,31 +461,6 @@ public partial class ProfileViewModel : ObservableObject
             MainThread.BeginInvokeOnMainThread(RefreshProfileUiStrings);
         FavoriteCount = _favorites.Count;
         RefreshProfileUiStrings();
-    }
-
-    partial void OnSelectedLanguageItemChanged(LanguagePickerItem? value)
-    {
-        if (value is null)
-            return;
-        _localization.SetLanguageCode(value.Code);
-    }
-
-    public async Task LoadLanguageOptionsAsync(CancellationToken cancellationToken = default)
-    {
-        var list = await _data.GetLanguagesAsync(cancellationToken);
-        var items = list
-            .Where(l => TranslationStrings.SupportsLanguage(l.Code))
-            .Select(l => new LanguagePickerItem(l.Code, string.IsNullOrWhiteSpace(l.Name) ? l.Code : l.Name))
-            .ToList();
-
-        var cur = _localization.CurrentLanguageCode;
-        if (!items.Any(i => i.Code.Equals(cur, StringComparison.OrdinalIgnoreCase)))
-            items.Insert(0, new LanguagePickerItem("vi", "Tiếng Việt"));
-
-        LanguageOptions = new ObservableCollection<LanguagePickerItem>(items);
-
-        SelectedLanguageItem = items.FirstOrDefault(i => i.Code.Equals(cur, StringComparison.OrdinalIgnoreCase))
-                               ?? items[0];
     }
 
     public void SyncApiUrlFromSettings()
@@ -539,7 +511,6 @@ public partial class ProfileViewModel : ObservableObject
         UiListened           = _localization.GetString("Profile_Listened");
         UiFavorites          = _localization.GetString("Profile_Favorites");
         UiLogout             = _localization.GetString("Profile_Logout");
-        UiLanguageLabel      = _localization.GetString("Profile_Language");
         UiAppFeedback        = _localization.GetString("Profile_AppFeedback");
         UiFeedbackPlaceholder = _localization.GetString("Profile_FeedbackPlaceholder");
         UiSendFeedback       = _localization.GetString("Profile_SendFeedback");
@@ -550,17 +521,4 @@ public partial class ProfileViewModel : ObservableObject
         UiExitYes            = _localization.GetString("Profile_ExitYes");
         UiExitNo             = _localization.GetString("Profile_ExitNo");
     }
-}
-
-/// <summary>Mục trong Picker chọn ngôn ngữ giao diện.</summary>
-public sealed class LanguagePickerItem
-{
-    public LanguagePickerItem(string code, string displayName)
-    {
-        Code = code;
-        DisplayName = displayName;
-    }
-
-    public string Code { get; }
-    public string DisplayName { get; }
-}
+}

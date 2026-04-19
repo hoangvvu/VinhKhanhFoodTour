@@ -23,19 +23,6 @@ public partial class ProfilePage : ContentPage
         {
             vm.SyncApiUrlFromSettings();
             vm.OnFeedbackCompleted = LogOutAndExitApp;
-
-            // Bọc fire-and-forget trong try/catch để không gây JavaProxyThrowable
-            _ = Task.Run(async () =>
-            {
-                try
-                {
-                    await vm.LoadLanguageOptionsAsync();
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"[ProfilePage] LoadLanguageOptions error: {ex.Message}");
-                }
-            });
         }
     }
 

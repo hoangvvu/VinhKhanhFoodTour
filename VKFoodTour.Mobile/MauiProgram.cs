@@ -88,6 +88,7 @@ public static class MauiProgram
         builder.Services.AddTransient<FullMapPage>();
         builder.Services.AddTransient<QrScanPage>();
         builder.Services.AddTransient<StallDetailPage>();
+        builder.Services.AddTransient<LanguagePickerPage>();
         builder.Services.AddSingleton<TourPlayerPage>(); // Singleton để giữ UI tour
 
 #if ANDROID

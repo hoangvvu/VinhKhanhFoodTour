@@ -32,4 +32,6 @@ public class StallNarrationState : IStallNarrationState
             return x;
         }
     }
+
+    public string? PendingAudioUrl { get; set; }
 }

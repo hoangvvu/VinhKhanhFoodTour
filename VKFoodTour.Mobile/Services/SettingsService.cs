@@ -1,9 +1,10 @@
-﻿namespace VKFoodTour.Mobile.Services;
+namespace VKFoodTour.Mobile.Services;
 
 public interface ISettingsService
 {
     string SelectedLanguageCode { get; set; }
     bool AutoPlayEnabled { get; set; }
+    bool HasPickedLanguage { get; set; }
 
     /// <summary>Gốc API: chỉ scheme + host (+ port), không kèm đường dẫn. Ví dụ Dev Tunnel: https://abc-7105.region.devtunnels.ms</summary>
     string ApiBaseUrl { get; set; }
@@ -37,8 +38,14 @@ public class SettingsService : ISettingsService
 
     public string SelectedLanguageCode
     {
-        get => Preferences.Default.Get(nameof(SelectedLanguageCode), "vi");
+        get => Preferences.Default.Get(nameof(SelectedLanguageCode), "en");
         set => Preferences.Default.Set(nameof(SelectedLanguageCode), value);
+    }
+
+    public bool HasPickedLanguage
+    {
+        get => Preferences.Default.Get(nameof(HasPickedLanguage), false);
+        set => Preferences.Default.Set(nameof(HasPickedLanguage), value);
     }
 
     public bool AutoPlayEnabled
