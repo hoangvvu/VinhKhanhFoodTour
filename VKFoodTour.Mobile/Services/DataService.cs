@@ -278,6 +278,21 @@ public class DataService : IDataService
         }
     }
 
+    public async Task<bool> PostAppFeedbackAsync(CreateAppFeedbackDto dto, CancellationToken cancellationToken = default)
+    {
+        await EnsureApiBaseResolvedAsync(cancellationToken);
+        try
+        {
+            var response = await _http.PostAsJsonAsync($"{ApiRoot}/api/Feedback/app", dto, cancellationToken);
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"API PostAppFeedback: {ex.Message}");
+            return false;
+        }
+    }
+
     private static List<LanguageListItemDto> FallbackLanguages() =>
         new()
         {

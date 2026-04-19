@@ -22,4 +22,7 @@ public interface IDataService
 
     /// <summary>Ngôn ngữ đang bật trên máy chủ (picker giao diện).</summary>
     Task<List<LanguageListItemDto>> GetLanguagesAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>Gửi đánh giá ứng dụng (số sao + góp ý) từ du khách.</summary>
+    Task<bool> PostAppFeedbackAsync(CreateAppFeedbackDto dto, CancellationToken cancellationToken = default);
 }

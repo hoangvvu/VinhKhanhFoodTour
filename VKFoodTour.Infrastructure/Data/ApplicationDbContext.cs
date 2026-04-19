@@ -22,6 +22,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<TrackingLog> TrackingLogs { get; set; }
     public DbSet<MenuItem> MenuItems { get; set; } = null!;
     public DbSet<TourSetting> TourSettings { get; set; } = null!;
+    public DbSet<AppFeedback> AppFeedbacks { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -182,6 +183,14 @@ public class ApplicationDbContext : DbContext
             entity.ToTable("TOUR_SETTINGS");
             entity.HasKey(e => e.SettingId);
             entity.HasIndex(e => e.SettingKey).IsUnique().HasDatabaseName("uq_tour_setting_key");
+        });
+
+        // ── APP FEEDBACK ─────────────────────────────
+        modelBuilder.Entity<AppFeedback>(entity =>
+        {
+            entity.ToTable("APP_FEEDBACK");
+            entity.HasKey(e => e.FeedbackId);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("GETDATE()");
         });
     }
 }

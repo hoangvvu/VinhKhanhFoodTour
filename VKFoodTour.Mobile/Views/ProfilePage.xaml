@@ -94,6 +94,91 @@
                 </VerticalStackLayout>
             </Border>
 
+            <!-- ĐÁNH GIÁ ỨNG DỤNG -->
+            <Border BackgroundColor="{StaticResource VKCard}"
+                    Stroke="{StaticResource VKStrokeBrush}" StrokeThickness="1" Padding="16">
+                <Border.StrokeShape><RoundRectangle CornerRadius="16"/></Border.StrokeShape>
+                <VerticalStackLayout Spacing="12">
+
+                    <!-- Header -->
+                    <Label Text="{Binding UiAppFeedback}"
+                           FontSize="17" FontFamily="BebasNeue"
+                           TextColor="{StaticResource VKText}" CharacterSpacing="0.5"/>
+
+                    <!-- Star hint -->
+                    <Label Text="{Binding UiStarHint}"
+                           FontSize="12" TextColor="{StaticResource VKTextMuted}"/>
+
+                    <!-- 5 Stars (tappable) -->
+                    <HorizontalStackLayout Spacing="8" HorizontalOptions="Center">
+                        <Label Text="{Binding Star1}" FontSize="38"
+                               TextColor="{StaticResource VKGold}">
+                            <Label.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding SetRatingCommand}" CommandParameter="1"/>
+                            </Label.GestureRecognizers>
+                        </Label>
+                        <Label Text="{Binding Star2}" FontSize="38"
+                               TextColor="{StaticResource VKGold}">
+                            <Label.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding SetRatingCommand}" CommandParameter="2"/>
+                            </Label.GestureRecognizers>
+                        </Label>
+                        <Label Text="{Binding Star3}" FontSize="38"
+                               TextColor="{StaticResource VKGold}">
+                            <Label.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding SetRatingCommand}" CommandParameter="3"/>
+                            </Label.GestureRecognizers>
+                        </Label>
+                        <Label Text="{Binding Star4}" FontSize="38"
+                               TextColor="{StaticResource VKGold}">
+                            <Label.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding SetRatingCommand}" CommandParameter="4"/>
+                            </Label.GestureRecognizers>
+                        </Label>
+                        <Label Text="{Binding Star5}" FontSize="38"
+                               TextColor="{StaticResource VKGold}">
+                            <Label.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding SetRatingCommand}" CommandParameter="5"/>
+                            </Label.GestureRecognizers>
+                        </Label>
+                    </HorizontalStackLayout>
+
+                    <!-- Comment box -->
+                    <Border BackgroundColor="{StaticResource VKCardDeep}"
+                            Stroke="{StaticResource VKStrokeBrush}" StrokeThickness="1" Padding="2">
+                        <Border.StrokeShape><RoundRectangle CornerRadius="10"/></Border.StrokeShape>
+                        <Editor Placeholder="{Binding UiFeedbackPlaceholder}"
+                                Text="{Binding AppFeedbackComment}"
+                                TextColor="{StaticResource VKText}"
+                                PlaceholderColor="{StaticResource VKTextFaint}"
+                                HeightRequest="80" BackgroundColor="Transparent"/>
+                    </Border>
+
+                    <!-- Status message -->
+                    <Label Text="{Binding FeedbackStatus}"
+                           FontSize="12" TextColor="{StaticResource VKTextMuted}"
+                           IsVisible="{Binding FeedbackStatus, Converter={StaticResource StringNotEmptyConverter}}"/>
+
+                    <!-- Send button -->
+                    <Button Text="{Binding UiSendFeedback}"
+                            Command="{Binding SubmitAppFeedbackCommand}"
+                            BackgroundColor="{StaticResource VKGold}"
+                            TextColor="#1A1818" FontAttributes="Bold"
+                            CornerRadius="12" HeightRequest="48"/>
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- THOÁT ỨNG DỤNG -->
+            <Button x:Name="BtnExitApp"
+                    Text="{Binding UiExitApp}"
+                    Clicked="OnExitAppClicked"
+                    BackgroundColor="Transparent"
+                    BorderColor="{StaticResource VKStroke}" BorderWidth="1"
+                    TextColor="{StaticResource VKTextMuted}"
+                    FontSize="13" FontAttributes="Bold"
+                    CornerRadius="12" HeightRequest="48"
+                    CharacterSpacing="1"/>
+
         </VerticalStackLayout>
     </ScrollView>
 </ContentPage>

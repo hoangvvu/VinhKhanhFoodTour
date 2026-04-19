@@ -46,4 +46,18 @@ public partial class ProfilePage : ContentPage
         var welcome = _services.GetRequiredService<WelcomePage>();
         Application.Current!.Windows[0].Page = new NavigationPage(welcome);
     }
+
+    /// <summary>Hiện hộp thoại xác nhận rồi thoát ứng dụng.</summary>
+    private async void OnExitAppClicked(object? sender, EventArgs e)
+    {
+        var vm = BindingContext as ProfileViewModel;
+        var title   = vm?.UiExitConfirmTitle ?? "Thoát ứng dụng";
+        var message = vm?.UiExitConfirmMsg   ?? "Bạn có chắc muốn thoát không?";
+        var yes     = vm?.UiExitYes          ?? "Thoát";
+        var no      = vm?.UiExitNo           ?? "Hủy";
+
+        var confirm = await DisplayAlert(title, message, yes, no);
+        if (confirm)
+            Application.Current!.Quit();
+    }
 }

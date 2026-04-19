@@ -109,6 +109,19 @@ public static class TranslationStrings
             ["Tour_CompletedFmt"] = "🎉 Hoàn thành! Đã nghe {0} quán.",
             ["Tour_Stopped"] = "Tour đã dừng. Quét QR để bắt đầu lại.",
             ["AudioQueue_Empty"] = "Hàng đợi audio trống.",
+            // App feedback & exit
+            ["Profile_AppFeedback"]        = "ĐÁNH GIÁ ỨNG DỤNG",
+            ["Profile_FeedbackPlaceholder"] = "Góp ý thêm cho chúng tôi...",
+            ["Profile_SendFeedback"]        = "Gửi đánh giá",
+            ["Profile_FeedbackSending"]     = "Đang gửi...",
+            ["Profile_FeedbackOk"]          = "✅ Cảm ơn phản hồi của bạn!",
+            ["Profile_FeedbackFail"]        = "❌ Không gửi được. Kiểm tra kết nối.",
+            ["Profile_StarHint"]            = "Chọn số sao:",
+            ["Profile_ExitApp"]             = "THOÁT ỨNG DỤNG",
+            ["Profile_ExitConfirmTitle"]    = "Thoát ứng dụng",
+            ["Profile_ExitConfirmMsg"]      = "Bạn có chắc muốn thoát không?",
+            ["Profile_ExitYes"]             = "Thoát",
+            ["Profile_ExitNo"]              = "Hủy",
         },
         ["en"] = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
@@ -214,6 +227,19 @@ public static class TranslationStrings
             ["Tour_CompletedFmt"] = "🎉 Complete! Listened to {0} stalls.",
             ["Tour_Stopped"] = "Tour stopped. Scan QR to start again.",
             ["AudioQueue_Empty"] = "Audio queue is empty.",
+            // App feedback & exit
+            ["Profile_AppFeedback"]        = "RATE THE APP",
+            ["Profile_FeedbackPlaceholder"] = "Leave a comment or suggestion...",
+            ["Profile_SendFeedback"]        = "Send feedback",
+            ["Profile_FeedbackSending"]     = "Sending...",
+            ["Profile_FeedbackOk"]          = "✅ Thank you for your feedback!",
+            ["Profile_FeedbackFail"]        = "❌ Could not send. Check connection.",
+            ["Profile_StarHint"]            = "Your rating:",
+            ["Profile_ExitApp"]             = "EXIT APP",
+            ["Profile_ExitConfirmTitle"]    = "Exit App",
+            ["Profile_ExitConfirmMsg"]      = "Are you sure you want to exit?",
+            ["Profile_ExitYes"]             = "Exit",
+            ["Profile_ExitNo"]              = "Cancel",
         },
         ["ja"] = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {

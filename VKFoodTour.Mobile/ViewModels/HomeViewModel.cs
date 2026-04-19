@@ -411,38 +411,46 @@ public partial class ProfileViewModel : ObservableObject
     private readonly IFavoriteService _favorites;
     private readonly ILocalizationService _localization;
 
-    [ObservableProperty]
-    private int listenCount = 5;
+    [ObservableProperty] private int listenCount = 5;
+    [ObservableProperty] private int favoriteCount;
+    [ObservableProperty] private ObservableCollection<LanguagePickerItem> languageOptions = new();
+    [ObservableProperty] private LanguagePickerItem? selectedLanguageItem;
 
-    [ObservableProperty]
-    private int favoriteCount;
+    // ── UI strings ───────────────────────────────────────
+    [ObservableProperty] private string uiTitle = string.Empty;
+    [ObservableProperty] private string uiTourist = string.Empty;
+    [ObservableProperty] private string uiIdLabel = string.Empty;
+    [ObservableProperty] private string uiListened = string.Empty;
+    [ObservableProperty] private string uiFavorites = string.Empty;
+    [ObservableProperty] private string uiLogout = string.Empty;
+    [ObservableProperty] private string uiLanguageLabel = string.Empty;
+    [ObservableProperty] private string uiAppFeedback = string.Empty;
+    [ObservableProperty] private string uiFeedbackPlaceholder = string.Empty;
+    [ObservableProperty] private string uiSendFeedback = string.Empty;
+    [ObservableProperty] private string uiStarHint = string.Empty;
+    [ObservableProperty] private string uiExitApp = string.Empty;
+    [ObservableProperty] private string uiExitConfirmTitle = string.Empty;
+    [ObservableProperty] private string uiExitConfirmMsg = string.Empty;
+    [ObservableProperty] private string uiExitYes = string.Empty;
+    [ObservableProperty] private string uiExitNo = string.Empty;
 
+    // ── App feedback state ──────────────────────────
     [ObservableProperty]
-    private ObservableCollection<LanguagePickerItem> languageOptions = new();
+    [NotifyPropertyChangedFor(nameof(Star1))]
+    [NotifyPropertyChangedFor(nameof(Star2))]
+    [NotifyPropertyChangedFor(nameof(Star3))]
+    [NotifyPropertyChangedFor(nameof(Star4))]
+    [NotifyPropertyChangedFor(nameof(Star5))]
+    private int appRating = 5;
 
-    [ObservableProperty]
-    private LanguagePickerItem? selectedLanguageItem;
+    [ObservableProperty] private string appFeedbackComment = string.Empty;
+    [ObservableProperty] private string feedbackStatus = string.Empty;
 
-    [ObservableProperty]
-    private string uiTitle = string.Empty;
-
-    [ObservableProperty]
-    private string uiTourist = string.Empty;
-
-    [ObservableProperty]
-    private string uiIdLabel = string.Empty;
-
-    [ObservableProperty]
-    private string uiListened = string.Empty;
-
-    [ObservableProperty]
-    private string uiFavorites = string.Empty;
-
-    [ObservableProperty]
-    private string uiLogout = string.Empty;
-
-    [ObservableProperty]
-    private string uiLanguageLabel = string.Empty;
+    public string Star1 => AppRating >= 1 ? "★" : "☆";
+    public string Star2 => AppRating >= 2 ? "★" : "☆";
+    public string Star3 => AppRating >= 3 ? "★" : "☆";
+    public string Star4 => AppRating >= 4 ? "★" : "☆";
+    public string Star5 => AppRating >= 5 ? "★" : "☆";
 
     public ProfileViewModel(IDataService data, IFavoriteService favorites, ILocalizationService localization)
     {
@@ -485,15 +493,55 @@ public partial class ProfileViewModel : ObservableObject
         FavoriteCount = _favorites.Count;
     }
 
+    /// <summary>Tap vào sao để chọn số sao đánh giá (1–5).</summary>
+    [RelayCommand]
+    private void SetRating(string? star)
+    {
+        if (int.TryParse(star, out var n) && n is >= 1 and <= 5)
+            AppRating = n;
+    }
+
+    /// <summary>Gửi đánh giá ứng dụng lên server.</summary>
+    [RelayCommand]
+    private async Task SubmitAppFeedbackAsync()
+    {
+        FeedbackStatus = _localization.GetString("Profile_FeedbackSending");
+
+        var dto = new VKFoodTour.Shared.DTOs.CreateAppFeedbackDto
+        {
+            DeviceId   = _data.DeviceId,
+            Rating     = (byte)AppRating,
+            Comment    = string.IsNullOrWhiteSpace(AppFeedbackComment) ? null : AppFeedbackComment.Trim(),
+            AppVersion = AppInfo.VersionString
+        };
+
+        var ok = await _data.PostAppFeedbackAsync(dto);
+        FeedbackStatus = ok
+            ? _localization.GetString("Profile_FeedbackOk")
+            : _localization.GetString("Profile_FeedbackFail");
+
+        if (ok)
+            AppFeedbackComment = string.Empty;
+    }
+
     private void RefreshProfileUiStrings()
     {
-        UiTitle = _localization.GetString("Profile_Title");
-        UiTourist = _localization.GetString("Profile_Tourist");
-        UiIdLabel = _localization.GetString("Profile_IdLabel");
-        UiListened = _localization.GetString("Profile_Listened");
-        UiFavorites = _localization.GetString("Profile_Favorites");
-        UiLogout = _localization.GetString("Profile_Logout");
-        UiLanguageLabel = _localization.GetString("Profile_Language");
+        UiTitle              = _localization.GetString("Profile_Title");
+        UiTourist            = _localization.GetString("Profile_Tourist");
+        UiIdLabel            = _localization.GetString("Profile_IdLabel");
+        UiListened           = _localization.GetString("Profile_Listened");
+        UiFavorites          = _localization.GetString("Profile_Favorites");
+        UiLogout             = _localization.GetString("Profile_Logout");
+        UiLanguageLabel      = _localization.GetString("Profile_Language");
+        UiAppFeedback        = _localization.GetString("Profile_AppFeedback");
+        UiFeedbackPlaceholder = _localization.GetString("Profile_FeedbackPlaceholder");
+        UiSendFeedback       = _localization.GetString("Profile_SendFeedback");
+        UiStarHint           = _localization.GetString("Profile_StarHint");
+        UiExitApp            = _localization.GetString("Profile_ExitApp");
+        UiExitConfirmTitle   = _localization.GetString("Profile_ExitConfirmTitle");
+        UiExitConfirmMsg     = _localization.GetString("Profile_ExitConfirmMsg");
+        UiExitYes            = _localization.GetString("Profile_ExitYes");
+        UiExitNo             = _localization.GetString("Profile_ExitNo");
     }
 }
 

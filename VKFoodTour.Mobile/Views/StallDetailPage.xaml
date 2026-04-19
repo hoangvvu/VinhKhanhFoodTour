@@ -28,7 +28,17 @@
                            FontSize="12" TextColor="#CCFFFFFF"
                            LineBreakMode="TailTruncation"/>
                 </VerticalStackLayout>
-                <!-- Fav button -->
+                <!-- Back button (top-left) -->
+                <Button Text="‹"
+                        Clicked="OnBackClicked"
+                        BackgroundColor="#AA1A1818"
+                        TextColor="White"
+                        FontSize="26" FontAttributes="Bold"
+                        WidthRequest="44" HeightRequest="44"
+                        CornerRadius="22"
+                        HorizontalOptions="Start" VerticalOptions="Start"
+                        Margin="12,48,0,0"/>
+                <!-- Fav button (top-right) -->
                 <Button Text="{Binding FavoriteIcon}"
                         Command="{Binding ToggleFavoriteCommand}"
                         BackgroundColor="#AA1A1818"

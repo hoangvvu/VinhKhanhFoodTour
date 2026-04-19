@@ -379,3 +379,20 @@ BEGIN
     );
 END
 GO
+
+-- ============================================================
+--  APP_FEEDBACK — Đánh giá ứng dụng từ du khách (số sao + góp ý)
+-- ============================================================
+IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'APP_FEEDBACK')
+BEGIN
+    CREATE TABLE APP_FEEDBACK (
+        feedback_id   INT            IDENTITY(1,1) PRIMARY KEY,
+        device_id     NVARCHAR(100)  NOT NULL,
+        rating        TINYINT        NOT NULL,
+            CONSTRAINT chk_feedback_rating CHECK (rating BETWEEN 1 AND 5),
+        comment       NVARCHAR(1000) NULL,
+        app_version   NVARCHAR(50)   NULL,
+        created_at    DATETIME2      NOT NULL DEFAULT GETDATE()
+    );
+END
+GO
