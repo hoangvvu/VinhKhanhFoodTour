@@ -12,37 +12,22 @@ Tài liệu này hướng dẫn cách sử dụng công cụ **k6** để mô ph
 ## 2. Các kịch bản Test có sẵn
 
 ### Kịch bản 1: Load Test (100 thiết bị)
-Dùng để kiểm tra tính ổn định cơ bản.
-- **Mô tả:** Chạy 100 thiết bị ảo trong 30 giây.
+Dùng để kiểm tra tính ổn định với lượng người dùng cố định.
+- **Mô tả:** Chạy 100 thiết bị ảo liên tục.
 - **Lệnh chạy:**
   ```powershell
   & "C:\Program Files\k6\k6.exe" run load_test.js
   ```
+- **Cách tắt:** Nhấn `Ctrl + C` trong cửa sổ lệnh.
 
-### Kịch bản 2: Stress Test (Tìm điểm sập)
-Dùng để tìm ngưỡng giới hạn chịu tải của Server.
-- **Mô tả:** Tăng dần từ 0 lên **1000 người dùng** trong vòng vài phút.
+### Kịch bản 2: Stress Test (Ép tải lên 1000 thiết bị)
+Dùng để kiểm tra khả năng chịu tải tối đa của hệ thống.
+- **Mô tả:** Tăng dần từ 0 lên 1000 người dùng trong 6 phút và duy trì ở mức đó.
 - **Lệnh chạy:**
   ```powershell
   & "C:\Program Files\k6\k6.exe" run stress_test.js
   ```
-
-### Kịch bản 3: Duy trì tải (Sustained Load)
-Dùng khi bạn muốn "treo" 100 thiết bị để thao tác trên giao diện Admin.
-- **Mô tả:** Chạy liên tục 100 thiết bị trong 10 phút.
-- **Lệnh chạy:**
-  ```powershell
-  & "C:\Program Files\k6\k6.exe" run sustained_load_test.js
-  ```
-- **Cách tắt:** Nhấn `Ctrl + C` trong cửa sổ lệnh.
-
-### Kịch bản 4: Thoát ứng dụng (Ramp-down)
-Dùng để mô phỏng người dùng thoát app dần dần.
-- **Mô tả:** 100 thiết bị lần lượt thoát ra trong vòng 10 giây.
-- **Lệnh chạy:**
-  ```powershell
-  & "C:\Program Files\k6\k6.exe" run ramp_down_test.js --vus 100
-  ```
+- **Cách tắt:** Nhấn `Ctrl + C` khi bạn muốn dừng test.
 
 ---
 

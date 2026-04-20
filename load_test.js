@@ -4,7 +4,7 @@ import { sleep, check } from 'k6';
 // CẤU HÌNH TEST
 export const options = {
     vus: 100, // 100 thiết bị giả lập cùng lúc
-    duration: '30s', // Chạy trong vòng 30 giây
+    duration: '999h', // Chạy liên tục (dùng Ctrl+C để tắt)
     insecureSkipTLSVerify: true, // Bỏ qua xác thực SSL cho localhost
 };
 

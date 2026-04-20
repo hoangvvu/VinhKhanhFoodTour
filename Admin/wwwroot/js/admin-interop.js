@@ -246,50 +246,165 @@ let overviewMap = null;
 
 window.initPoiOverviewMap = function(elementId, pois) {
     const el = document.getElementById(elementId);
-    if (!el) return;
-
-    if (overviewMap) {
-        overviewMap.remove();
-        overviewMap = null;
+    if (!el) {
+        console.warn("[MAP] Element not found for init", elementId);
+        return;
     }
 
-    overviewMap = L.map(el, {
-        attributionControl: false,
-        zoomControl: false
-    }).setView([10.7595, 106.7040], 16);
+    if (overviewMap) {
+        try {
+            overviewMap.remove();
+        } catch(err) {
+            console.warn("[MAP] Handled error during old map removal", err);
+        }
+        overviewMap = null;
+    }
+    
+    // Đảm bảo element hoàn toàn sạch (không có "_leaflet_id")
+    el._leaflet_id = null;
+    window.__vkOverviewHeatLayer = null; // Reset heatmap layer
 
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        maxZoom: 20
-    }).addTo(overviewMap);
+    try {
+        overviewMap = L.map(el, {
+            attributionControl: false,
+            zoomControl: false
+        }).setView([10.7595, 106.7040], 16);
 
-    const group = L.featureGroup();
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            maxZoom: 20
+        }).addTo(overviewMap);
 
-    pois.forEach(poi => {
-        const color = poi.priority === 1 ? '#C8372D' : '#E8A020';
-        
-        const marker = L.circleMarker([poi.lat, poi.lng], {
-            radius: 10,
-            fillColor: color,
-            color: "#fff",
-            weight: 2,
-            opacity: 1,
-            fillOpacity: 0.9
-        }).addTo(group);
+        const group = L.featureGroup();
 
-        marker.bindPopup(`
-            <div style="color: #000; padding: 5px; min-width: 150px;">
-                <b style="font-size: 14px; display: block; margin-bottom: 4px;">${poi.name}</b>
-                <div style="font-size: 11px; color: #666; line-height: 1.4;">${poi.address || ''}</div>
-                <div style="margin-top: 8px; font-size: 10px; color: #999; border-top: 1px solid #eee; padding-top: 4px;">
-                    Radius: ${poi.radius}m | Priority: ${poi.priority}
+        pois.forEach(poi => {
+            const color = poi.priority === 1 ? '#C8372D' : '#E8A020';
+            
+            const marker = L.circleMarker([poi.lat, poi.lng], {
+                radius: 10,
+                fillColor: color,
+                color: "#fff",
+                weight: 2,
+                opacity: 1,
+                fillOpacity: 0.9
+            }).addTo(group);
+
+            marker.bindPopup(`
+                <div style="color: #000; padding: 5px; min-width: 150px;">
+                    <b style="font-size: 14px; display: block; margin-bottom: 4px;">${poi.name}</b>
+                    <div style="font-size: 11px; color: #666; line-height: 1.4;">${poi.address || ''}</div>
+                    <div style="margin-top: 8px; font-size: 10px; color: #999; border-top: 1px solid #eee; padding-top: 4px;">
+                        Radius: ${poi.radius}m | Priority: ${poi.priority}
+                    </div>
                 </div>
-            </div>
-        `);
-    });
+            `);
+        });
 
-    group.addTo(overviewMap);
-    if (pois.length > 0) {
-        overviewMap.fitBounds(group.getBounds(), { padding: [30, 30] });
+        group.addTo(overviewMap);
+        if (pois.length > 0) {
+            overviewMap.fitBounds(group.getBounds(), { padding: [30, 30] });
+        }
+        
+        window.__vkOverviewMap = overviewMap; // Store globally for heatmap updates
+
+        // Sửa lỗi mất Map: Bắt buộc Leaflet cập nhật lại kích thước vùng Canvas
+        setTimeout(() => {
+            if (overviewMap) {
+                overviewMap.invalidateSize();
+            }
+        }, 300);
+
+    } catch (err) {
+        console.error("[MAP] Critical error initializing overview map:", err);
+    }
+};
+
+/**
+ * ── Heatmap Overlay for Overview Map ──
+ */
+window.updateOverviewHeatmap = function(rawData) {
+    let data;
+    if (typeof rawData === 'string') {
+        try {
+            data = JSON.parse(rawData);
+        } catch(e) {
+            console.error('[HEATMAP] Invalid JSON string provided');
+            return;
+        }
+    } else {
+        data = rawData;
+    }
+
+    console.log('[HEATMAP] Updating with data points:', data ? data.length : 0);
+    if (!window.__vkOverviewMap) {
+        console.warn('[HEATMAP] Map instance not found.');
+        return;
+    }
+
+    const mapContainer = window.__vkOverviewMap.getContainer();
+    if (!mapContainer || mapContainer.clientWidth === 0 || mapContainer.clientHeight === 0) {
+        console.warn('[HEATMAP] Map container has zero size (possibly hidden). Skipping update.');
+        return;
+    }
+
+    try {
+        if (window.__vkOverviewHeatLayer) {
+            window.__vkOverviewMap.removeLayer(window.__vkOverviewHeatLayer);
+        }
+
+        if (!data || data.length === 0) return;
+
+        // In ra phần tử đầu tiên để debug định dạng mảng từ Blazor
+        console.log('[HEATMAP] Format of first point:', data[0]);
+
+        // Lọc và chuyển đổi dữ liệu thông minh hơn
+        let cleanData = [];
+        for (let i = 0; i < data.length; i++) {
+            let p = data[i];
+            if (Array.isArray(p) && p.length >= 2 && p[0] != null && p[1] != null) {
+                cleanData.push([parseFloat(p[0]), parseFloat(p[1]), parseFloat(p[2] || 1.0)]);
+            } else if (p && typeof p === 'object') {
+                // Đề phòng Blazor serialize double[] thành object, hoặc DTO
+                let lat = p.lat !== undefined ? p.lat : (p[0] !== undefined ? p[0] : null);
+                let lng = p.lng !== undefined ? p.lng : (p.lon !== undefined ? p.lon : (p[1] !== undefined ? p[1] : null));
+                let intensity = p.intensity !== undefined ? p.intensity : (p[2] !== undefined ? p[2] : 1.0);
+                
+                if (lat != null && lng != null) {
+                    cleanData.push([parseFloat(lat), parseFloat(lng), parseFloat(intensity)]);
+                }
+            }
+        }
+        
+        if (cleanData.length === 0) {
+            console.warn('[HEATMAP] No valid points found after filtering. Sample:', data[0]);
+            return;
+        }
+
+        window.__vkOverviewHeatLayer = L.heatLayer(cleanData, {
+            radius: 45,
+            blur: 15,
+            maxZoom: 18,
+            gradient: {
+                0.1: '#fee0d2', // Hồng rất nhạt (thưa)
+                0.3: '#fc9272', // Hồng cam
+                0.5: '#fb6a4a', // Đỏ cam
+                0.8: '#de2d26', // Đỏ đậm
+                1.0: '#67000d'  // Đỏ đen (đông nhất)
+            }
+        }).addTo(window.__vkOverviewMap);
+        
+        console.log('[HEATMAP] Layers updated successfully.');
+    } catch (err) {
+        console.error('[HEATMAP] Error updating heatmap layer:', err);
+    }
+};
+
+window.toggleOverviewHeatmap = function(visible) {
+    if (!window.__vkOverviewMap || !window.__vkOverviewHeatLayer) return;
+    
+    if (visible) {
+        window.__vkOverviewHeatLayer.addTo(window.__vkOverviewMap);
+    } else {
+        window.__vkOverviewMap.removeLayer(window.__vkOverviewHeatLayer);
     }
 };
 

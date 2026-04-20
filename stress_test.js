@@ -6,8 +6,8 @@ export const options = {
     stages: [
         { duration: '1m', target: 200 },  // Tăng từ 0 lên 200 users trong 1 phút
         { duration: '2m', target: 500 },  // Tăng tiếp lên 500 users trong 2 phút
-        { duration: '2m', target: 1000 }, // Tăng tiếp lên 1000 users trong 2 phút (Điểm sập kỳ vọng)
-        { duration: '1m', target: 0 },    // Giảm dần về 0 để server hồi phục
+        { duration: '3m', target: 1000 }, // Tăng tiếp lên 1000 users trong 3 phút
+        { duration: '999h', target: 1000 }, // Duy trì ở 1000 users (dùng Ctrl+C để tắt)
     ],
     thresholds: {
         http_req_failed: ['rate<0.1'], // Nếu tỉ lệ lỗi > 10%, coi như bài test thất bại
