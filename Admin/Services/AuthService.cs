@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using VKFoodTour.Infrastructure.Data;
 using VKFoodTour.Infrastructure.Entities;
 
@@ -78,6 +78,52 @@ public class AuthService
         _db.Users.Add(user);
         await _db.SaveChangesAsync();
         return user;
+    }
+
+    /// <summary>
+    /// Tạo user thuộc Role Vendor và tạo luôn POI tương ứng trong cùng 1 transaction.
+    /// </summary>
+    public async Task<User> CreateVendorWithPoiAsync(string name, string email, string password, string poiName)
+    {
+        using var transaction = await _db.Database.BeginTransactionAsync();
+        try
+        {
+            var user = new User
+            {
+                Name = name,
+                Email = email.Trim().ToLower(),
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(password),
+                Role = "Vendor",
+                IsActive = true
+            };
+
+            _db.Users.Add(user);
+            await _db.SaveChangesAsync(); // Lấy được user.UserId
+
+            var poi = new Poi
+            {
+                OwnerId = user.UserId,
+                Name = string.IsNullOrWhiteSpace(poiName) ? $"{name}'s Stall" : poiName.Trim(),
+                Address = null,
+                Latitude = 10.7578m,
+                Longitude = 106.7095m,
+                Priority = 3,
+                Radius = 20, // default
+                IsActive = false,
+                Status = "Pending"
+            };
+
+            _db.Pois.Add(poi);
+            await _db.SaveChangesAsync();
+
+            await transaction.CommitAsync();
+            return user;
+        }
+        catch (Exception)
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
     }
 
     /// <summary>
@@ -165,7 +211,8 @@ public class AuthService
             Longitude = 106.7095m,
             Radius = 20,
             Priority = 3,
-            IsActive = true
+            IsActive = false,
+            Status = "Pending"
         });
         await _db.SaveChangesAsync();
     }

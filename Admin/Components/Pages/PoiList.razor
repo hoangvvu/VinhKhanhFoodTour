@@ -3,50 +3,41 @@
 @using VKFoodTour.Infrastructure.Entities
 @attribute [Authorize(Roles = "Admin")]
 @rendermode InteractiveServer
+@implements IAsyncDisposable
 @inject PoiService PoiService
-
-@* ══════════════════════════════════════════════════════════════
-   PHẦN 1: HEADER
-   ══════════════════════════════════════════════════════════════ *@
+@inject IJSRuntime JS
+@inject AuthService AuthService
 
 <div class="dash-page p-4">
     <div class="d-flex justify-content-between align-items-center mb-5">
         <div>
             <h2 class="fw-bold mb-1" style="color: #F0EBE3;">Gian hàng</h2>
-            <span style="color: #4a4a5a; font-size: 13px;"><i class="bi bi-clock me-1"></i>Quản lý danh sách gian hàng</span>
+            <span style="color: #4a4a5a; font-size: 13px;"><i class="bi bi-shop me-1"></i>Quản lý danh sách đối tác</span>
         </div>
-        <button class="btn btn-danger rounded-pill px-4" @onclick="ShowAddModal">
-            + Thêm gian hàng
-        </button>
+        @* Đã loại bỏ nút Thêm gian hàng vì nó được tạo tự động khi thêm Vendor *@
     </div>
-
-    @* ══════════════════════════════════════════════════════════
-       PHẦN 2: THANH LỌC
-       ══════════════════════════════════════════════════════════ *@
 
     <div class="dash-card p-4 mb-4">
         <div class="d-flex gap-3">
             <input type="text" class="form-control dash-input rounded-pill ps-4 w-50"
-                   placeholder="Tìm gian hàng..."
+                   placeholder="Tìm tên quán..."
                    @bind="searchText"
                    @bind:event="oninput" />
 
-            <select class="form-select dash-input rounded-pill w-25"
-                    @bind="filterStatus">
+            <select class="form-select dash-input rounded-pill w-25" @bind="filterStatus">
                 <option value="all">Tất cả trạng thái</option>
                 <option value="active">Đang hoạt động</option>
-                <option value="inactive">Đã tắt</option>
+                <option value="inactive">Đang bị khóa</option>
+            </select>
+
+            <select class="form-select dash-input rounded-pill w-25" @bind="filterApproval">
+                <option value="all">Tất cả (Phê duyệt)</option>
+                <option value="Pending">Chờ duyệt</option>
+                <option value="Approved">Đã duyệt</option>
+                <option value="Rejected">Từ chối</option>
             </select>
         </div>
     </div>
-
-    @* ══════════════════════════════════════════════════════════
-       PHẦN 3: BẢNG DANH SÁCH — Đọc từ DB thay vì data giả
-       Thay đổi: 
-       - Dùng FilteredPois (có lọc) thay vì list tĩnh
-       - Trạng thái đọc từ IsActive
-       - Thêm cột Hành động (Sửa/Xóa)
-       ══════════════════════════════════════════════════════════ *@
 
     @if (isLoading)
     {
@@ -69,12 +60,9 @@
                     <thead>
                         <tr style="background:rgba(0,0,0,0.4);">
                             <th class="ps-4" style="color:#4a4a5a;font-size:11px;letter-spacing:1.5px;">GIAN HÀNG</th>
-                            <th style="color:#4a4a5a;font-size:11px;letter-spacing:1.5px;">CHỦ &amp; GMAIL</th>
-                            <th style="color:#4a4a5a;font-size:11px;letter-spacing:1.5px;">ĐỊA CHỈ</th>
-                            <th style="color:#4a4a5a;font-size:11px;letter-spacing:1.5px;">TỌA ĐỘ</th>
-                            <th style="color:#4a4a5a;font-size:11px;letter-spacing:1.5px;">BÁN KÍNH</th>
-                            <th style="color:#4a4a5a;font-size:11px;letter-spacing:1.5px;">ƯU TIÊN</th>
+                            <th style="color:#4a4a5a;font-size:11px;letter-spacing:1.5px;">CHỦ & GMAIL</th>
                             <th style="color:#4a4a5a;font-size:11px;letter-spacing:1.5px;">TRẠNG THÁI</th>
+                            <th style="color:#4a4a5a;font-size:11px;letter-spacing:1.5px;">ƯU TIÊN</th>
                             <th class="text-end pe-4" style="color:#4a4a5a;font-size:11px;letter-spacing:1.5px;">HÀNH ĐỘNG</th>
                         </tr>
                     </thead>
@@ -89,60 +77,59 @@
                                 <td>
                                     <small style="color:#4a4a5a;">@GetOwnerLabel(item.OwnerId)</small>
                                 </td>
-                                <td style="color:#8A8078;">@item.Address</td>
                                 <td>
-                                    <small style="color:#4a4a5a;">
-                                        @item.Latitude.ToString("F8")<br />
-                                        @item.Longitude.ToString("F8")
-                                    </small>
-                                </td>
-                                <td>
-                                    <span class="badge px-3 py-2" style="background:rgba(232,160,32,0.12);color:#E8A020;border:1px solid rgba(232,160,32,0.25);border-radius:20px;">
-                                        @item.Radius m
-                                    </span>
-                                </td>
-                                <td>
-                                    <span class="badge px-3 py-2" style="background:rgba(232,160,32,0.12);color:#E8A020;border:1px solid rgba(232,160,32,0.25);border-radius:20px;">
-                                        @item.Priority
-                                    </span>
-                                </td>
-                                <td>
+                                    <div class="mb-1">
+                                        @if (item.Status == "Pending")
+                                        {
+                                            <span class="badge bg-warning-subtle text-warning border border-warning-subtle" style="font-size: 10px;">CHỜ DUYỆT</span>
+                                        }
+                                        else if (item.Status == "Rejected")
+                                        {
+                                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle" style="font-size: 10px;">TỪ CHỐI</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-success-subtle text-success border border-success-subtle" style="font-size: 10px;">ĐÃ DUYỆT</span>
+                                        }
+                                    </div>
                                     @if (item.IsActive)
                                     {
-                                        <span class="badge px-3 py-2"
-                                              style="background:rgba(34,197,94,0.12);color:#4ade80;border:1px solid rgba(34,197,94,0.25);border-radius:20px;cursor:pointer;"
-                                              @onclick="() => ToggleActive(item.PoiId)">
-                                            Đã bật
-                                        </span>
+                                        <span class="text-success small" style="font-size: 11px;"><i class="bi bi-circle-fill me-1" style="font-size:7px;"></i> Hoạt động</span>
                                     }
                                     else
                                     {
-                                        <span class="badge px-3 py-2"
-                                              style="background:rgba(107,114,128,0.12);color:#6b7280;border:1px solid rgba(107,114,128,0.25);border-radius:20px;cursor:pointer;"
-                                              @onclick="() => ToggleActive(item.PoiId)">
-                                            Đã tắt
-                                        </span>
+                                        <span class="text-danger small" style="font-size: 11px;"><i class="bi bi-circle-fill me-1" style="font-size:7px;"></i> ĐÃ KHÓA</span>
                                     }
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        @for (int i = 1; i <= 5; i++)
+                                        {
+                                            <i class="bi bi-star-fill me-1" style="font-size: 12px; color: @(i <= item.Priority ? GetPriorityColor(item.Priority) : "#1a1a24")"></i>
+                                        }
+                                    </div>
                                 </td>
                                 <td class="text-end pe-4">
-                                    <button class="btn btn-sm btn-outline-primary rounded-pill me-1"
-                                            @onclick="() => ShowEditModal(item)">
-                                        <span class="bi bi-pencil"></span> Sửa
-                                    </button>
-                                    @if (item.IsActive)
-                                    {
-                                        <button class="btn btn-sm btn-outline-warning rounded-pill"
-                                                @onclick="() => ShowHideConfirm(item)">
-                                            <span class="bi bi-eye-slash"></span> Ẩn
-                                        </button>
-                                    }
-                                    else
-                                    {
-                                        <button class="btn btn-sm btn-outline-success rounded-pill"
-                                                @onclick="() => ToggleActive(item.PoiId)">
-                                            <span class="bi bi-eye"></span> Hiển thị lại
-                                        </button>
-                                    }
+                                    <div class="d-flex justify-content-end gap-2">
+                                        @if (item.Status != "Approved")
+                                        {
+                                            <button class="btn btn-sm btn-success rounded-pill px-3" @onclick="() => ShowApproveModal(item)">Duyệt</button>
+                                        }
+                                        <button class="btn btn-sm btn-outline-light rounded-circle" title="Sửa thông tin" @onclick="() => ShowEditModal(item)"><i class="bi bi-pencil"></i></button>
+                                        
+                                        @if (item.IsActive)
+                                        {
+                                            <button class="btn btn-sm btn-outline-danger rounded-pill px-3" @onclick="() => ShowHideConfirm(item)">
+                                                <i class="bi bi-lock-fill me-1"></i>Khóa
+                                            </button>
+                                        }
+                                        else
+                                        {
+                                            <button class="btn btn-sm btn-success rounded-pill px-3" @onclick="() => ToggleActive(item.PoiId)">
+                                                <i class="bi bi-unlock-fill me-1"></i>Mở
+                                            </button>
+                                        }
+                                    </div>
                                 </td>
                             </tr>
                         }
@@ -153,154 +140,118 @@
     }
 </div>
 
-@* ══════════════════════════════════════════════════════════════
-   PHẦN 4: MODAL THÊM / SỬA — Dùng chung 1 modal
-   Thay đổi:
-   - Tất cả input đều @bind vào editingPoi
-   - Nút submit gọi SavePoi()
-   - Title thay đổi theo isEditing (Thêm / Sửa)
-   ══════════════════════════════════════════════════════════════ *@
+@* Modal Admin Duyệt *@
+@if (isApproveModalVisible)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background:rgba(0,0,0,0.8); backdrop-filter: blur(4px);">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0" style="background:#1a1a24; border-radius:20px; border: 1px solid rgba(255,255,255,0.1);">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold text-white">Phê duyệt gian hàng</h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="() => isApproveModalVisible = false"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <p class="text-muted small">Thiết lập mức ưu tiên cho <strong>@targetPoi?.Name</strong>:</p>
+                    <select class="form-select dash-input rounded-3" @bind="targetPriority">
+                        <option value="5">5 - VIP</option>
+                        <option value="4">4 - Lớn</option>
+                        <option value="3">3 - Thường</option>
+                        <option value="2">2 - Nhỏ</option>
+                        <option value="1">1 - Thấp</option>
+                    </select>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button class="btn btn-outline-light rounded-pill px-4" @onclick="() => isApproveModalVisible = false">Hủy</button>
+                    <button class="btn btn-success rounded-pill px-4 fw-bold" @onclick="ApprovePoiAction">Xác nhận Duyệt</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
 
+@* Modal Admin Từ chối *@
+@if (isRejectModalVisible)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background:rgba(0,0,0,0.8); backdrop-filter: blur(4px);">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0" style="background:#1a1a24; border-radius:20px; border: 1px solid rgba(255,255,255,0.1);">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold text-white">Từ chối gian hàng</h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="() => isRejectModalVisible = false"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <textarea class="form-control dash-input rounded-3" rows="3" @bind="targetNote" placeholder="Lý do từ chối..."></textarea>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button class="btn btn-outline-light rounded-pill px-4" @onclick="() => isRejectModalVisible = false">Hủy</button>
+                    <button class="btn btn-danger rounded-pill px-4 fw-bold" @onclick="RejectPoiAction">Xác nhận</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@* Modal Sửa (Rút gọn) *@
 @if (isModalVisible)
 {
-    <div class="modal fade show d-block" style="background: rgba(0,0,0,0.6);">
-        <div class="modal-dialog modal-lg modal-dialog-centered">
-            <div class="modal-content border-0" style="background:#1a1a24;border-radius:20px;border:1px solid rgba(255,255,255,0.08);">
-                <div class="modal-header pe-4 pt-4" style="border-bottom:1px solid rgba(255,255,255,0.06);">
-                    <h5 class="modal-title fw-bold" style="color:#F0EBE3;">
-                        @(isEditing ? "Sửa gian hàng" : "Thêm gian hàng mới")
-                    </h5>
+    <div class="modal fade show d-block" tabindex="-1" style="background:rgba(0,0,0,0.8); backdrop-filter: blur(4px);">
+        <div class="modal-dialog modal-dialog-centered">
+             <div class="modal-content border-0 shadow-lg" style="background:#1a1a24; border-radius:30px; border: 1px solid rgba(255,255,255,0.08);">
+                 <div class="modal-header p-4" style="border-bottom:1px solid rgba(255,255,255,0.05);">
+                    <h4 class="modal-title fw-bold text-white">Thông Tin Quản Trị</h4>
                     <button type="button" class="btn-close btn-close-white" @onclick="HideModal"></button>
                 </div>
                 <div class="modal-body p-4">
-                    @if (!string.IsNullOrEmpty(errorMessage))
-                    {
-                        <div class="alert alert-danger rounded-pill text-center">
-                            @errorMessage
-                        </div>
-                    }
-
-                    <div class="row g-3">
+                    <div class="row g-4">
                         <div class="col-12">
-                            <label class="form-label" style="color:#8A8078;font-size:11px;letter-spacing:1px;font-weight:700;">TÊN GIAN HÀNG</label>
-                            <input type="text"
-                                   class="form-control dash-input rounded-pill ps-3"
-                                   placeholder="VD: Ốc Oanh"
-                                   @bind="editingPoi.Name" />
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label" style="color:#8A8078;font-size:11px;letter-spacing:1px;font-weight:700;">ĐỊA CHỈ</label>
-                            <input type="text"
-                                   class="form-control dash-input rounded-pill ps-3"
-                                   placeholder="Địa chỉ chi tiết"
-                                   @bind="editingPoi.Address" />
+                            <label class="form-label text-white-50 small fw-bold">TÊN GIAN HÀNG</label>
+                            <input type="text" class="form-control dash-input p-3" @bind="editingPoi.Name" />
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label" style="color:#8A8078;font-size:11px;letter-spacing:1px;font-weight:700;">SỐ ĐIỆN THOẠI</label>
-                            <input type="text"
-                                   class="form-control dash-input rounded-pill ps-3"
-                                   placeholder="VD: 0901234567"
-                                   @bind="editingPoi.Phone" />
+                            <label class="form-label text-white-50 small fw-bold">SỐ ĐIỆN THOẠI</label>
+                            <input type="text" class="form-control dash-input p-3" @bind="editingPoi.Phone" />
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label" style="color:#8A8078;font-size:11px;letter-spacing:1px;font-weight:700;">CHỦ GIAN HÀNG</label>
-                            <select class="form-select dash-input rounded-pill ps-3"
-                                    @bind="editingOwnerIdText">
-                                <option value="">Chưa gán chủ gian hàng</option>
-                                @foreach (var owner in vendorUsers)
-                                {
-                                    <option value="@owner.UserId">@owner.Name (@owner.Email)</option>
-                                }
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label" style="color:#8A8078;font-size:11px;letter-spacing:1px;font-weight:700;">VĨ ĐỘ (LATITUDE)</label>
-                            <input type="number" step="0.00000001"
-                                   class="form-control dash-input rounded-pill ps-3"
-                                   @bind="editingPoi.Latitude" />
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label" style="color:#8A8078;font-size:11px;letter-spacing:1px;font-weight:700;">KINH ĐỘ (LONGITUDE)</label>
-                            <input type="number" step="0.00000001"
-                                   class="form-control dash-input rounded-pill ps-3"
-                                   @bind="editingPoi.Longitude" />
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label" style="color:#8A8078;font-size:11px;letter-spacing:1px;font-weight:700;">BÁN KÍNH GEOFENCE (M)</label>
-                            <input type="number"
-                                   class="form-control dash-input rounded-pill ps-3"
-                                   min="5" max="200"
-                                   @bind="editingPoi.Radius" />
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label" style="color:#8A8078;font-size:11px;letter-spacing:1px;font-weight:700;">MỨC ƯU TIÊN (1=CAO)</label>
-                            <select class="form-select dash-input rounded-pill ps-3"
-                                    @bind="editingPoi.Priority">
-                                <option value="1">1 - Cao nhất</option>
-                                <option value="2">2 - Cao</option>
-                                <option value="3">3 - Trung bình</option>
-                                <option value="4">4 - Thấp</option>
-                                <option value="5">5 - Thấp nhất</option>
+                            <label class="form-label text-white-50 small fw-bold">ƯU TIÊN</label>
+                             <select class="form-select dash-input p-3" @bind="editingPoi.Priority">
+                                <option value="5">5 - VIP</option>
+                                <option value="4">4 - Lớn</option>
+                                <option value="3">3 - Thường</option>
+                                <option value="2">2 - Nhỏ</option>
+                                <option value="1">1 - Thấp</option>
                             </select>
                         </div>
                         <div class="col-12">
-                            <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" role="switch"
-                                       id="switchActive"
-                                       @bind="editingPoi.IsActive" />
-                                <label class="form-check-label" for="switchActive" style="color:#8A8078;">
-                                    @(editingPoi.IsActive ? "Đang hoạt động" : "Đã tắt")
-                                </label>
-                            </div>
+                            <label class="form-label text-white-50 small fw-bold">CHỦ GIAN HÀNG</label>
+                            <select class="form-select dash-input p-3" @bind="editingOwnerIdText">
+                                <option value="">-- Chưa gán chủ --</option>
+                                @foreach (var v in vendorUsers) { <option value="@v.UserId">@v.Name (@v.Email)</option> }
+                            </select>
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer p-4" style="border-top:1px solid rgba(255,255,255,0.06);">
-                    <button class="btn" style="color:#4a4a5a;" @onclick="HideModal" disabled="@isSaving">
-                        Hủy
-                    </button>
-                    <button class="btn btn-danger px-4 rounded-pill"
-                            @onclick="SavePoi"
-                            disabled="@isSaving">
-                        @if (isSaving)
-                        {
-                            <span class="spinner-border spinner-border-sm me-1"></span>
-                        }
-                        @(isEditing ? "Lưu thay đổi" : "Tạo gian hàng")
-                    </button>
+                <div class="modal-footer p-4 border-0 pt-0">
+                    <button class="btn btn-outline-light rounded-pill px-4" @onclick="HideModal">Hủy</button>
+                    <button class="btn btn-danger rounded-pill px-5 fw-bold shadow-sm" @onclick="SavePoi" disabled="@isSaving">Lưu thay đổi</button>
                 </div>
-            </div>
+             </div>
         </div>
     </div>
 }
 
-@* ══════════════════════════════════════════════════════════════
-   PHẦN 5: MODAL XÁC NHẬN ẨN GIAN HÀNG
-   ══════════════════════════════════════════════════════════════ *@
-
+@* Modal Xác nhận Khóa *@
 @if (isHideConfirmVisible)
 {
-    <div class="modal fade show d-block" style="background: rgba(0,0,0,0.6);">
+    <div class="modal fade show d-block" tabindex="-1" style="background:rgba(0,0,0,0.8); backdrop:blur(4px);">
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content border-0" style="background:#1a1a24;border-radius:20px;border:1px solid rgba(255,255,255,0.08);">
-                <div class="modal-body p-4 text-center">
-                    <div class="fs-1 mb-3">👁‍🗨</div>
-                    <h5 class="fw-bold" style="color:#F0EBE3;">Ẩn gian hàng</h5>
-                    <p style="color:#8A8078;">
-                        Gian hàng <strong style="color:#F0EBE3;">@hidingPoi?.Name</strong> sẽ được đánh dấu <strong>không hoạt động</strong> (ẩn khỏi app khách).<br />
-                        <small style="color:#4a4a5a;">Dữ liệu vẫn lưu trong CSDL; có thể bật lại bằng trạng thái trong bảng hoặc sửa gian hàng.</small>
-                    </p>
-                    <div class="d-flex justify-content-center gap-2 mt-3">
-                        <button class="btn px-4" style="color:#4a4a5a;" @onclick="HideHideConfirm">Hủy</button>
-                        <button class="btn btn-warning text-dark rounded-pill px-4"
-                                @onclick="HidePoiAsync"
-                                disabled="@isSaving">
-                            @if (isSaving)
-                            {
-                                <span class="spinner-border spinner-border-sm me-1"></span>
-                            }
-                            Ẩn gian hàng
-                        </button>
+            <div class="modal-content border-0 shadow-lg" style="background:#1a1a24; border-radius:20px; border: 1px solid rgba(255,255,255,0.1);">
+                <div class="modal-body p-5 text-center">
+                    <i class="bi bi-lock-fill text-danger display-4 mb-4 d-block"></i>
+                    <h4 class="fw-bold text-white mb-3">Khóa gian hàng?</h4>
+                    <p class="text-muted mb-5">Gian hàng <strong>@hidingPoi?.Name</strong> sẽ bị tạm dừng và không hiển thị trên bản đồ.</p>
+                    <div class="d-flex justify-content-center gap-3">
+                        <button class="btn btn-outline-light rounded-pill px-4" @onclick="HideHideConfirm">Hủy</button>
+                        <button class="btn btn-danger rounded-pill px-4 fw-bold" @onclick="HidePoiAsync" disabled="@isSaving">Xác nhận Khóa</button>
                     </div>
                 </div>
             </div>
@@ -308,266 +259,100 @@
     </div>
 }
 
-@* ══════════════════════════════════════════════════════════════
-   PHẦN 6: CODE-BEHIND — Toàn bộ logic C#
-   ══════════════════════════════════════════════════════════════ *@
+<style>
+    .dash-table th { border-top: none !important; border-bottom: 2px solid rgba(255,255,255,0.05) !important; padding: 1.2rem 0.75rem !important; }
+    .dash-table td { border-bottom: 1px solid rgba(255,255,255,0.03) !important; padding: 1.2rem 0.75rem !important; vertical-align: middle !important; }
+    .dash-table tr:hover { background: rgba(255,255,255,0.01); }
+    .dash-input { background: #0f0f13 !important; border: 1px solid rgba(255,255,255,0.08) !important; color: #F0EBE3 !important; }
+</style>
 
 @code {
-    // ── State: Danh sách ────────────────────────────────
-    private List<Poi> allPois = new();
-    private bool isLoading = true;
-
-    // ── State: Tìm kiếm & Lọc ──────────────────────────
-    private string searchText = string.Empty;
-    private string filterStatus = "all";
-
-    // ── State: Modal Thêm/Sửa ──────────────────────────
-    private bool isModalVisible = false;
-    private bool isEditing = false;           // false = Thêm, true = Sửa
-    private bool isSaving = false;
-    private string errorMessage = string.Empty;
-    private Poi editingPoi = new();
+    private List<Poi> pois = new();
     private List<User> vendorUsers = new();
-    private string editingOwnerIdText = string.Empty;
+    private bool isLoading = true;
+    private bool isSaving = false;
+    private string searchText = "";
+    private string filterStatus = "all";
+    private string filterApproval = "all";
 
-    // ── State: Modal Ẩn ────────────────────────────────
+    private bool isModalVisible = false;
+    private bool isEditing = false;
+    private string errorMessage = "";
+    private Poi editingPoi = new();
+    private string editingOwnerIdText = "";
+
     private bool isHideConfirmVisible = false;
     private Poi? hidingPoi;
 
-    // ═════════════════════════════════════════════════════
-    //  COMPUTED PROPERTY: Danh sách đã lọc
-    //  Mỗi khi searchText hoặc filterStatus thay đổi,
-    //  Blazor tự gọi lại render → property này chạy lại
-    // ═════════════════════════════════════════════════════
-    private IEnumerable<Poi> FilteredPois
-    {
-        get
-        {
-            var query = allPois.AsEnumerable();
+    private bool isApproveModalVisible = false;
+    private bool isRejectModalVisible = false;
+    private Poi? targetPoi;
+    private int targetPriority = 3;
+    private string targetNote = "";
 
-            // Lọc theo text tìm kiếm (tên hoặc địa chỉ)
-            if (!string.IsNullOrWhiteSpace(searchText))
-            {
-                var term = searchText.Trim().ToLower();
-                query = query.Where(p =>
-                    p.Name.ToLower().Contains(term) ||
-                    (p.Address ?? "").ToLower().Contains(term));
-            }
+    private DotNetObjectReference<PoiList>? dotNetRef;
 
-            // Lọc theo trạng thái
-            query = filterStatus switch
-            {
-                "active" => query.Where(p => p.IsActive),
-                "inactive" => query.Where(p => !p.IsActive),
-                _ => query  // "all" — không lọc
-            };
+    private IEnumerable<Poi> FilteredPois => pois
+        .Where(p => string.IsNullOrWhiteSpace(searchText) || p.Name.Contains(searchText, StringComparison.OrdinalIgnoreCase))
+        .Where(p => filterStatus == "all" || (filterStatus == "active" && p.IsActive) || (filterStatus == "inactive" && !p.IsActive))
+        .Where(p => filterApproval == "all" || p.Status == filterApproval);
 
-            return query;
-        }
-    }
+    protected override async Task OnInitializedAsync() { await LoadData(); }
 
-    // ═════════════════════════════════════════════════════
-    //  LIFECYCLE: Chạy khi page load lần đầu
-    // ═════════════════════════════════════════════════════
-    protected override async Task OnInitializedAsync()
-    {
-        await LoadData();
-    }
-
-    private async Task LoadData()
-    {
+    private async Task LoadData() {
         isLoading = true;
-        try
-        {
-            allPois = await PoiService.GetAllAsync();
-            vendorUsers = await PoiService.GetActiveVendorsAsync();
-        }
-        catch (Exception ex)
-        {
-            errorMessage = $"Lỗi tải dữ liệu: {ex.Message}";
-        }
-        finally
-        {
-            isLoading = false;
-        }
+        pois = await PoiService.GetAllAsync();
+        vendorUsers = await AuthService.GetAllUsersAsync();
+        isLoading = false;
     }
 
-    // ═════════════════════════════════════════════════════
-    //  MODAL: Hiện/Ẩn
-    // ═════════════════════════════════════════════════════
-
-    private void ShowAddModal()
-    {
-        isEditing = false;
-        errorMessage = string.Empty;
-
-        // Tạo POI mới với giá trị mặc định hợp lý
-        editingPoi = new Poi
-        {
-            Radius = 20,
-            Priority = 1,
-            IsActive = true,
-            // Tọa độ mặc định = trung tâm phố Vĩnh Khánh
-            Latitude = 10.76012345m,
-            Longitude = 106.70298765m
-        };
-        editingOwnerIdText = string.Empty;
-
-        isModalVisible = true;
-    }
-
-    private void ShowEditModal(Poi poi)
-    {
+    private void ShowEditModal(Poi poi) {
         isEditing = true;
-        errorMessage = string.Empty;
-
-        // TẠO BẢN SAO để chỉnh sửa — không sửa trực tiếp trên list
-        // Nếu user bấm Hủy, data gốc không bị ảnh hưởng
-        editingPoi = new Poi
-        {
-            PoiId = poi.PoiId,
-            Name = poi.Name,
-            Address = poi.Address,
-            Phone = poi.Phone,
-            Latitude = poi.Latitude,
-            Longitude = poi.Longitude,
-            Radius = poi.Radius,
-            Priority = poi.Priority,
-            OwnerId = poi.OwnerId,
-            IsActive = poi.IsActive,
-            CreatedAt = poi.CreatedAt
+        editingPoi = new Poi { 
+            PoiId = poi.PoiId, Name = poi.Name, Phone = poi.Phone, Priority = poi.Priority, 
+            OwnerId = poi.OwnerId, IsActive = poi.IsActive, Status = poi.Status 
         };
-        editingOwnerIdText = poi.OwnerId?.ToString() ?? string.Empty;
-
+        editingOwnerIdText = poi.OwnerId?.ToString() ?? "";
         isModalVisible = true;
     }
 
-    private void HideModal()
-    {
-        isModalVisible = false;
-        errorMessage = string.Empty;
-    }
+    private void HideModal() { isModalVisible = false; }
 
-    // ═════════════════════════════════════════════════════
-    //  SAVE: Xử lý cả Thêm mới và Cập nhật
-    // ═════════════════════════════════════════════════════
-    private async Task SavePoi()
-    {
-        // Validate cơ bản phía client
-        if (string.IsNullOrWhiteSpace(editingPoi.Name))
-        {
-            errorMessage = "Tên gian hàng không được để trống.";
-            return;
-        }
-
-        if (string.IsNullOrWhiteSpace(editingOwnerIdText))
-            editingPoi.OwnerId = null;
-        else if (int.TryParse(editingOwnerIdText, out var ownerId))
-            editingPoi.OwnerId = ownerId;
-        else
-        {
-            errorMessage = "Chủ gian hàng không hợp lệ.";
-            return;
-        }
-
-        // Kiểm tra trùng tên
-        var nameExists = await PoiService.IsNameExistsAsync(
-            editingPoi.Name.Trim(),
-            editingPoi.PoiId  // excludeId: 0 nếu thêm mới, >0 nếu sửa
-        );
-        if (nameExists)
-        {
-            errorMessage = $"Tên \"{editingPoi.Name}\" đã tồn tại.";
-            return;
-        }
-
+    private async Task SavePoi() {
+        if (int.TryParse(editingOwnerIdText, out var oid)) editingPoi.OwnerId = oid; else editingPoi.OwnerId = null;
         isSaving = true;
-        errorMessage = string.Empty;
-
-        try
-        {
-            if (isEditing)
-            {
-                var success = await PoiService.UpdateAsync(editingPoi);
-                if (!success)
-                {
-                    errorMessage = "Không tìm thấy gian hàng để cập nhật.";
-                    return;
-                }
-            }
-            else
-            {
-                await PoiService.CreateAsync(editingPoi);
-            }
-
-            // Thành công → đóng modal, reload data
-            HideModal();
-            await LoadData();
-        }
-        catch (Exception ex)
-        {
-            errorMessage = $"Lỗi lưu dữ liệu: {ex.Message}";
-        }
-        finally
-        {
-            isSaving = false;
-        }
+        await PoiService.UpdateAsync(editingPoi);
+        HideModal(); await LoadData();
+        isSaving = false;
     }
 
-    // ═════════════════════════════════════════════════════
-    //  ẨN gian hàng (soft — IsActive = false)
-    // ═════════════════════════════════════════════════════
-
-    private void ShowHideConfirm(Poi poi)
-    {
-        hidingPoi = poi;
-        isHideConfirmVisible = true;
+    private void ShowApproveModal(Poi poi) { targetPoi = poi; targetPriority = 3; isApproveModalVisible = true; }
+    private async Task ApprovePoiAction() {
+        if (targetPoi == null) return;
+        await PoiService.ApprovePoiAsync(targetPoi.PoiId, targetPriority);
+        isApproveModalVisible = false; await LoadData();
     }
 
-    private void HideHideConfirm()
-    {
-        isHideConfirmVisible = false;
-        hidingPoi = null;
+    private void ShowRejectModal(Poi poi) { targetPoi = poi; targetNote = ""; isRejectModalVisible = true; }
+    private async Task RejectPoiAction() {
+        if (targetPoi == null) return;
+        await PoiService.RejectPoiAsync(targetPoi.PoiId, targetNote);
+        isRejectModalVisible = false; await LoadData();
     }
 
-    private async Task HidePoiAsync()
-    {
-        if (hidingPoi is null)
-            return;
+    private void ShowHideConfirm(Poi poi) { hidingPoi = poi; isHideConfirmVisible = true; }
+    private void HideHideConfirm() { isHideConfirmVisible = false; }
+    private async Task HidePoiAsync() { if (hidingPoi != null) await PoiService.HideStallAsync(hidingPoi.PoiId); HideHideConfirm(); await LoadData(); }
 
-        isSaving = true;
+    private async Task ToggleActive(int id) { await PoiService.ToggleActiveAsync(id); await LoadData(); }
 
-        try
-        {
-            await PoiService.HideStallAsync(hidingPoi.PoiId);
-            HideHideConfirm();
-            await LoadData();
-        }
-        catch (Exception ex)
-        {
-            errorMessage = $"Lỗi: {ex.Message}";
-        }
-        finally
-        {
-            isSaving = false;
-        }
+    private string GetOwnerLabel(int? ownerId) {
+        if (ownerId == null) return "Chưa gán";
+        var u = vendorUsers.FirstOrDefault(x => x.UserId == ownerId);
+        return u == null ? $"User #{ownerId}" : $"{u.Name}";
     }
 
-    // ═════════════════════════════════════════════════════
-    //  TOGGLE: Bật/Tắt nhanh từ bảng
-    // ═════════════════════════════════════════════════════
-    private async Task ToggleActive(int poiId)
-    {
-        await PoiService.ToggleActiveAsync(poiId);
-        await LoadData();
-    }
+    private string GetPriorityColor(int p) => p switch { 5 => "#ff4d4d", 4 => "#ff8c1a", 3 => "#ffff4d", 2 => "#4dff4d", _ => "#8A8078" };
 
-    private string GetOwnerLabel(int? ownerId)
-    {
-        if (ownerId is null)
-            return "Chưa gán";
-
-        var owner = vendorUsers.FirstOrDefault(u => u.UserId == ownerId.Value);
-        return owner is null ? $"User #{ownerId}" : $"{owner.Name} ({owner.Email})";
-    }
+    public async ValueTask DisposeAsync() { dotNetRef?.Dispose(); }
 }

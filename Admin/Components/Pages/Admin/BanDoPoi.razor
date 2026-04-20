@@ -167,8 +167,8 @@
         await using var db = await DbFactory.CreateDbContextAsync();
         var pois = await db.Pois
             .AsNoTracking()
-            .Where(p => p.IsActive)
-            .OrderBy(p => p.Priority)
+            .Where(p => p.IsActive && p.Status == "Approved")
+            .OrderByDescending(p => p.Priority)
             .ThenBy(p => p.Name)
             .ToListAsync();
 
@@ -187,20 +187,28 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender)
+        if (!isLoading && !_mapInitialized)
         {
-            await JS.InvokeVoidAsync("initPoiOverviewMap", "admin-poi-map", _markers);
-            _mapInitialized = true;
-
-            _refreshTimer = new System.Threading.Timer(async _ =>
-            {
-                if (showHeatmap && !_disposed)
-                {
-                    await ReloadHeatmapAsync();
-                }
-            }, null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
+            await InitMapAsync();
         }
     }
+
+    private async Task InitMapAsync()
+    {
+        if (_mapInitialized) return;
+        
+        await JS.InvokeVoidAsync("initPoiOverviewMap", "admin-poi-map", _markers);
+        _mapInitialized = true;
+
+        _refreshTimer = new System.Threading.Timer(async _ =>
+        {
+            if (showHeatmap && !_disposed)
+            {
+                await ReloadHeatmapAsync();
+            }
+        }, null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
+    }
+
 
     private async Task OnToggleHeatmap()
     {

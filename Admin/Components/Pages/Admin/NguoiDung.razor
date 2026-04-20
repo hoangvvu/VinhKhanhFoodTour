@@ -77,14 +77,14 @@
     }
 </div>
 
-@* ── MODAL THÊM NGƯỜI DÙNG ── *@
+@* ── MODAL THÊM NGƯỜI DÙNG & GIAN HÀNG ── *@
 @if (isShowModal)
 {
-    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.8); backdrop-filter: blur(4px);">
-        <div class="modal-dialog modal-dialog-centered">
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.8); backdrop-filter: blur(4px); overflow-y: auto;">
+        <div class="modal-dialog modal-dialog-centered" style="max-width: 600px;">
             <div class="modal-content border-0" style="background:#1a1a24;border-radius:20px;border:1px solid rgba(255,255,255,0.08);">
                 <div class="modal-header" style="border-bottom:1px solid rgba(255,255,255,0.06);">
-                    <h5 class="modal-title fw-bold" style="color:#F0EBE3;">Thêm Nhân Sự Mới</h5>
+                    <h5 class="modal-title fw-bold" style="color:#F0EBE3;">Thêm Nhân Sự & Gian Hàng Mới</h5>
                     <button type="button" class="btn-close btn-close-white" @onclick="HideModal"></button>
                 </div>
                 <div class="modal-body p-4">
@@ -93,28 +93,45 @@
                         <div class="alert alert-danger p-3 small rounded-3"><i class="bi bi-exclamation-triangle me-2"></i>@errorMessage</div>
                     }
 
-                    <div class="mb-3">
-                        <label class="form-label" style="color:#8A8078;font-size:11px;letter-spacing:1px;font-weight:700;">HỌ VÀ TÊN</label>
-                        <input type="text" class="form-control dash-input rounded-3" @bind="newName" placeholder="VD: Nguyễn Văn A" />
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label" style="color:#8A8078;font-size:11px;letter-spacing:1px;font-weight:700;">HỌ VÀ TÊN</label>
+                            <input type="text" class="form-control dash-input rounded-3" @bind="newName" placeholder="VD: Nguyễn Văn A" />
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label" style="color:#8A8078;font-size:11px;letter-spacing:1px;font-weight:700;">EMAIL ĐĂNG NHẬP</label>
+                            <input type="email" class="form-control dash-input rounded-3" @bind="newEmail" placeholder="VD: vendor1@vinhkhanh.vn" />
+                        </div>
                     </div>
 
-                    <div class="mb-3">
-                        <label class="form-label" style="color:#8A8078;font-size:11px;letter-spacing:1px;font-weight:700;">EMAIL ĐĂNG NHẬP</label>
-                        <input type="email" class="form-control dash-input rounded-3" @bind="newEmail" placeholder="VD: vendor1@vinhkhanh.vn" />
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label" style="color:#8A8078;font-size:11px;letter-spacing:1px;font-weight:700;">MẬT KHẨU</label>
+                            <input type="password" class="form-control dash-input rounded-3" @bind="newPassword" placeholder="Tạo mật khẩu..." />
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label" style="color:#8A8078;font-size:11px;letter-spacing:1px;font-weight:700;">PHÂN QUYỀN</label>
+                            <select class="form-select dash-input rounded-3" @bind="newRole">
+                                <option value="Vendor">Vendor (Chủ quán ăn)</option>
+                                <option value="Admin">Admin (Quản trị viên)</option>
+                            </select>
+                        </div>
                     </div>
 
-                    <div class="mb-3">
-                        <label class="form-label" style="color:#8A8078;font-size:11px;letter-spacing:1px;font-weight:700;">MẬT KHẨU</label>
-                        <input type="password" class="form-control dash-input rounded-3" @bind="newPassword" placeholder="Tạo mật khẩu cho tài khoản..." />
-                    </div>
+                    @if (newRole == "Vendor")
+                    {
+                        <hr style="border-color: rgba(255,255,255,0.06);" />
+                        <h6 class="fw-bold mb-3" style="color:#F0EBE3;">Thông Tin Kèm Theo (Gian Hàng)</h6>
+                        
+                        <div class="row">
+                            <div class="col-12 mb-3">
+                                <label class="form-label" style="color:#8A8078;font-size:11px;letter-spacing:1px;font-weight:700;">TÊN QUÁN ĂN (SƠ BỘ)</label>
+                                <input type="text" class="form-control dash-input rounded-3" @bind="newPoiName" placeholder="Tên gian hàng..." />
+                                <div class="form-text mt-1" style="color:#4a4a5a; font-size: 11px;">Vendor sẽ tự cập nhật địa chỉ và tọa độ sau khi đăng nhập.</div>
+                            </div>
+                        </div>
+                    }
 
-                    <div class="mb-4">
-                        <label class="form-label" style="color:#8A8078;font-size:11px;letter-spacing:1px;font-weight:700;">PHÂN QUYỀN (ROLE)</label>
-                        <select class="form-select dash-input rounded-3" @bind="newRole">
-                            <option value="Vendor">Vendor (Chủ quán ăn)</option>
-                            <option value="Admin">Admin (Quản trị viên hệ thống)</option>
-                        </select>
-                    </div>
                 </div>
                 <div class="modal-footer" style="border-top:1px solid rgba(255,255,255,0.06);">
                     <button type="button" class="btn btn-outline-light rounded-pill px-4" @onclick="HideModal">Hủy</button>
@@ -122,7 +139,7 @@
                         @if (isSaving) {
                             <span class="spinner-border spinner-border-sm me-2"></span> <span>Đang lưu...</span>
                         } else {
-                            <i class="bi bi-check2-circle me-2"></i><span>Tạo tài khoản</span>
+                            <i class="bi bi-check2-circle me-2"></i><span>Tạo tài khoản @(newRole == "Vendor" ? "& Gian hàng" : "")</span>
                         }
                     </button>
                 </div>
@@ -141,11 +158,14 @@
     private bool isSaving = false;
     private string errorMessage = "";
 
-    // Các biến lưu dữ liệu Form
+    // Các biến lưu dữ liệu Form User
     private string newName = "";
     private string newEmail = "";
     private string newPassword = "";
     private string newRole = "Vendor";
+
+    // Các biến lưu dữ liệu Form POI
+    private string newPoiName = "";
 
     protected override async Task OnInitializedAsync()
     {
@@ -155,6 +175,11 @@
             currentUserId = me;
 
         await LoadUsers();
+    }
+
+    private async Task LoadUsers()
+    {
+        users = await AuthService.GetAllUsersAsync();
     }
 
     private async Task ToggleUserAsync(User user)
@@ -174,20 +199,14 @@
         }
     }
 
-    private async Task LoadUsers()
-    {
-        users = await AuthService.GetAllUsersAsync();
-    }
-
     private void ShowModal()
     {
-        // Xóa sạch dữ liệu cũ khi mở Modal lên
         newName = "";
         newEmail = "";
         newPassword = "";
         newRole = "Vendor";
+        newPoiName = "";
         errorMessage = "";
-        
         isShowModal = true;
     }
 
@@ -198,10 +217,15 @@
 
     private async Task SaveUser()
     {
-        // 1. Kiểm tra đầu vào cơ bản
         if (string.IsNullOrWhiteSpace(newName) || string.IsNullOrWhiteSpace(newEmail) || string.IsNullOrWhiteSpace(newPassword))
         {
             errorMessage = "Vui lòng nhập đầy đủ Họ Tên, Email và Mật khẩu.";
+            return;
+        }
+
+        if (newRole == "Vendor" && string.IsNullOrWhiteSpace(newPoiName))
+        {
+            errorMessage = "Vui lòng nhập tên quán (gian hàng).";
             return;
         }
 
@@ -211,18 +235,21 @@
 
         try
         {
-            // 2. Gọi API để mã hóa mật khẩu và lưu xuống Database
-            await AuthService.CreateUserAsync(newName, newEmail, newPassword, newRole);
+            if (newRole == "Vendor")
+            {
+                await AuthService.CreateVendorWithPoiAsync(newName, newEmail, newPassword, newPoiName);
+            }
+            else
+            {
+                await AuthService.CreateUserAsync(newName, newEmail, newPassword, newRole);
+            }
             
-            // 3. Ẩn modal và load lại danh sách sau khi lưu thành công
             HideModal();
             await LoadUsers(); 
         }
         catch (Exception ex)
         {
-            // Nếu có lỗi (ví dụ Email bị trùng trong SQL)
-            errorMessage = $"Lỗi khi tạo: Email này có thể đã tồn tại trong hệ thống!";
-            Console.WriteLine(ex.Message);
+            errorMessage = $"Có lỗi xảy ra: {ex.Message}";
         }
         finally
         {

@@ -11,4 +11,5 @@ public class QrResolveDto
     public string? NarrationContent { get; set; }
     public string? AudioUrl { get; set; }
     public string? LanguageCode { get; set; }
+    public bool IsTour { get; set; }
 }

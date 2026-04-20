@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace VKFoodTour.Infrastructure.Entities;
@@ -55,6 +55,13 @@ public class Poi
 
     [Column("image_url")]
     public string? ImageUrl { get; set; }
+
+    [Column("status")]
+    [MaxLength(50)]
+    public string Status { get; set; } = "Pending"; // Pending, Approved, Rejected
+
+    [Column("rejection_note")]
+    public string? RejectionNote { get; set; }
 
     // Navigation properties
     public ICollection<Narration> Narrations { get; set; } = new List<Narration>();

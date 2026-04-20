@@ -112,12 +112,19 @@ public partial class QrScanViewModel : ObservableObject
             _lastHandledAt = DateTime.UtcNow;
             ManualCode = string.Empty;
 
-            // Lưu audio URL để StallDetailPage tự động phát
-            if (!string.IsNullOrWhiteSpace(resolved.AudioUrl))
-                _stallNarrationState.PendingAudioUrl = resolved.AudioUrl;
+            if (resolved.IsTour)
+            {
+                // Nếu là mã Tour tổng: Chuyển sang tab Tour và kích hoạt nạp hàng đợi
+                await Shell.Current.GoToAsync($"//tour?qrToken={payload}");
+            }
+            else
+            {
+                // Nếu là mã quán lẻ: Chuyển sang trang Chi tiết gian hàng
+                if (!string.IsNullOrWhiteSpace(resolved.AudioUrl))
+                    _stallNarrationState.PendingAudioUrl = resolved.AudioUrl;
 
-            // Chuyển sang trang Chi tiết gian hàng
-            await Shell.Current.GoToAsync($"stalldetail?poiId={resolved.PoiId}&fromQr=true");
+                await Shell.Current.GoToAsync($"stalldetail?poiId={resolved.PoiId}&fromQr=true");
+            }
         }
         catch (Exception ex)
         {

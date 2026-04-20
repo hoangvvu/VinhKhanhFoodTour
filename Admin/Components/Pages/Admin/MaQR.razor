@@ -120,6 +120,17 @@
                                 <span class="badge px-3 py-2" style="background:rgba(107,114,128,0.12);color:#6b7280;border:1px solid rgba(107,114,128,0.25);border-radius:20px;">Đã tắt</span>
                             }
                         </div>
+
+                        <!-- TRẠNG THÁI AUDIO -->
+                        <div class="d-flex flex-wrap gap-1 justify-content-center mb-3">
+                            @foreach (var lang in activeLanguages)
+                            {
+                                var hasAudio = qr.Narrations.Any(n => n.LanguageId == lang.LanguageId && (!string.IsNullOrWhiteSpace(n.AudioUrlAuto) || !string.IsNullOrWhiteSpace(n.AudioUrlQr)));
+                                <div class="badge-status @(hasAudio ? "ready" : "missing")" title="@lang.Name: @(hasAudio ? "Sẵn sàng" : "Chưa có audio")">
+                                    @lang.Code.ToUpper()
+                                </div>
+                            }
+                        </div>
                         <div class="d-flex gap-1 justify-content-center">
                             <button class="btn btn-sm btn-outline-info rounded-pill" type="button" @onclick="() => DownloadQr(qr.QrToken)" title="Tải QR">
                                 <i class="bi bi-download"></i>
@@ -158,6 +169,7 @@
 
 @code {
     private List<QrDisplayItem> qrList = new();
+    private List<VKFoodTour.Infrastructure.Entities.Language> activeLanguages = new();
     private bool isLoading = true;
     private int todayScans;
     private string? pageMessage;
@@ -171,27 +183,38 @@
     private async Task LoadData()
     {
         var today = DateTime.Today;
+        activeLanguages = await PoiService.GetActiveLanguagesAsync();
 
-        qrList = await (
-            from q in Db.QrCodes.AsNoTracking()
-            join p in Db.Pois.AsNoTracking() on q.PoiId equals p.PoiId
-            join u in Db.Users.AsNoTracking() on p.OwnerId equals u.UserId into uj
-            from u in uj.DefaultIfEmpty()
-            where p.OwnerId != null
-            orderby p.Name, q.QrToken
-            select new QrDisplayItem
+        var qrs = await Db.QrCodes.AsNoTracking()
+            .Include(q => q.Poi)
+                .ThenInclude(p => p.Narrations)
+            .Where(q => q.Poi.OwnerId != null)
+            .OrderBy(q => q.Poi.Name)
+            .ThenBy(q => q.QrToken)
+            .ToListAsync();
+
+        var userIds = qrs.Select(q => q.Poi.OwnerId).Distinct().ToList();
+        var users = await Db.Users.AsNoTracking()
+            .Where(u => userIds.Contains(u.UserId))
+            .ToDictionaryAsync(u => u.UserId, u => u);
+
+        qrList = qrs.Select(q => {
+            var u = q.Poi.OwnerId != null && users.ContainsKey(q.Poi.OwnerId.Value) ? users[q.Poi.OwnerId.Value] : null;
+            return new QrDisplayItem
             {
                 QrId = q.QrId,
                 QrToken = q.QrToken,
-                PoiId = p.PoiId,
-                PoiName = p.Name,
-                PoiDescription = p.Description ?? "",
+                PoiId = q.PoiId,
+                PoiName = q.Poi.Name,
+                PoiDescription = q.Poi.Description ?? "",
                 LocationNote = q.LocationNote ?? "",
                 IsActive = q.IsActive,
-                OwnerUserId = p.OwnerId ?? 0,
-                OwnerName = u != null ? u.Name : "—",
-                OwnerEmail = u != null ? u.Email : "—"
-            }).ToListAsync();
+                OwnerUserId = q.Poi.OwnerId ?? 0,
+                OwnerName = u?.Name ?? "—",
+                OwnerEmail = u?.Email ?? "—",
+                Narrations = q.Poi.Narrations.ToList()
+            };
+        }).ToList();
 
         todayScans = await Db.TrackingLogs
             .CountAsync(t => t.EventType == "qr_scan" && t.CreatedAt >= today);
@@ -281,5 +304,32 @@
         public string OwnerEmail { get; set; } = "";
         public bool IsActive { get; set; }
         public bool IsSyncing { get; set; }
+        public List<VKFoodTour.Infrastructure.Entities.Narration> Narrations { get; set; } = new();
     }
 }
+
+<style>
+    .badge-status {
+        width: 32px;
+        height: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 9px;
+        font-weight: 800;
+        border-radius: 4px;
+        transition: all 0.2s;
+    }
+
+    .badge-status.ready {
+        background: rgba(34, 197, 94, 0.15);
+        color: #4ade80;
+        border: 1px solid rgba(34, 197, 94, 0.3);
+    }
+
+    .badge-status.missing {
+        background: rgba(255, 255, 255, 0.05);
+        color: rgba(255, 255, 255, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+</style>

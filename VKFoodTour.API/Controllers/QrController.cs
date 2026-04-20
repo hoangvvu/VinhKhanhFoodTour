@@ -54,6 +54,10 @@ public class QrController : ControllerBase
             .ThenBy(n => n.LanguageId)
             .FirstOrDefault();
 
+        var languageCode = pick?.Language?.Code;
+        var masterToken = "VINH-KHANH-TOUR"; // Có thể lấy từ config
+        var isMasterTour = string.Equals(normalized, masterToken, StringComparison.OrdinalIgnoreCase);
+
         return Ok(new QrResolveDto
         {
             PoiId = poi.PoiId,
@@ -63,7 +67,8 @@ public class QrController : ControllerBase
             NarrationTitle = pick?.Title,
             NarrationContent = pick?.Content,
             AudioUrl = pick?.AudioUrlQr ?? pick?.AudioUrl ?? pick?.AudioUrlAuto,
-            LanguageCode = pick?.Language?.Code
+            LanguageCode = languageCode,
+            IsTour = isMasterTour
         });
     }
 

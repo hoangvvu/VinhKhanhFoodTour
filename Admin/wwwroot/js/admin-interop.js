@@ -127,7 +127,7 @@ async function performExplicitSearch(query, containerId, dotNetRef) {
     if (!query || query.trim().length < 2) return;
     console.log('[MAP] Explicit search trigger:', query);
     
-    // Thử parse trước
+    // Thử parse trước trường hợp copy paste link Google Maps
     const parsed = parseGoogleLocation(query);
     if (parsed) {
         pickerMap.setView([parsed.lat, parsed.lng], 18);
@@ -161,6 +161,17 @@ async function performExplicitSearch(query, containerId, dotNetRef) {
         }
     } catch (err) {
         console.error("[OSM] Search error:", err);
+    }
+}
+
+async function fetchAutocomplete(query, containerId, dotNetRef) {
+    const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&lang=vi&lat=10.7578&lon=106.7095&limit=10`;
+    try {
+        const response = await fetch(url);
+        const data = await response.json();
+        renderSuggestions(data.features, containerId, dotNetRef);
+    } catch (err) {
+        console.error("[OSM] Autocomplete error:", err);
     }
 }
 
@@ -277,10 +288,26 @@ window.initPoiOverviewMap = function(elementId, pois) {
         const group = L.featureGroup();
 
         pois.forEach(poi => {
-            const color = poi.priority === 1 ? '#C8372D' : '#E8A020';
+            // Priority logic: 5 is VIP, 1 is Low
+            let color = '#E8A020'; // Default (3-4)
+            let radius = 10;
+            
+            if (poi.priority >= 5) {
+                color = '#C8372D'; // VIP (Red)
+                radius = 14;
+            } else if (poi.priority >= 4) {
+                color = '#ff4d4d'; // High (Lighter red)
+                radius = 12;
+            } else if (poi.priority <= 1) {
+                color = '#8A8078'; // Low (Grey)
+                radius = 7;
+            } else if (poi.priority === 2) {
+                color = '#b38600'; // Medium-Low (Darker yellow)
+                radius = 8;
+            }
             
             const marker = L.circleMarker([poi.lat, poi.lng], {
-                radius: 10,
+                radius: radius,
                 fillColor: color,
                 color: "#fff",
                 weight: 2,

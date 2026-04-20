@@ -104,9 +104,8 @@
                             <th style="width: 50px;">STT</th>
                             <th>Gian hàng</th>
                             <th>Chủ quán</th>
-                            <th style="width: 100px;">Ưu tiên</th>
-                            <th>Audio Auto</th>
-                            <th>Audio QR</th>
+                            <th style="width: 80px;">Ưu tiên</th>
+                            <th>Trạng thái Audio (Đa ngôn ngữ)</th>
                             <th>Mã QR</th>
                             <th style="width: 150px;">Thao tác</th>
                         </tr>
@@ -125,30 +124,28 @@
                                     <span class="badge bg-@(GetPriorityColor(poi.Priority))">@poi.Priority</span>
                                 </td>
                                 <td>
-                                    @if (!string.IsNullOrEmpty(GetAudioUrlAuto(poi)))
-                                    {
-                                        <button class="btn btn-sm btn-outline-success rounded-pill" 
-                                                @onclick="() => PlayAudio(GetAudioUrlAuto(poi))">
-                                            <i class="bi bi-play-fill"></i> Nghe
-                                        </button>
-                                    }
-                                    else
-                                    {
-                                        <span class="badge bg-secondary">Chưa có</span>
-                                    }
-                                </td>
-                                <td>
-                                    @if (!string.IsNullOrEmpty(GetAudioUrlQr(poi)))
-                                    {
-                                        <button class="btn btn-sm btn-outline-info rounded-pill" 
-                                                @onclick="() => PlayAudio(GetAudioUrlQr(poi))">
-                                            <i class="bi bi-play-fill"></i> Nghe
-                                        </button>
-                                    }
-                                    else
-                                    {
-                                        <span class="badge bg-secondary">Chưa có</span>
-                                    }
+                                    <div class="d-flex flex-wrap gap-1">
+                                        @foreach (var lang in activeLanguages)
+                                        {
+                                            var nar = poi.Narrations?.FirstOrDefault(n => n.LanguageId == lang.LanguageId && n.IsActive);
+                                            var hasAudio = !string.IsNullOrEmpty(nar?.AudioUrlQr) || !string.IsNullOrEmpty(nar?.AudioUrlAuto);
+                                            
+                                            <div class="btn-group btn-group-sm">
+                                                <span class="badge @(hasAudio ? "bg-success" : "bg-dark border border-secondary text-muted")" 
+                                                      style="min-width: 35px; cursor: default;" 
+                                                      title="@(hasAudio ? $"Đã có audio {lang.Name}" : $"Chưa có audio {lang.Name}")">
+                                                    @lang.Code.ToUpper()
+                                                </span>
+                                                @if (hasAudio)
+                                                {
+                                                    <button class="btn btn-sm btn-outline-light py-0 px-1" style="font-size: 10px;"
+                                                            @onclick="() => PlayAudio(nar?.AudioUrlQr ?? nar?.AudioUrlAuto)">
+                                                        <i class="bi bi-play-fill"></i>
+                                                    </button>
+                                                }
+                                            </div>
+                                        }
+                                    </div>
                                 </td>
                                 <td>
                                     @if (poi.QrCodes?.Any(q => q.IsActive) == true)
@@ -164,7 +161,7 @@
                                 </td>
                                 <td>
                                     <div class="btn-group btn-group-sm">
-                                        <button class="btn btn-outline-warning" title="Tạo TTS" 
+                                        <button class="btn btn-outline-warning" title="Đồng bộ Audio Đa ngôn ngữ" 
                                                 @onclick="() => GenerateTtsForPoiAsync(poi)"
                                                 disabled="@(generatingPoiId == poi.PoiId)">
                                             @if (generatingPoiId == poi.PoiId)
@@ -173,7 +170,7 @@
                                             }
                                             else
                                             {
-                                                <i class="bi bi-mic"></i>
+                                                <i class="bi bi-arrow-repeat"></i>
                                             }
                                         </button>
                                         <button class="btn btn-outline-light" title="Tạo QR" 
@@ -211,6 +208,7 @@
 
 @code {
     private List<VKFoodTour.Infrastructure.Entities.Poi> allPois = new();
+    private List<Language> activeLanguages = new();
     private string? statusMessage;
     private bool isError;
     private bool isGeneratingAll;
@@ -241,6 +239,7 @@
     private async Task LoadDataAsync()
     {
         allPois = await PoiService.GetAllWithNarrationsAsync();
+        activeLanguages = await PoiService.GetActiveLanguagesAsync();
     }
 
     private bool HasAnyAudio(VKFoodTour.Infrastructure.Entities.Poi poi)
@@ -287,23 +286,21 @@
 
         try
         {
-            var tts = await TtsService.GenerateAndPersistLocalAsync(
-                poi.Description,
-                "lannhi",
-                $"poi{poi.PoiId}_{poi.Name}");
-
-            if (string.IsNullOrEmpty(tts.Url))
+            // forceRefresh = true để ghi đè (vì nút này là Admin chủ động nhấn để đồng bộ)
+            var results = await PoiService.UpdateMultilingualNarrationsAsync(poi.PoiId, forceRefresh: true);
+            
+            var successCount = results.Count(r => r.Success);
+            if (successCount > 0)
             {
-                statusMessage = $"Không tạo được audio cho '{poi.Name}'. {tts.ErrorMessage}";
-                isError = true;
-                return;
+                statusMessage = $"Đã đồng bộ audio {successCount} ngôn ngữ cho '{poi.Name}'.";
+                isError = false;
             }
-
-            var languageId = await PoiService.GetVietnameseLanguageIdAsync();
-            await PoiService.UpsertNarrationAutoAsync(poi.PoiId, languageId, poi.Name, poi.Description, "lannhi", tts.Url);
-
-            statusMessage = $"Đã tạo audio cho '{poi.Name}'.";
-            isError = false;
+            else
+            {
+                statusMessage = $"Lỗi đồng bộ audio cho '{poi.Name}'.";
+                isError = true;
+            }
+            
             await LoadDataAsync();
         }
         catch (Exception ex)
@@ -324,40 +321,24 @@
         StateHasChanged();
 
         var poisWithoutAudio = allPois.Where(p => !HasAnyAudio(p) && !string.IsNullOrWhiteSpace(p.Description)).ToList();
-        var successCount = 0;
-        var failCount = 0;
+        var total = poisWithoutAudio.Count;
+        var processed = 0;
 
         foreach (var poi in poisWithoutAudio)
         {
             try
             {
-                var tts = await TtsService.GenerateAndPersistLocalAsync(
-                    poi.Description!,
-                    "lannhi",
-                    $"poi{poi.PoiId}_{poi.Name}");
-
-                if (!string.IsNullOrEmpty(tts.Url))
-                {
-                    var languageId = await PoiService.GetVietnameseLanguageIdAsync();
-                    await PoiService.UpsertNarrationAutoAsync(poi.PoiId, languageId, poi.Name, poi.Description!, "lannhi", tts.Url);
-                    successCount++;
-                }
-                else
-                {
-                    failCount++;
-                }
+                await PoiService.UpdateMultilingualNarrationsAsync(poi.PoiId);
             }
-            catch
-            {
-                failCount++;
-            }
+            catch { }
 
-            StateHasChanged();
-            await Task.Delay(500); // Rate limit
+            processed++;
+            if (processed % 2 == 0) StateHasChanged();
+            await Task.Delay(200);
         }
 
-        statusMessage = $"Đã tạo audio cho {successCount} quán. Thất bại: {failCount}.";
-        isError = failCount > 0;
+        statusMessage = $"Hoàn tất xử lý audio cho {processed}/{total} quán.";
+        isError = false;
         isGeneratingAll = false;
         await LoadDataAsync();
     }

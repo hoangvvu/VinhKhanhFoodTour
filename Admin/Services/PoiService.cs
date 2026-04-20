@@ -20,10 +20,20 @@ public class PoiService
         _tts = tts;
     }
 
+    public async Task<List<Language>> GetActiveLanguagesAsync()
+    {
+        return await _db.Languages
+            .AsNoTracking()
+            .Where(l => l.IsActive)
+            .OrderBy(l => l.Code == "vi" ? 0 : 1)
+            .ThenBy(l => l.Code)
+            .ToListAsync();
+    }
+
     public async Task<List<Poi>> GetAllAsync()
     {
         return await _db.Pois
-            .OrderBy(p => p.Priority)
+            .OrderByDescending(p => p.Priority)
             .ThenBy(p => p.Name)
             .AsNoTracking()
             .ToListAsync();
@@ -45,7 +55,7 @@ public class PoiService
     {
         return await _db.Pois
             .Where(p => p.OwnerId == ownerId)
-            .OrderBy(p => p.Priority)
+            .OrderByDescending(p => p.Priority)
             .ThenBy(p => p.Name)
             .AsNoTracking()
             .ToListAsync();
@@ -82,7 +92,8 @@ public class PoiService
             Longitude = 106.7095m,
             Radius = 20,
             Priority = 3,
-            IsActive = true
+            IsActive = false,
+            Status = "Pending"
         };
         _db.Pois.Add(poi);
         await _db.SaveChangesAsync();
@@ -256,7 +267,7 @@ public class PoiService
         var anchorPoi = await _db.Pois
             .AsNoTracking()
             .Where(p => p.IsActive && p.OwnerId != null)
-            .OrderBy(p => p.Priority)
+            .OrderByDescending(p => p.Priority)
             .ThenBy(p => p.PoiId)
             .FirstOrDefaultAsync();
 
@@ -395,15 +406,23 @@ public class PoiService
 
         poi.Name = name;
         poi.Address = addr;
-        poi.Latitude = (decimal)lat;   // Ép kiểu sang decimal
-        poi.Longitude = (decimal)lng;  // Ép kiểu sang decimal
-        poi.UpdatedAt = DateTime.Now;
+        poi.Latitude = (decimal)lat;
+        poi.Longitude = (decimal)lng;
         poi.Description = desc;
+        poi.ImageUrl = imgUrl;
+        poi.UpdatedAt = DateTime.Now;
 
-        if (!string.IsNullOrEmpty(imgUrl))
-        {
-            poi.ImageUrl = imgUrl;
-        }
+        await _db.SaveChangesAsync();
+        return true;
+    }
+
+    public async Task<bool> RequestApprovalAsync(int poiId)
+    {
+        var poi = await _db.Pois.FindAsync(poiId);
+        if (poi is null) return false;
+
+        poi.Status = "Pending";
+        poi.UpdatedAt = DateTime.Now;
 
         await _db.SaveChangesAsync();
         return true;
@@ -413,7 +432,7 @@ public class PoiService
     {
         return await _db.Pois
             .Where(p => p.IsActive)
-            .OrderBy(p => p.Priority)
+            .OrderByDescending(p => p.Priority)
             .ThenBy(p => p.Name)
             .AsNoTracking()
             .ToListAsync();
@@ -429,6 +448,8 @@ public class PoiService
     public async Task<Poi> CreateAsync(Poi poi)
     {
         poi.UpdatedAt = null;
+        poi.Status ??= "Pending";
+        poi.IsActive = false; // Luôn tạo ở trạng thái chưa active để chờ duyệt
         _db.Pois.Add(poi);
         await _db.SaveChangesAsync();
         return poi;
@@ -448,7 +469,38 @@ public class PoiService
         existing.Priority = poi.Priority;
         existing.OwnerId = poi.OwnerId;
         existing.IsActive = poi.IsActive;
+        existing.Status = poi.Status;
+        existing.RejectionNote = poi.RejectionNote;
         existing.UpdatedAt = DateTime.Now;
+
+        await _db.SaveChangesAsync();
+        return true;
+    }
+
+    public async Task<bool> ApprovePoiAsync(int poiId, int priority)
+    {
+        var poi = await _db.Pois.FindAsync(poiId);
+        if (poi is null) return false;
+
+        poi.Status = "Approved";
+        poi.IsActive = true;
+        poi.Priority = priority;
+        poi.UpdatedAt = DateTime.Now;
+        poi.RejectionNote = null;
+
+        await _db.SaveChangesAsync();
+        return true;
+    }
+
+    public async Task<bool> RejectPoiAsync(int poiId, string note)
+    {
+        var poi = await _db.Pois.FindAsync(poiId);
+        if (poi is null) return false;
+
+        poi.Status = "Rejected";
+        poi.IsActive = false;
+        poi.RejectionNote = note;
+        poi.UpdatedAt = DateTime.Now;
 
         await _db.SaveChangesAsync();
         return true;
@@ -498,7 +550,7 @@ public class PoiService
         return await _db.Pois
             .Include(p => p.Narrations.Where(n => n.IsActive))
             .Include(p => p.QrCodes.Where(q => q.IsActive))
-            .OrderBy(p => p.Priority)
+            .OrderByDescending(p => p.Priority)
             .ThenBy(p => p.Name)
             .AsNoTracking()
             .ToListAsync();
@@ -537,9 +589,9 @@ public class PoiService
     }
 
     /// <summary>
-    /// Tự động dịch và tạo Audio TTS cho 5 ngôn ngữ (vi, en, ja, ko, zh) từ nội dung Tiếng Việt.
+    /// Tự động dịch và tạo Audio TTS cho các ngôn ngữ active (vi, en, ja, ko, zh) từ nội dung Tiếng Việt.
     /// </summary>
-    public async Task<List<(string Code, bool Success, string? Error)>> UpdateMultilingualNarrationsAsync(int poiId)
+    public async Task<List<(string Code, bool Success, string? Error)>> UpdateMultilingualNarrationsAsync(int poiId, bool forceRefresh = false)
     {
         var results = new List<(string Code, bool Success, string? Error)>();
         
@@ -549,49 +601,61 @@ public class PoiService
             
         if (poi == null) return results;
 
-        // 1. Lấy nguồn Tiếng Việt
-        var viLang = await _db.Languages.AsNoTracking().FirstOrDefaultAsync(l => l.Code == "vi");
-        if (viLang == null) return results;
-
-        var sourceNar = await _db.Narrations.Include(n => n.Language).FirstOrDefaultAsync(n => n.PoiId == poiId && n.Language.Code == "vi");
-        
-        string sourceTitle = poi.Name;
-        string sourceContent = !string.IsNullOrWhiteSpace(poi.Description) ? poi.Description : (sourceNar?.Content ?? "");
+        // 1. Lấy nguồn Tiếng Việt (Description của POI là gốc)
+        string sourceContent = (poi.Description ?? "").Trim();
+        if (string.IsNullOrWhiteSpace(sourceContent)) 
+        {
+            // Nếu POI description trống, thử tìm narration vi hiện có
+            var viNar = await _db.Narrations.Include(n => n.Language)
+                .FirstOrDefaultAsync(n => n.PoiId == poiId && n.Language.Code == "vi");
+            sourceContent = viNar?.Content ?? "";
+        }
 
         if (string.IsNullOrWhiteSpace(sourceContent)) return results;
 
-        // 2. Lấy danh sách ngôn ngữ đích (active và không phải vi)
-        var targetLanguages = await _db.Languages.AsNoTracking()
-            .Where(l => l.IsActive && l.Code != "vi")
+        // 2. Lấy danh sách toàn bộ ngôn ngữ active
+        var activeLanguages = await _db.Languages.AsNoTracking()
+            .Where(l => l.IsActive)
             .ToListAsync();
 
-        foreach (var lang in targetLanguages)
+        foreach (var lang in activeLanguages)
         {
             try
             {
-                // Dịch
-                var tTitle = await _translate.TranslateAsync(sourceTitle, "vi", lang.Code);
-                var tContent = await _translate.TranslateAsync(sourceContent, "vi", lang.Code);
+                string targetTitle = poi.Name;
+                string targetContent = sourceContent;
 
-                // TTS
-                string? audioUrl = null;
-                if (!string.IsNullOrEmpty(lang.TtsVoice))
+                // Nếu không phải tiếng Việt thì mới dịch
+                if (lang.Code != "vi")
+                {
+                    targetTitle = await _translate.TranslateAsync(poi.Name, "vi", lang.Code);
+                    targetContent = await _translate.TranslateAsync(sourceContent, "vi", lang.Code);
+                }
+
+                var existing = poi.Narrations.FirstOrDefault(n => n.LanguageId == lang.LanguageId);
+                
+                // Kiểm tra xem có cần tạo lại audio không?
+                // Nếu content thay đổi HOẶC chưa có audio HOẶC forceRefresh = true thì mới tạo.
+                bool needsTts = forceRefresh || existing == null || existing.Content != targetContent || 
+                                (string.IsNullOrEmpty(existing.AudioUrlQr) && string.IsNullOrEmpty(existing.AudioUrlAuto));
+
+                string? audioUrl = existing?.AudioUrlQr ?? existing?.AudioUrlAuto ?? existing?.AudioUrl;
+
+                if (needsTts && !string.IsNullOrEmpty(lang.TtsVoice))
                 {
                     var stem = $"auto_{lang.Code}_p{poiId}";
-                    var tts = await _tts.GenerateAndPersistLocalAsync(tContent, lang.TtsVoice, stem, lang.Code);
+                    var tts = await _tts.GenerateAndPersistLocalAsync(targetContent, lang.TtsVoice, stem, lang.Code);
                     if (string.IsNullOrEmpty(tts.ErrorMessage))
                         audioUrl = tts.Url;
                 }
 
-                // Lưu
-                var existing = poi.Narrations.FirstOrDefault(n => n.LanguageId == lang.LanguageId);
                 if (existing != null)
                 {
-                    existing.Title = TruncateForDb(tTitle, 200);
-                    existing.Content = tContent;
+                    existing.Title = TruncateForDb(targetTitle, 200);
+                    existing.Content = targetContent;
+                    existing.AudioUrlQr = audioUrl;
                     existing.AudioUrlAuto = audioUrl;
-                    existing.AudioUrl = null; // Cleanup legacy
-                    existing.AudioUrlQr = null; // Cleanup legacy
+                    existing.AudioUrl = audioUrl; // Legacy
                     existing.TtsVoice = lang.TtsVoice;
                     existing.UpdatedAt = DateTime.Now;
                     existing.IsActive = true;
@@ -602,9 +666,11 @@ public class PoiService
                     {
                         PoiId = poiId,
                         LanguageId = lang.LanguageId,
-                        Title = TruncateForDb(tTitle, 200),
-                        Content = tContent,
+                        Title = TruncateForDb(targetTitle, 200),
+                        Content = targetContent,
+                        AudioUrlQr = audioUrl,
                         AudioUrlAuto = audioUrl,
+                        AudioUrl = audioUrl,
                         TtsVoice = lang.TtsVoice,
                         IsActive = true,
                         UpdatedAt = DateTime.Now

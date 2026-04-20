@@ -8,8 +8,19 @@ using VKFoodTour.Shared.DTOs;
 
 namespace VKFoodTour.Mobile.ViewModels;
 
+[QueryProperty(nameof(QrToken), "qrToken")]
 public partial class TourPlayerViewModel : ObservableObject, IDisposable
 {
+    [ObservableProperty]
+    private string? qrToken;
+
+    partial void OnQrTokenChanged(string? value)
+    {
+        if (!string.IsNullOrWhiteSpace(value))
+        {
+            _ = HandleScanPayloadAsync(value);
+        }
+    }
     private readonly ITourService _tourService;
     private readonly IAudioQueueService _audioQueue;
     private readonly IAudioPlaybackService _audioPlayer;   // để phát intro
