@@ -63,6 +63,7 @@
                             <th style="color:#4a4a5a;font-size:11px;letter-spacing:1.5px;">CHỦ & GMAIL</th>
                             <th style="color:#4a4a5a;font-size:11px;letter-spacing:1.5px;">TRẠNG THÁI</th>
                             <th style="color:#4a4a5a;font-size:11px;letter-spacing:1.5px;">ƯU TIÊN</th>
+                            <th style="color:#4a4a5a;font-size:11px;letter-spacing:1.5px;">GEOFENCE</th>
                             <th class="text-end pe-4" style="color:#4a4a5a;font-size:11px;letter-spacing:1.5px;">HÀNH ĐỘNG</th>
                         </tr>
                     </thead>
@@ -108,6 +109,12 @@
                                             <i class="bi bi-star-fill me-1" style="font-size: 12px; color: @(i <= item.Priority ? GetPriorityColor(item.Priority) : "#1a1a24")"></i>
                                         }
                                     </div>
+                                    <small style="color:#4a4a5a;">Mức @item.Priority</small>
+                                </td>
+                                <td>
+                                    <span class="badge bg-info-subtle text-info border border-info-subtle">
+                                        @item.Radius m
+                                    </span>
                                 </td>
                                 <td class="text-end pe-4">
                                     <div class="d-flex justify-content-end gap-2">
@@ -115,7 +122,9 @@
                                         {
                                             <button class="btn btn-sm btn-success rounded-pill px-3" @onclick="() => ShowApproveModal(item)">Duyệt</button>
                                         }
-                                        <button class="btn btn-sm btn-outline-light rounded-circle" title="Sửa thông tin" @onclick="() => ShowEditModal(item)"><i class="bi bi-pencil"></i></button>
+                                        <button class="btn btn-sm btn-outline-light rounded-pill px-3" title="Sửa thông tin" @onclick="() => ShowEditModal(item)">
+                                            <i class="bi bi-pencil me-1"></i>Sửa
+                                        </button>
                                         
                                         @if (item.IsActive)
                                         {
@@ -221,6 +230,10 @@
                                 <option value="1">1 - Thấp</option>
                             </select>
                         </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-white-50 small fw-bold">BÁN KÍNH GEOFENCE (m)</label>
+                            <input type="number" class="form-control dash-input p-3" min="5" max="200" @bind="editingPoi.Radius" />
+                        </div>
                         <div class="col-12">
                             <label class="form-label text-white-50 small fw-bold">CHỦ GIAN HÀNG</label>
                             <select class="form-select dash-input p-3" @bind="editingOwnerIdText">
@@ -308,9 +321,19 @@
 
     private void ShowEditModal(Poi poi) {
         isEditing = true;
-        editingPoi = new Poi { 
-            PoiId = poi.PoiId, Name = poi.Name, Phone = poi.Phone, Priority = poi.Priority, 
-            OwnerId = poi.OwnerId, IsActive = poi.IsActive, Status = poi.Status 
+        editingPoi = new Poi {
+            PoiId = poi.PoiId,
+            Name = poi.Name,
+            Address = poi.Address,
+            Phone = poi.Phone,
+            Latitude = poi.Latitude,
+            Longitude = poi.Longitude,
+            Radius = poi.Radius,
+            Priority = poi.Priority,
+            OwnerId = poi.OwnerId,
+            IsActive = poi.IsActive,
+            Status = poi.Status,
+            RejectionNote = poi.RejectionNote
         };
         editingOwnerIdText = poi.OwnerId?.ToString() ?? "";
         isModalVisible = true;
@@ -320,6 +343,8 @@
 
     private async Task SavePoi() {
         if (int.TryParse(editingOwnerIdText, out var oid)) editingPoi.OwnerId = oid; else editingPoi.OwnerId = null;
+        editingPoi.Radius = Math.Clamp(editingPoi.Radius, 5, 200);
+        editingPoi.Priority = Math.Clamp(editingPoi.Priority, 1, 5);
         isSaving = true;
         await PoiService.UpdateAsync(editingPoi);
         HideModal(); await LoadData();

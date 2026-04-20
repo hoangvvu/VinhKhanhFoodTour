@@ -74,7 +74,7 @@ public class TourController : ControllerBase
             .AsNoTracking()
             .Include(p => p.Narrations.Where(n => n.IsActive && n.LanguageId == languageId))
                 .ThenInclude(n => n.Language)
-            .Where(p => p.IsActive && p.OwnerId != null)
+            .Where(p => p.IsActive && p.OwnerId != null && p.Status == "Approved")
             .Where(p => p.Narrations.Any(n => 
                 n.IsActive && 
                 n.LanguageId == languageId && 
@@ -214,7 +214,7 @@ public class TourController : ControllerBase
             .AsNoTracking()
             .Include(p => p.Narrations.Where(n => n.IsActive && n.LanguageId == languageId))
                 .ThenInclude(n => n.Language)
-            .Where(p => p.IsActive && p.OwnerId != null)
+            .Where(p => p.IsActive && p.OwnerId != null && p.Status == "Approved")
             .Where(p => p.Narrations.Any(n => 
                 n.IsActive && 
                 n.LanguageId == languageId && 

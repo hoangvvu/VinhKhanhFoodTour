@@ -178,8 +178,9 @@ public class PoiService
         });
         await _db.SaveChangesAsync();
 
-        // TỰ ĐỘNG HÓA: Cập nhật thuyết minh đa ngôn ngữ ngay khi có QR mới
-        _ = Task.Run(() => UpdateMultilingualNarrationsAsync(poiId));
+        // TỰ ĐỘNG HÓA: Cập nhật thuyết minh đa ngôn ngữ ngay khi có QR mới.
+        // Chạy tuần tự để tránh dùng chung DbContext trên nhiều luồng.
+        await UpdateMultilingualNarrationsAsync(poiId);
 
         return token;
     }
@@ -220,8 +221,9 @@ public class PoiService
 
         await _db.SaveChangesAsync();
 
-        // TỰ ĐỘNG HÓA: Cập nhật thuyết minh đa ngôn ngữ ngay khi có QR mới
-        _ = Task.Run(() => UpdateMultilingualNarrationsAsync(poiId));
+        // TỰ ĐỘNG HÓA: Cập nhật thuyết minh đa ngôn ngữ ngay khi có QR mới.
+        // Chạy tuần tự để tránh dùng chung DbContext trên nhiều luồng.
+        await UpdateMultilingualNarrationsAsync(poiId);
 
         return token;
     }
@@ -563,7 +565,7 @@ public class PoiService
         return Convert.ToHexString(bytes)[..8];
     }
 
-    /// <summary>Tránh lỗi SQL “string truncation” khi URL FPT hoặc tiêu đề vượt MaxLength.</summary>
+    /// <summary>Tránh lỗi SQL “string truncation” khi URL hoặc tiêu đề vượt MaxLength.</summary>
     private static string TruncateForDb(string? value, int maxLen)
     {
         if (string.IsNullOrEmpty(value))

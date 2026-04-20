@@ -36,9 +36,10 @@
                                 <th>CHỦ &amp; GMAIL</th>
                                 <th>ẢNH</th>
                                 <th>ĐỊA CHỈ</th>
+                                <th>GEOFENCE</th>
                                 <th>NGÔN NGỮ TM</th>
                                 <th>MÓN ĂN</th>
-                                <th class="text-end pe-4">TRẠNG THÁI</th>
+                                <th class="text-end pe-4">HÀNH ĐỘNG</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -47,7 +48,7 @@
                                 <tr>
                                     <td class="ps-4">
                                         <span class="fw-bold">@row.PoiName</span><br />
-                                        <span class="badge @(row.Priority == 1 ? "bg-danger-subtle text-danger" : "bg-secondary") small">
+                                        <span class="badge @(row.Priority >= 4 ? "bg-danger-subtle text-danger" : "bg-secondary") small mt-2">
                                             Ưu tiên @row.Priority
                                         </span>
                                     </td>
@@ -69,6 +70,9 @@
                                     </td>
                                     <td>@(string.IsNullOrEmpty(row.Address) ? "—" : row.Address)</td>
                                     <td>
+                                        <span class="badge bg-info-subtle text-info">@row.Radius m</span>
+                                    </td>
+                                    <td>
                                         @foreach (var langCode in row.LangCodes)
                                         {
                                             <span class="badge-lang @(langCode is "vi" or "en" ? "badge-vi" : "badge-other")">
@@ -84,14 +88,21 @@
                                         <span class="badge bg-info-subtle text-info">@row.FoodCount món</span>
                                     </td>
                                     <td class="text-end pe-4">
-                                        @if (row.IsActive)
-                                        {
-                                            <span class="badge bg-success">Hoạt động</span>
-                                        }
-                                        else
-                                        {
-                                            <span class="badge bg-secondary">Đã ẩn / tắt</span>
-                                        }
+                                        <div class="d-flex justify-content-end align-items-center gap-2">
+                                            @if (row.IsActive)
+                                            {
+                                                <span class="badge bg-success">Hoạt động</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-secondary">Đã ẩn / tắt</span>
+                                            }
+                                            <button class="btn btn-sm btn-outline-warning rounded-pill"
+                                                    disabled="@row.IsSaving"
+                                                    @onclick="() => OpenQuickEdit(row)">
+                                                <i class="bi bi-pencil-square me-1"></i>Sửa
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             }
@@ -99,7 +110,7 @@
                             @if (!rows.Any())
                             {
                                 <tr>
-                                    <td colspan="7" class="text-center text-muted py-4">Chưa có gian hàng nào.</td>
+                                    <td colspan="8" class="text-center text-muted py-4">Chưa có gian hàng nào.</td>
                                 </tr>
                             }
                         </tbody>
@@ -109,9 +120,55 @@
     }
 </div>
 
+@if (editRow is not null)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background:rgba(0,0,0,0.75);">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0" style="background:#1a1a24;border-radius:18px;">
+                <div class="modal-header border-0">
+                    <h5 class="modal-title text-white">Sửa ưu tiên & geofence</h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="CloseQuickEdit"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="text-muted small mb-3">@editRow.PoiName</div>
+                    <div class="mb-3">
+                        <label class="form-label text-white-50 small">MỨC ƯU TIÊN</label>
+                        <input type="number" min="1" max="5" class="form-control"
+                               style="background:#121520;color:#F0EBE3;border-color:rgba(255,255,255,0.2);"
+                               @bind="editPriority" />
+                    </div>
+                    <div>
+                        <label class="form-label text-white-50 small">BÁN KÍNH GEOFENCE (m)</label>
+                        <input type="number" min="5" max="200" class="form-control"
+                               style="background:#121520;color:#F0EBE3;border-color:rgba(255,255,255,0.2);"
+                               @bind="editRadius" />
+                    </div>
+                </div>
+                <div class="modal-footer border-0">
+                    <button class="btn btn-outline-light rounded-pill" @onclick="CloseQuickEdit">Hủy</button>
+                    <button class="btn btn-warning rounded-pill" disabled="@isSavingQuickEdit" @onclick="SaveQuickEditAsync">
+                        @if (isSavingQuickEdit)
+                        {
+                            <span class="spinner-border spinner-border-sm"></span>
+                        }
+                        else
+                        {
+                            <span>Lưu</span>
+                        }
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     private List<GianHangRow> rows = new();
     private bool isLoading = true;
+    private GianHangRow? editRow;
+    private int editPriority;
+    private int editRadius;
+    private bool isSavingQuickEdit;
 
     protected override async Task OnInitializedAsync()
     {
@@ -158,8 +215,10 @@
                 images.TryGetValue(p.PoiId, out var gal);
                 return new GianHangRow
                 {
+                    PoiId = p.PoiId,
                     PoiName = p.Name,
                     Priority = p.Priority,
+                    Radius = p.Radius,
                     Address = p.Address,
                     IsActive = p.IsActive,
                     OwnerName = u?.Name ?? "—",
@@ -181,12 +240,54 @@
         }
     }
 
+    private void OpenQuickEdit(GianHangRow row)
+    {
+        editRow = row;
+        editPriority = row.Priority;
+        editRadius = row.Radius;
+    }
+
+    private void CloseQuickEdit()
+    {
+        editRow = null;
+    }
+
+    private async Task SaveQuickEditAsync()
+    {
+        if (editRow is null) return;
+        var currentRow = editRow;
+        var priority = Math.Clamp(editPriority, 1, 5);
+        var radius = Math.Clamp(editRadius, 5, 200);
+        isSavingQuickEdit = true;
+        currentRow.IsSaving = true;
+        try
+        {
+            var poi = await Db.Pois.FirstOrDefaultAsync(p => p.PoiId == currentRow.PoiId);
+            if (poi is null) return;
+            poi.Priority = priority;
+            poi.Radius = radius;
+            poi.UpdatedAt = DateTime.Now;
+            await Db.SaveChangesAsync();
+            currentRow.Priority = priority;
+            currentRow.Radius = radius;
+            CloseQuickEdit();
+        }
+        finally
+        {
+            isSavingQuickEdit = false;
+            currentRow.IsSaving = false;
+        }
+    }
+
     private sealed class GianHangRow
     {
+        public int PoiId { get; set; }
         public string PoiName { get; set; } = "";
         public int Priority { get; set; }
+        public int Radius { get; set; }
         public string? Address { get; set; }
         public bool IsActive { get; set; }
+        public bool IsSaving { get; set; }
         public string OwnerName { get; set; } = "";
         public string OwnerEmail { get; set; } = "";
         public string CoverUrl { get; set; } = "";

@@ -91,7 +91,7 @@
 
                 <label class="form-label text-muted small">Cấu hình Giọng đọc (TTS Voice)</label>
                 <input type="text" class="form-control dash-input mb-4" @bind="ttsVoice" 
-                       placeholder="Ví dụ: lannhi (FPT), en-US-AriaNeural (Edge)" />
+                       placeholder="Ví dụ: vi-VN-HoaiMyNeural, en-US-AriaNeural" />
 
                 <div class="d-flex gap-3">
                     <button class="btn btn-warning rounded-pill px-4 fw-bold flex-grow-1"
@@ -179,7 +179,7 @@
     private string selectedLang = "vi";
     private string introTitle = "";
     private string introText = "";
-    private string ttsVoice = "lannhi";
+    private string ttsVoice = "vi-VN-HoaiMyNeural";
     private string? currentAudioUrl;
     private bool isBusy = false;
     private bool isError = false;
@@ -231,7 +231,15 @@
         }
         else
         {
-            ttsVoice = selectedLang == "vi" ? "lannhi" : "";
+            ttsVoice = selectedLang switch
+            {
+                "vi" => "vi-VN-HoaiMyNeural",
+                "en" => "en-US-AriaNeural",
+                "ja" => "ja-JP-NanamiNeural",
+                "ko" => "ko-KR-SunHiNeural",
+                "zh" => "zh-CN-XiaoxiaoNeural",
+                _ => ""
+            };
         }
     }
 

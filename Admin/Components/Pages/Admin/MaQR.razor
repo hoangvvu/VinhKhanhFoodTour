@@ -33,9 +33,9 @@
 
     @if (!string.IsNullOrEmpty(pageMessage))
     {
-        <div class="alert alert-success alert-dismissible fade show">
+        <div class="alert @(pageMessageIsError ? "alert-danger" : "alert-success") alert-dismissible fade show">
             @pageMessage
-            <button type="button" class="btn-close" @onclick="() => pageMessage = null"></button>
+            <button type="button" class="btn-close" @onclick="() => { pageMessage = null; pageMessageIsError = false; }"></button>
         </div>
     }
 
@@ -54,6 +54,10 @@
                     <div style="color:#4a4a5a;font-size:11px;letter-spacing:1.5px;font-weight:700;" class="mb-1">QR TỔNG HỆ THỐNG</div>
                     <h5 style="color:#F0EBE3;" class="mb-1">@PoiService.MasterTourQrToken</h5>
                     <div style="color:#4a4a5a;" class="small">Dùng 1 mã duy nhất để khởi động hàng đợi audio toàn tuyến.</div>
+                    <div class="mt-2 small">
+                        <span style="color:#4a4a5a;">Nội dung QR:</span>
+                        <code style="color:#E8A020;">@GetQrPayload(PoiService.MasterTourQrToken)</code>
+                    </div>
                 </div>
                 <img src="@GetQrImageUrl(PoiService.MasterTourQrToken)" class="img-fluid bg-white p-2 rounded-3" alt="Master QR" style="width: 96px; height: 96px;" />
             </div>
@@ -104,10 +108,13 @@
                             <img src="@GetQrImageUrl(qr.QrToken)" class="img-fluid" alt="QR" style="width: 150px; height: 150px;" />
                         </div>
                         <p class="fw-bold mb-1" style="color:#F0EBE3;">@qr.PoiName</p>
-                        <p class="small mb-1" style="color:#4a4a5a;">Chủ: <span style="color:#F0EBE3;">@qr.OwnerName</span></p>
-                        <p class="small mb-2" style="color:#4a4a5a;">@qr.OwnerEmail</p>
                         <p class="small mb-2" style="color:#4a4a5a;">@qr.LocationNote</p>
-                        <div class="d-inline-block mb-2" style="background:rgba(0,0,0,0.3);border-radius:8px;padding:8px 12px;">
+                        <div class="mb-2 text-start p-2 rounded-3" style="background:rgba(0,0,0,0.25); border:1px solid rgba(255,255,255,0.08);">
+                            <div class="small mb-1" style="color:#9ca3af;">Nội dung QR</div>
+                            <code style="color:#E8A020; word-break:break-all;" class="small">@GetQrPayload(qr.QrToken)</code>
+                        </div>
+                        <div class="d-inline-block mb-2" style="background:rgba(0,0,0,0.3);border-radius:8px;padding:6px 10px;">
+                            <span class="small" style="color:#9ca3af;">Token: </span>
                             <code style="color:#E8A020;" class="small">@qr.QrToken</code>
                         </div>
                         <div class="mb-2">
@@ -173,6 +180,7 @@
     private bool isLoading = true;
     private int todayScans;
     private string? pageMessage;
+    private bool pageMessageIsError;
 
     protected override async Task OnInitializedAsync()
     {
@@ -222,9 +230,12 @@
 
     private static string GetQrImageUrl(string token)
     {
-        var qrData = Uri.EscapeDataString($"vkfoodtour://{token}");
+        var qrData = Uri.EscapeDataString(GetQrPayload(token));
         return $"https://api.qrserver.com/v1/create-qr-code/?size=200x200&data={qrData}";
     }
+
+    private static string GetQrPayload(string token)
+        => $"vkfoodtour://{token}";
 
     private async Task ToggleQr(int qrId)
     {
@@ -253,15 +264,16 @@
                 qr.PoiDescription,
                 "QR (Admin sync)");
 
-            // 2. Cập nhật thuyết minh đa ngôn ngữ (Dịch & TTS)
-            await PoiService.UpdateMultilingualNarrationsAsync(qr.PoiId);
-
             if (!string.IsNullOrWhiteSpace(token))
+            {
                 pageMessage = $"Đã cập nhật QR & Đồng bộ thuyết minh cho {qr.PoiName}";
+                pageMessageIsError = false;
+            }
         }
         catch (Exception ex)
         {
             pageMessage = $"Lỗi: {ex.Message}";
+            pageMessageIsError = true;
         }
         finally
         {
@@ -279,6 +291,7 @@
     {
         var deleted = await PoiService.DeleteAllQrAsync();
         pageMessage = $"Đã xóa {deleted} mã QR cũ.";
+        pageMessageIsError = false;
         await LoadData();
     }
 
@@ -288,6 +301,7 @@
         pageMessage = string.IsNullOrWhiteSpace(token)
             ? "Không thể tạo QR tổng (chưa có quán active để gắn mã)."
             : $"Đã tạo QR tổng: {token}";
+        pageMessageIsError = string.IsNullOrWhiteSpace(token);
         await LoadData();
     }
 

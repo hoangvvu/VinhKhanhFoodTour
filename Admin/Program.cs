@@ -7,8 +7,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
 using System.Data;
-using System.Net;
-using System.Net.Http;
 using System.Security.Claims;
 using VKFoodTour.Infrastructure.Data;
 
@@ -109,28 +107,6 @@ if (!string.IsNullOrWhiteSpace(googleClientId) && !string.IsNullOrWhiteSpace(goo
 
 builder.Services.AddAuthorization();
 builder.Services.AddCascadingAuthenticationState();
-builder.Services.AddHttpClient(TtsService.HttpClientFptApi, client =>
-{
-    client.Timeout = TimeSpan.FromSeconds(120);
-    client.DefaultRequestHeaders.UserAgent.ParseAdd(
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36");
-}).ConfigurePrimaryHttpMessageHandler(static () => new SocketsHttpHandler
-{
-    AutomaticDecompression = DecompressionMethods.All,
-});
-
-builder.Services.AddHttpClient(TtsService.HttpClientFptDownload, client =>
-{
-    client.Timeout = TimeSpan.FromSeconds(300);
-    client.DefaultRequestHeaders.UserAgent.ParseAdd(
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36");
-}).ConfigurePrimaryHttpMessageHandler(static () => new SocketsHttpHandler
-{
-    AutomaticDecompression = DecompressionMethods.All,
-    AllowAutoRedirect = true,
-    MaxAutomaticRedirections = 16,
-});
-
 builder.Services.AddTransient<TtsService>();
 builder.Services.AddTransient<EdgeTtsService>();
 builder.Services.AddHttpClient<GoogleTranslateService>();
