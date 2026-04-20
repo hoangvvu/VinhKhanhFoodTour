@@ -239,6 +239,7 @@
                             <label class="form-label text-muted small fw-bold">NGÔN NGỮ ĐÍCH (DỊCH SANG)</label>
                             <select class="form-select dash-input" @bind="targetLanguageId">
                                 <option value="0">-- Chọn ngôn ngữ --</option>
+                                <option value="-1">Tất cả ngôn ngữ đích đang bật</option>
                                 @foreach (var l in languages.Where(x => x.LanguageId != sourceLanguageId))
                                 {
                                     <option value="@l.LanguageId">@l.Name (@l.Code)</option>
@@ -288,7 +289,7 @@
                                 <div class="d-flex align-items-start gap-2 mb-2 p-2 rounded-3" style="background-color: @(result.Success ? "#121a12" : "#1a1212");">
                                     <i class="bi @(result.Success ? "bi-check-circle text-success" : "bi-x-circle text-danger") mt-1"></i>
                                     <div class="small">
-                                        <div class="text-white fw-bold">@result.PoiName</div>
+                                        <div class="text-white fw-bold">@result.PoiName <span class="text-info">[@result.TargetCode]</span></div>
                                         <div class="text-muted">@result.Title</div>
                                         @if (!result.Success)
                                         {
@@ -658,15 +659,24 @@
             ShowAlert("Vui lòng chọn ngôn ngữ đích.", "warning");
             return;
         }
-        if (sourceLanguageId == targetLanguageId)
+        if (targetLanguageId > 0 && sourceLanguageId == targetLanguageId)
         {
             ShowAlert("Ngôn ngữ nguồn và đích không được trùng nhau.", "warning");
             return;
         }
 
         var sourceLang = languages.FirstOrDefault(l => l.LanguageId == sourceLanguageId);
-        var targetLang = languages.FirstOrDefault(l => l.LanguageId == targetLanguageId);
-        if (sourceLang == null || targetLang == null) return;
+        if (sourceLang == null) return;
+
+        var targetLangs = targetLanguageId == -1
+            ? languages.Where(l => l.IsActive && l.LanguageId != sourceLanguageId).ToList()
+            : languages.Where(l => l.LanguageId == targetLanguageId).ToList();
+
+        if (!targetLangs.Any())
+        {
+            ShowAlert("Không tìm thấy ngôn ngữ đích hợp lệ để dịch.", "warning");
+            return;
+        }
 
         var eligiblePoisQuery = Db.Pois
             .AsNoTracking()
@@ -708,16 +718,17 @@
 
         // Kiểm tra narration đã tồn tại ở ngôn ngữ đích
         var sourcePoiIds = sourceByPoi.Keys.ToList();
+        var targetLangIds = targetLangs.Select(t => t.LanguageId).ToList();
         var existingTargetNarrations = await Db.Narrations
-            .Where(n => n.LanguageId == targetLanguageId && n.IsActive && sourcePoiIds.Contains(n.PoiId))
+            .Where(n => targetLangIds.Contains(n.LanguageId) && n.IsActive && sourcePoiIds.Contains(n.PoiId))
             .AsNoTracking()
             .ToListAsync();
 
-        var existingSet = existingTargetNarrations
-            .Select(n => n.PoiId)
+        var existingPairs = existingTargetNarrations
+            .Select(n => (n.PoiId, n.LanguageId))
             .ToHashSet();
 
-        var overlapCount = sourcePoiIds.Count(id => existingSet.Contains(id));
+        var overlapCount = sourcePoiIds.Sum(poiId => targetLangIds.Count(langId => existingPairs.Contains((poiId, langId))));
 
         bool overwrite = false;
         if (overlapCount > 0)
@@ -738,7 +749,7 @@
         // Bắt đầu dịch
         isTranslating = true;
         translateResults.Clear();
-        translateTotal = eligiblePois.Count;
+        translateTotal = eligiblePois.Count * targetLangs.Count;
         translateCurrent = 0;
         progressPercent = 0;
         alertMessage = null;
@@ -746,115 +757,128 @@
 
         foreach (var poi in eligiblePois)
         {
-            translateCurrent++;
-            progressPercent = (int)((double)translateCurrent / translateTotal * 100);
-            StateHasChanged();
-            await Task.Delay(50); // Cho UI cập nhật
-
-            if (!sourceByPoi.TryGetValue(poi.PoiId, out var narration))
+            if (!sourceByPoi.TryGetValue(poi.PoiId, out var sourceNarration))
             {
-                translateResults.Add(new TranslateResult
+                foreach (var targetLang in targetLangs)
                 {
-                    PoiName = poi.Name,
-                    Title = "(chưa có narration nguồn)",
-                    Success = false,
-                    Error = $"POI chưa có narration ở ngôn ngữ nguồn [{sourceLang.Code.ToUpper()}]."
-                });
+                    translateCurrent++;
+                    progressPercent = (int)((double)translateCurrent / Math.Max(1, translateTotal) * 100);
+                    translateResults.Add(new TranslateResult
+                    {
+                        PoiName = poi.Name,
+                        TargetCode = targetLang.Code.ToUpper(),
+                        Title = "(chưa có narration nguồn)",
+                        Success = false,
+                        Error = $"POI chưa có narration ở ngôn ngữ nguồn [{sourceLang.Code.ToUpper()}]."
+                    });
+                }
+                StateHasChanged();
                 continue;
             }
 
             var poiName = poi.Name;
 
-            // Kiểm tra đã tồn tại
-            var existingNarration = await Db.Narrations
-                .Where(n => n.PoiId == narration.PoiId && n.LanguageId == targetLanguageId && n.IsActive)
-                .OrderByDescending(n => n.UpdatedAt ?? DateTime.MinValue)
-                .ThenByDescending(n => n.NarrationId)
-                .FirstOrDefaultAsync();
-
-            if (existingNarration != null && !overwrite)
+            foreach (var targetLang in targetLangs)
             {
-                translateResults.Add(new TranslateResult
-                {
-                    PoiName = poiName,
-                    Title = narration.Title,
-                    Success = true,
-                    Error = "Đã bỏ qua (narration đã tồn tại)"
-                });
-                continue;
-            }
+                translateCurrent++;
+                progressPercent = (int)((double)translateCurrent / Math.Max(1, translateTotal) * 100);
+                StateHasChanged();
+                await Task.Delay(25); // Cho UI cập nhật
 
-            try
-            {
-                // Dịch title
-                var translatedTitle = await TranslateService.TranslateAsync(
-                    narration.Title, sourceLang.Code, targetLang.Code);
+                // Kiểm tra đã tồn tại
+                var existingNarration = await Db.Narrations
+                    .Where(n => n.PoiId == sourceNarration.PoiId && n.LanguageId == targetLang.LanguageId && n.IsActive)
+                    .OrderByDescending(n => n.UpdatedAt ?? DateTime.MinValue)
+                    .ThenByDescending(n => n.NarrationId)
+                    .FirstOrDefaultAsync();
 
-                // Dịch content
-                var translatedContent = await TranslateService.TranslateAsync(
-                    narration.Content, sourceLang.Code, targetLang.Code);
-
-                // ── TỰ ĐỘNG SINH TTS ──
-                string? autoAudioUrl = null;
-                var voice = targetLang.TtsVoice;
-                if (!string.IsNullOrEmpty(voice) && !string.IsNullOrEmpty(translatedContent))
+                if (existingNarration != null && !overwrite)
                 {
-                    var stem = $"auto_{targetLang.Code}_{narration.PoiId}";
-                    var tts = await TtsService.GenerateAndPersistLocalAsync(
-                        translatedContent, voice, stem, targetLang.Code);
-                    
-                    if (string.IsNullOrEmpty(tts.ErrorMessage))
-                        autoAudioUrl = tts.Url;
-                }
-
-                if (existingNarration != null)
-                {
-                    // Ghi đè
-                    existingNarration.Title = translatedTitle;
-                    existingNarration.Content = translatedContent;
-                    existingNarration.AudioUrlAuto = autoAudioUrl ?? existingNarration.AudioUrlAuto;
-                    existingNarration.UpdatedAt = DateTime.Now;
-                    Db.Narrations.Update(existingNarration);
-                }
-                else
-                {
-                    // Tạo mới
-                    var newNarration = new Narration
+                    translateResults.Add(new TranslateResult
                     {
-                        PoiId = narration.PoiId,
-                        LanguageId = targetLanguageId,
-                        Title = translatedTitle,
-                        Content = translatedContent,
-                        AudioUrlAuto = autoAudioUrl,
-                        TtsVoice = targetLang.TtsVoice,
-                        IsActive = true,
-                        UpdatedAt = DateTime.Now
-                    };
-                    Db.Narrations.Add(newNarration);
+                        PoiName = poiName,
+                        TargetCode = targetLang.Code.ToUpper(),
+                        Title = sourceNarration.Title,
+                        Success = true,
+                        Error = "Đã bỏ qua (narration đã tồn tại)"
+                    });
+                    continue;
                 }
 
-                await Db.SaveChangesAsync();
-
-                translateResults.Add(new TranslateResult
+                try
                 {
-                    PoiName = poiName,
-                    Title = translatedTitle,
-                    Success = true,
-                    Overwritten = existingNarration != null
-                });
-            }
-            catch (Exception ex)
-            {
-                translateResults.Add(new TranslateResult
-                {
-                    PoiName = poiName,
-                    Title = narration.Title,
-                    Success = false,
-                    Error = ex.Message
-                });
-            }
+                    // Dịch title
+                    var translatedTitle = await TranslateService.TranslateAsync(
+                        sourceNarration.Title, sourceLang.Code, targetLang.Code);
 
-            StateHasChanged();
+                    // Dịch content
+                    var translatedContent = await TranslateService.TranslateAsync(
+                        sourceNarration.Content, sourceLang.Code, targetLang.Code);
+
+                    // ── TỰ ĐỘNG SINH TTS ──
+                    string? autoAudioUrl = null;
+                    var voice = targetLang.TtsVoice;
+                    if (!string.IsNullOrEmpty(voice) && !string.IsNullOrEmpty(translatedContent))
+                    {
+                        var stem = $"auto_{targetLang.Code}_{sourceNarration.PoiId}";
+                        var tts = await TtsService.GenerateAndPersistLocalAsync(
+                            translatedContent, voice, stem, targetLang.Code);
+
+                        if (string.IsNullOrEmpty(tts.ErrorMessage))
+                            autoAudioUrl = tts.Url;
+                    }
+
+                    if (existingNarration != null)
+                    {
+                        // Ghi đè
+                        existingNarration.Title = translatedTitle;
+                        existingNarration.Content = translatedContent;
+                        existingNarration.AudioUrlAuto = autoAudioUrl ?? existingNarration.AudioUrlAuto;
+                        existingNarration.UpdatedAt = DateTime.Now;
+                        Db.Narrations.Update(existingNarration);
+                    }
+                    else
+                    {
+                        // Tạo mới
+                        var newNarration = new Narration
+                        {
+                            PoiId = sourceNarration.PoiId,
+                            LanguageId = targetLang.LanguageId,
+                            Title = translatedTitle,
+                            Content = translatedContent,
+                            AudioUrlAuto = autoAudioUrl,
+                            TtsVoice = targetLang.TtsVoice,
+                            IsActive = true,
+                            UpdatedAt = DateTime.Now
+                        };
+                        Db.Narrations.Add(newNarration);
+                    }
+
+                    await Db.SaveChangesAsync();
+
+                    translateResults.Add(new TranslateResult
+                    {
+                        PoiName = poiName,
+                        TargetCode = targetLang.Code.ToUpper(),
+                        Title = translatedTitle,
+                        Success = true,
+                        Overwritten = existingNarration != null
+                    });
+                }
+                catch (Exception ex)
+                {
+                    translateResults.Add(new TranslateResult
+                    {
+                        PoiName = poiName,
+                        TargetCode = targetLang.Code.ToUpper(),
+                        Title = sourceNarration.Title,
+                        Success = false,
+                        Error = ex.Message
+                    });
+                }
+
+                StateHasChanged();
+            }
         }
 
         isTranslating = false;
@@ -1070,6 +1094,7 @@
     private sealed class TranslateResult
     {
         public string PoiName { get; set; } = "";
+        public string TargetCode { get; set; } = "";
         public string Title { get; set; } = "";
         public bool Success { get; set; }
         public string? Error { get; set; }

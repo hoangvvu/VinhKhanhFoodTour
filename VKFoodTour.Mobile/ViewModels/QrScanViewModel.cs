@@ -17,7 +17,7 @@ public partial class QrScanViewModel : ObservableObject
     private DateTime _lastHandledAt = DateTime.MinValue;
 
     [ObservableProperty]
-    private string statusMessage = "Đưa mã QR quán vào khung hình.";
+    private string statusMessage = string.Empty;
 
     [ObservableProperty]
     private string manualCode = string.Empty;
@@ -43,6 +43,9 @@ public partial class QrScanViewModel : ObservableObject
     [ObservableProperty]
     private string uiManualButton = string.Empty;
 
+    [ObservableProperty]
+    private string uiCameraHint = string.Empty;
+
     public QrScanViewModel(
         IDataService data,
         ILocalizationService localization,
@@ -62,6 +65,7 @@ public partial class QrScanViewModel : ObservableObject
     private void RefreshQrUiStrings()
     {
         UiTitle = _localization.GetString("Qr_Title");
+        UiCameraHint = _localization.GetString("Qr_CameraHint");
         UiManualLabel = _localization.GetString("Qr_ManualLabel");
         UiManualPlaceholder = _localization.GetString("Qr_ManualPlaceholder");
         UiManualButton = _localization.GetString("Qr_ManualButton");
@@ -128,7 +132,7 @@ public partial class QrScanViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            StatusMessage = $"❌ Lỗi: {ex.Message}";
+            StatusMessage = _localization.GetString("Qr_ErrorFmt", ex.Message);
             _lastHandledPayload = string.Empty;
             System.Diagnostics.Debug.WriteLine($"[QR] Error: {ex}");
         }

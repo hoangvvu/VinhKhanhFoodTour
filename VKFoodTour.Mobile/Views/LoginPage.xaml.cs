@@ -35,7 +35,7 @@ public partial class LoginPage : ContentPage
             SubmitButton.Text = _localization.GetString("Login_SubmitLogin");
             ToggleButton.Text = _localization.GetString("Login_ToggleToRegister");
             GuestButton.IsVisible = true;
-            GuestButton.Text = "Vao app khong can tai khoan";
+            GuestButton.Text = _localization.GetString("Login_GuestContinue");
         }
         else
         {
@@ -111,7 +111,7 @@ public partial class LoginPage : ContentPage
     private async void OnContinueAsGuest(object? sender, EventArgs e)
     {
         GuestButton.IsEnabled = false;
-        StatusLabel.Text = "Dang vao app voi che do khach...";
+        StatusLabel.Text = _localization.GetString("Login_GuestEntering");
         try
         {
             _session.EnterAnonymous();

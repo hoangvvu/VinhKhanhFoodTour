@@ -116,7 +116,7 @@ public partial class TourPlayerViewModel : ObservableObject, IDisposable
         try
         {
             IsLoading = true;
-            StatusMessage = "Đang tải danh sách audio...";
+            StatusMessage = _localization.GetString("Tour_LoadingAudioList");
 
             var location = await GetCurrentLocationAsync();
             if (location is null)
@@ -175,7 +175,7 @@ public partial class TourPlayerViewModel : ObservableObject, IDisposable
         }
         catch (Exception ex)
         {
-            StatusMessage = $"Lỗi: {ex.Message}";
+            StatusMessage = _localization.GetString("Tour_ErrorFmt", ex.Message);
             _lastHandledPayload = string.Empty;
         }
         finally
@@ -191,7 +191,7 @@ public partial class TourPlayerViewModel : ObservableObject, IDisposable
     private async Task PlayIntroThenStartQueueAsync(string introUrl)
     {
         IsPlayingIntro = true;
-        StatusMessage = "Đang phát giới thiệu phố ẩm thực...";
+        StatusMessage = _localization.GetString("Tour_PlayingIntro");
 
         var ok = await _audioPlayer.PlayAsync(introUrl);
         if (!ok)

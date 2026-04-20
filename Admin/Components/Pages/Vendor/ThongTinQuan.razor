@@ -113,14 +113,14 @@
                 <div class="mb-4">
                     <label class="form-label text-muted small fw-bold mb-2">TÊN GIAN HÀNG</label>
                     <input type="text" class="form-control dash-input p-3"
-                           @bind="poiName" @bind:event="oninput" placeholder="VD: Ốc Oanh Vĩnh Khánh..." disabled="@(poiStatus == "Approved" || isLocked)">
+                           @bind="poiName" @bind:event="oninput" placeholder="VD: Ốc Oanh Vĩnh Khánh..." disabled="@isLocked">
                 </div>
 
                 <div class="mb-4">
                     <label class="form-label text-muted small fw-bold mb-2">GIỚI THIỆU QUÁN (MÔ TẢ)</label>
                     <textarea class="form-control dash-input p-3" rows="6"
                                @bind="poiDescription" @bind:event="oninput"
-                               placeholder="Hãy viết mô tả hấp dẫn về món ăn và dịch vụ tại quán của bạn..." disabled="@(poiStatus == "Approved" || isLocked)"></textarea>
+                               placeholder="Hãy viết mô tả hấp dẫn về món ăn và dịch vụ tại quán của bạn..." disabled="@isLocked"></textarea>
                     <div class="form-text text-muted mt-2">Nội dung này sẽ được Admin sử dụng để tự động dịch và tạo giọng đọc AI.</div>
                 </div>
 
@@ -129,7 +129,7 @@
                     <div class="input-group">
                         <span class="input-group-text dash-input border-end-0" style="background:#0f0f13; border-radius: 12px 0 0 12px;"><i class="bi bi-geo-alt"></i></span>
                         <input type="text" class="form-control dash-input p-3"
-                               @bind="poiAddress" placeholder="Số nhà, tên đường Vĩnh Khánh..." disabled="@(poiStatus == "Approved" || isLocked)">
+                               @bind="poiAddress" placeholder="Số nhà, tên đường Vĩnh Khánh..." disabled="@isLocked">
                     </div>
                 </div>
             </div>
@@ -149,9 +149,9 @@
                             <span class="input-group-text bg-black border-secondary border-end-0 text-muted" style="border-radius: 12px 0 0 12px;"><i class="bi bi-search"></i></span>
                             <input type="text" id="map-search-input" class="form-control bg-black border-secondary text-white p-2 border-end-0" 
                                    placeholder="Gõ địa chỉ để tìm kiếm..." style="border-radius: 0; font-size: 13px;" autocomplete="off"
-                                   @bind="mapSearchQuery" @bind:event="oninput" @onkeyup="HandleSearchKeyUp" disabled="@(poiStatus == "Approved" || isLocked)">
+                                   @bind="mapSearchQuery" @bind:event="oninput" @onkeyup="HandleSearchKeyUp" disabled="@isLocked">
                             <button class="btn btn-danger px-3" type="button" id="map-search-btn" style="border-radius: 0 12px 12px 0;"
-                                    @onclick="HandleSearchClick" disabled="@(poiStatus == "Approved" || isLocked)">
+                                    @onclick="HandleSearchClick" disabled="@isLocked">
                                 <i class="bi bi-geo-alt-fill me-1"></i> Tìm
                             </button>
                         </div>
@@ -190,7 +190,7 @@
                         </div>
                     }
                 </div>
-                <InputFile OnChange="HandleCoverUpload" class="form-control dash-input rounded-pill" accept="image/*" disabled="@(poiStatus == "Approved" || isLocked)" />
+                <InputFile OnChange="HandleCoverUpload" class="form-control dash-input rounded-pill" accept="image/*" disabled="@isLocked" />
             </div>
 
             <!-- THƯ VIỆN ẢNH -->
@@ -199,14 +199,14 @@
                     <div class="icon-box me-3"><i class="bi bi-grid-3x3-gap"></i></div>
                     THƯ VIỆN ẢNH
                 </div>
-                <InputFile OnChange="HandleGalleryUpload" class="form-control dash-input rounded-pill mb-3" accept="image/*" multiple disabled="@(poiStatus == "Approved" || isLocked)" />
+                <InputFile OnChange="HandleGalleryUpload" class="form-control dash-input rounded-pill mb-3" accept="image/*" multiple disabled="@isLocked" />
                 <div class="row g-2">
                     @foreach (var g in galleryImages)
                     {
                         <div class="col-4">
                             <div class="position-relative rounded-3 overflow-hidden shadow-sm" style="aspect-ratio: 1; border: 1px solid rgba(255,255,255,0.05);">
                                 <img src="@g.ImageUrl" class="w-100 h-100 object-fit-cover" alt="" />
-                                @if (poiStatus != "Approved" && !isLocked)
+                                @if (!isLocked)
                                 {
                                     <button type="button" class="btn btn-sm btn-danger position-absolute top-0 end-0 m-1 p-0 d-flex align-items-center justify-content-center"
                                             style="width: 20px; height: 20px; border-radius: 5px;"
@@ -413,7 +413,8 @@
             else { 
                 statusMessage = "Đã lưu thay đổi thành công!"; 
                 isError = false;
-                _ = Task.Run(() => PoiService.UpdateMultilingualNarrationsAsync(currentPoiId));
+                // Chạy tuần tự để tránh dùng chung DbContext trên nhiều luồng.
+                await PoiService.UpdateMultilingualNarrationsAsync(currentPoiId);
                 await LoadDataAsync();
             }
         }
@@ -492,7 +493,8 @@
             galleryImages = await PoiService.GetStallGalleryAsync(currentPoiId, currentUserId);
             statusMessage = "Đã lưu thay đổi thành công!";
             isError = false;
-            _ = Task.Run(() => PoiService.UpdateMultilingualNarrationsAsync(currentPoiId));
+            // Chạy tuần tự để tránh lỗi DbContext concurrency khi upload nhiều ảnh.
+            await PoiService.UpdateMultilingualNarrationsAsync(currentPoiId);
             await LoadDataAsync();
         }
         catch (Exception ex) { statusMessage = ex.Message; isError = true; }

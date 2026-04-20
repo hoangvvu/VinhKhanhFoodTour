@@ -15,7 +15,7 @@
             <Label Text="{Binding UiTitle}"
                    FontSize="30" FontFamily="BebasNeue"
                    TextColor="{StaticResource VKText}" CharacterSpacing="0.5"/>
-            <Label Text="Hướng camera vào mã QR trên bàn"
+            <Label Text="{Binding UiCameraHint}"
                    FontSize="12" TextColor="{StaticResource VKTextMuted}"/>
         </VerticalStackLayout>
 

@@ -72,7 +72,8 @@ public class DataService : IDataService
         await EnsureApiBaseResolvedAsync(cancellationToken);
         try
         {
-            var response = await _http.GetAsync($"{ApiRoot}/api/Poi", cancellationToken);
+            var langQuery = $"?lang={Uri.EscapeDataString(_settings.SelectedLanguageCode)}";
+            var response = await _http.GetAsync($"{ApiRoot}/api/Poi{langQuery}", cancellationToken);
             if (!response.IsSuccessStatusCode)
                 return FallbackDemo();
 
@@ -94,7 +95,8 @@ public class DataService : IDataService
         await EnsureApiBaseResolvedAsync(cancellationToken);
         try
         {
-            var response = await _http.GetAsync($"{ApiRoot}/api/Poi/{poiId}", cancellationToken);
+            var langQuery = $"?lang={Uri.EscapeDataString(_settings.SelectedLanguageCode)}";
+            var response = await _http.GetAsync($"{ApiRoot}/api/Poi/{poiId}{langQuery}", cancellationToken);
             if (!response.IsSuccessStatusCode)
                 return null;
 
@@ -112,7 +114,8 @@ public class DataService : IDataService
         await EnsureApiBaseResolvedAsync(cancellationToken);
         try
         {
-            var response = await _http.GetAsync($"{ApiRoot}/api/Poi/{poiId}/detail", cancellationToken);
+            var langQuery = $"?lang={Uri.EscapeDataString(_settings.SelectedLanguageCode)}";
+            var response = await _http.GetAsync($"{ApiRoot}/api/Poi/{poiId}/detail{langQuery}", cancellationToken);
             if (!response.IsSuccessStatusCode)
                 return null;
 

@@ -143,6 +143,8 @@ public partial class LanguagePickerPage : ContentPage
             "ja" => "🇯🇵",
             "ko" => "🇰🇷",
             "zh" => "🇨🇳",
+            "fr" => "🇫🇷",
+            "th" => "🇹🇭",
             _ => "🌐"
         };
     }
@@ -155,7 +157,9 @@ public partial class LanguagePickerPage : ContentPage
             new() { Code = "vi", Name = "Tiếng Việt" },
             new() { Code = "ja", Name = "日本語" },
             new() { Code = "ko", Name = "한국어" },
-            new() { Code = "zh", Name = "中文 (简体)" }
+            new() { Code = "zh", Name = "中文 (简体)" },
+            new() { Code = "fr", Name = "Français" },
+            new() { Code = "th", Name = "ไทย" }
         };
     }
 }

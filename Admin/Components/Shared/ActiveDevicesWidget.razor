@@ -58,7 +58,7 @@
                     THIẾT BỊ ĐANG DÙNG APP
                 </div>
                 <div style="font-size:12px;color:#4a5568;margin-top:1px;">
-                    Cửa sổ: @WindowMinutes phút gần nhất · Cập nhật mỗi @RefreshSeconds giây
+                    Cửa sổ: @windowSeconds giây gần nhất · Cập nhật mỗi @RefreshSeconds giây
                 </div>
             </div>
         </div>
@@ -90,17 +90,23 @@
 </div>
 
 @code {
-    [Parameter] public int WindowMinutes { get; set; } = 2;
-    [Parameter] public int RefreshSeconds { get; set; } = 10;
+    [Parameter] public int WindowSeconds { get; set; } = 45;
+    [Parameter] public int? WindowMinutes { get; set; }
+    [Parameter] public int RefreshSeconds { get; set; } = 3;
 
     private int OnlineCount;
     private DateTime? lastRefreshed;
     private string? lastError;
     private bool isLoading;
     private Timer? _timer;
+    private int windowSeconds = 45;
 
     protected override async Task OnInitializedAsync()
     {
+        windowSeconds = WindowMinutes.HasValue
+            ? Math.Clamp(WindowMinutes.Value * 60, 15, 300)
+            : Math.Clamp(WindowSeconds, 15, 300);
+
         await RefreshAsync();
         _timer = new Timer(async _ =>
         {
@@ -115,7 +121,7 @@
         lastError = null;
         try
         {
-            var threshold = DateTime.Now.AddMinutes(-WindowMinutes);
+            var threshold = DateTime.Now.AddSeconds(-windowSeconds);
             await using var db = await DbFactory.CreateDbContextAsync();
 
             var logs = await db.TrackingLogs

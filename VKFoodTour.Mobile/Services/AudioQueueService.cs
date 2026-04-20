@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Threading;
 using VKFoodTour.Shared.DTOs;
 
 namespace VKFoodTour.Mobile.Services;
@@ -52,6 +53,7 @@ public class AudioQueueService : IAudioQueueService, IDisposable
     private readonly List<AudioQueueItemDto> _queue = new();   // không dùng Queue<T> vì cần InsertNext
     private readonly object _lock = new();
     private readonly HashSet<int> _playedPois = new();          // đã phát xong
+    private readonly SemaphoreSlim _enterGate = new(1, 1);      // tuần tự hóa event geofence enter
     private bool _disposed;
     private bool _started;
 
@@ -131,44 +133,61 @@ public class AudioQueueService : IAudioQueueService, IDisposable
     public async Task HandlePoiEnteredAsync(int poiId)
     {
         if (!_started) return;
-
-        AudioQueueItemDto? item;
-        lock (_lock)
+        await _enterGate.WaitAsync();
+        try
         {
-            // Đã phát xong → bỏ qua
-            if (_playedPois.Contains(poiId)) return;
-
-            // Đang phát chính xác POI này → bỏ qua
-            if (CurrentlyPlaying?.PoiId == poiId) return;
-
-            // Tìm trong queue
-            item = _queue.FirstOrDefault(q => q.PoiId == poiId);
-        }
-
-        if (item == null) return;
-
-        if (CurrentlyPlaying != null && _audioPlayer.IsPlaying)
-        {
-            var progress = _audioPlayer.GetProgress();
-            if (progress >= InterruptThreshold)
+            AudioQueueItemDto? item;
+            lock (_lock)
             {
-                // Track hiện tại đã > 60% → chèn POI mới vào next slot
-                InsertNext(item);
-                System.Diagnostics.Debug.WriteLine($"[AudioQueue] InsertNext POI {poiId} (progress={progress:P0})");
+                // Đã phát xong → bỏ qua
+                if (_playedPois.Contains(poiId)) return;
+
+                // Đang phát chính xác POI này → bỏ qua
+                if (CurrentlyPlaying?.PoiId == poiId) return;
+
+                // Tìm trong queue
+                item = _queue.FirstOrDefault(q => q.PoiId == poiId);
             }
-            else
+
+            if (item == null) return;
+
+            if (CurrentlyPlaying != null)
             {
-                // Track hiện tại < 60% → ngắt, phát POI mới ngay
-                System.Diagnostics.Debug.WriteLine($"[AudioQueue] InterruptAndPlay POI {poiId} (progress={progress:P0})");
-                await InterruptAndPlayAsync(item);
+                // Có track đang active (kể cả đang khởi động playback) thì không phát đè ngay.
+                if (_audioPlayer.IsPlaying)
+                {
+                    var progress = _audioPlayer.GetProgress();
+                    if (progress >= InterruptThreshold)
+                    {
+                        // Track hiện tại đã > 60% → chèn POI mới vào next slot
+                        InsertNext(item);
+                        System.Diagnostics.Debug.WriteLine($"[AudioQueue] InsertNext POI {poiId} (progress={progress:P0})");
+                    }
+                    else
+                    {
+                        // Track hiện tại < 60% → ngắt, phát POI mới ngay
+                        System.Diagnostics.Debug.WriteLine($"[AudioQueue] InterruptAndPlay POI {poiId} (progress={progress:P0})");
+                        await InterruptAndPlayAsync(item);
+                    }
+                }
+                else
+                {
+                    // Tránh race-condition lúc track 1 vừa bắt đầu nhưng IsPlaying chưa true.
+                    InsertNext(item);
+                    System.Diagnostics.Debug.WriteLine($"[AudioQueue] InsertNext POI {poiId} (bootstrap)");
+                }
+
+                return;
             }
-        }
-        else
-        {
+
             // Không có gì đang phát → phát ngay
             lock (_lock) _queue.Remove(item);
             SyncObservableQueue();
             await PlayItemAsync(item);
+        }
+        finally
+        {
+            _enterGate.Release();
         }
     }
 
@@ -312,7 +331,7 @@ public class AudioQueueService : IAudioQueueService, IDisposable
         var success = await _audioPlayer.PlayAsync(item.AudioUrl, token);
         if (!success)
         {
-            OnError?.Invoke(this, $"Không thể phát audio: {item.PoiName}");
+            OnError?.Invoke(this, _localization.GetString("AudioQueue_PlayFailFmt", item.PoiName));
             await PlayNextFromQueueAsync();
             return;
         }
@@ -390,5 +409,6 @@ public class AudioQueueService : IAudioQueueService, IDisposable
         _disposed = true;
         _geofence.PoiEntered -= OnGeofencePoiEntered;
         CancelCurrentPlayback();
+        _enterGate.Dispose();
     }
 }

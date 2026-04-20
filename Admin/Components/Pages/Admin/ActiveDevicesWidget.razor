@@ -65,7 +65,7 @@
             {
                 <h1 class="vk-dev-count fw-bold mb-0" style="font-size: 3.2rem; color: #fff; line-height: 1;">@activeCount</h1>
                 <small style="color: #7c6faa; font-size: 11px; display: block; margin-top: 4px;">
-                    thiết bị trong @windowMinutes phút qua
+                    thiết bị trong @windowSeconds giây qua
                 </small>
                 <small style="color: #4a3a7a; font-size: 10px;">
                     cập nhật @secondsAgo giây trước
@@ -115,12 +115,12 @@
 </div>
 
 @code {
-    [Parameter] public int WindowMinutes { get; set; } = 2;
-    [Parameter] public int RefreshSeconds { get; set; } = 10;
+    [Parameter] public int WindowSeconds { get; set; } = 45;
+    [Parameter] public int RefreshSeconds { get; set; } = 3;
 
     private List<ActiveDevice> activeDevices = new();
     private int activeCount => activeDevices.Count;
-    private int windowMinutes = 2;
+    private int windowSeconds = 45;
     private int secondsAgo = 0;
     private bool isLive = false;
     private bool isFirstLoad = true;
@@ -131,7 +131,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        windowMinutes = WindowMinutes;
+        windowSeconds = Math.Clamp(WindowSeconds, 15, 300);
         await LoadAsync();
         isFirstLoad = false;
 
@@ -155,7 +155,7 @@
         try
         {
             await using var db = await DbFactory.CreateDbContextAsync();
-            var threshold = DateTime.Now.AddMinutes(-windowMinutes);
+            var threshold = DateTime.Now.AddSeconds(-windowSeconds);
 
             var latestPerDevice = await db.TrackingLogs
                 .AsNoTracking()

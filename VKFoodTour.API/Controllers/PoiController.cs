@@ -17,8 +17,10 @@ namespace VKFoodTour.Api.Controllers
         }
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<PoiDto>>> GetAllPois()
+        public async Task<ActionResult<IEnumerable<PoiDto>>> GetAllPois([FromQuery] string? lang = null)
         {
+            var targetCode = NormalizeLanguageCode(lang);
+
             var pois = await _context.Pois
                 .AsNoTracking()
                 .Where(p => p.IsActive)
@@ -27,13 +29,43 @@ namespace VKFoodTour.Api.Controllers
                 .Select(p => new PoiDto
                 {
                     PoiId = p.PoiId,
-                    Name = p.Name,
+                    Name =
+                        _context.Narrations
+                            .Where(n => n.PoiId == p.PoiId && n.IsActive && n.Language != null && n.Language.Code == targetCode)
+                            .OrderByDescending(n => n.UpdatedAt ?? DateTime.MinValue)
+                            .ThenByDescending(n => n.NarrationId)
+                            .Select(n => n.Title)
+                            .FirstOrDefault()
+                        ??
+                        _context.Narrations
+                            .Where(n => n.PoiId == p.PoiId && n.IsActive && n.Language != null && n.Language.Code == "vi")
+                            .OrderByDescending(n => n.UpdatedAt ?? DateTime.MinValue)
+                            .ThenByDescending(n => n.NarrationId)
+                            .Select(n => n.Title)
+                            .FirstOrDefault()
+                        ??
+                        p.Name,
                     Address = p.Address,
                     Latitude = p.Latitude,
                     Longitude = p.Longitude,
                     Radius = p.Radius,
                     Priority = p.Priority,
-                    Description = p.Description,
+                    Description =
+                        _context.Narrations
+                            .Where(n => n.PoiId == p.PoiId && n.IsActive && n.Language != null && n.Language.Code == targetCode)
+                            .OrderByDescending(n => n.UpdatedAt ?? DateTime.MinValue)
+                            .ThenByDescending(n => n.NarrationId)
+                            .Select(n => n.Content)
+                            .FirstOrDefault()
+                        ??
+                        _context.Narrations
+                            .Where(n => n.PoiId == p.PoiId && n.IsActive && n.Language != null && n.Language.Code == "vi")
+                            .OrderByDescending(n => n.UpdatedAt ?? DateTime.MinValue)
+                            .ThenByDescending(n => n.NarrationId)
+                            .Select(n => n.Content)
+                            .FirstOrDefault()
+                        ??
+                        p.Description,
                     ImageUrl = p.ImageUrl
                 })
                 .ToListAsync();
@@ -42,21 +74,53 @@ namespace VKFoodTour.Api.Controllers
         }
 
         [HttpGet("{id:int}")]
-        public async Task<ActionResult<PoiDto>> GetPoiById(int id)
+        public async Task<ActionResult<PoiDto>> GetPoiById(int id, [FromQuery] string? lang = null)
         {
+            var targetCode = NormalizeLanguageCode(lang);
+
             var dto = await _context.Pois
                 .AsNoTracking()
                 .Where(p => p.PoiId == id && p.IsActive)
                 .Select(p => new PoiDto
                 {
                     PoiId = p.PoiId,
-                    Name = p.Name,
+                    Name =
+                        _context.Narrations
+                            .Where(n => n.PoiId == p.PoiId && n.IsActive && n.Language != null && n.Language.Code == targetCode)
+                            .OrderByDescending(n => n.UpdatedAt ?? DateTime.MinValue)
+                            .ThenByDescending(n => n.NarrationId)
+                            .Select(n => n.Title)
+                            .FirstOrDefault()
+                        ??
+                        _context.Narrations
+                            .Where(n => n.PoiId == p.PoiId && n.IsActive && n.Language != null && n.Language.Code == "vi")
+                            .OrderByDescending(n => n.UpdatedAt ?? DateTime.MinValue)
+                            .ThenByDescending(n => n.NarrationId)
+                            .Select(n => n.Title)
+                            .FirstOrDefault()
+                        ??
+                        p.Name,
                     Address = p.Address,
                     Latitude = p.Latitude,
                     Longitude = p.Longitude,
                     Radius = p.Radius,
                     Priority = p.Priority,
-                    Description = p.Description,
+                    Description =
+                        _context.Narrations
+                            .Where(n => n.PoiId == p.PoiId && n.IsActive && n.Language != null && n.Language.Code == targetCode)
+                            .OrderByDescending(n => n.UpdatedAt ?? DateTime.MinValue)
+                            .ThenByDescending(n => n.NarrationId)
+                            .Select(n => n.Content)
+                            .FirstOrDefault()
+                        ??
+                        _context.Narrations
+                            .Where(n => n.PoiId == p.PoiId && n.IsActive && n.Language != null && n.Language.Code == "vi")
+                            .OrderByDescending(n => n.UpdatedAt ?? DateTime.MinValue)
+                            .ThenByDescending(n => n.NarrationId)
+                            .Select(n => n.Content)
+                            .FirstOrDefault()
+                        ??
+                        p.Description,
                     ImageUrl = p.ImageUrl
                 })
                 .FirstOrDefaultAsync();
@@ -68,8 +132,9 @@ namespace VKFoodTour.Api.Controllers
         }
 
         [HttpGet("{id:int}/detail")]
-        public async Task<ActionResult<PoiDetailDto>> GetPoiDetail(int id)
+        public async Task<ActionResult<PoiDetailDto>> GetPoiDetail(int id, [FromQuery] string? lang = null)
         {
+            var targetCode = NormalizeLanguageCode(lang);
             var poi = await _context.Pois
                 .AsNoTracking()
                 .FirstOrDefaultAsync(p => p.PoiId == id && p.IsActive);
@@ -104,6 +169,16 @@ namespace VKFoodTour.Api.Controllers
                     AudioUrl = m.AudioUrl
                 })
                 .ToListAsync();
+
+            var preferredNarration = await _context.Narrations
+                .AsNoTracking()
+                .Include(n => n.Language)
+                .Where(n => n.PoiId == id && n.IsActive)
+                .OrderByDescending(n => n.Language != null && n.Language.Code == targetCode)
+                .ThenByDescending(n => n.Language != null && n.Language.Code == "vi")
+                .ThenByDescending(n => n.UpdatedAt ?? DateTime.MinValue)
+                .ThenByDescending(n => n.NarrationId)
+                .FirstOrDefaultAsync();
 
             var autoNarrations = await _context.Narrations
                 .AsNoTracking()
@@ -147,9 +222,9 @@ namespace VKFoodTour.Api.Controllers
             var dto = new PoiDetailDto
             {
                 PoiId = poi.PoiId,
-                Name = poi.Name,
+                Name = preferredNarration?.Title ?? poi.Name,
                 Address = poi.Address,
-                Description = poi.Description,
+                Description = preferredNarration?.Content ?? poi.Description,
                 CoverImageUrl = !string.IsNullOrWhiteSpace(poi.ImageUrl)
                     ? poi.ImageUrl
                     : await _context.Images.AsNoTracking()
@@ -163,6 +238,16 @@ namespace VKFoodTour.Api.Controllers
             };
 
             return Ok(dto);
+        }
+
+        private static string NormalizeLanguageCode(string? lang)
+        {
+            if (string.IsNullOrWhiteSpace(lang))
+                return "vi";
+
+            var code = lang.Trim().ToLowerInvariant();
+            var dash = code.IndexOf('-');
+            return dash > 0 ? code[..dash] : code;
         }
     }
 }
