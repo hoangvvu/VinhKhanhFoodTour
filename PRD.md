@@ -168,7 +168,7 @@ flowchart LR
 | # | Chức năng | Route / File | Mô tả ngắn |
 |---|---|---|---|
 | A1 | **Đăng nhập / Đăng xuất** | `/login`, `/logout` | Xác thực bằng cookie, hỗ trợ Google OAuth. |
-| A2 | **Dashboard thống kê** | `/` (`Home.razor`) | Tổng hợp QR scan, tương tác hôm nay, top POI, thiết bị online (widget `OnlineUsersWidget`, `ActiveDevicesWidget`). |
+| A2 | **Dashboard thống kê** | `/` (`Home.razor`) | Tổng hợp QR scan, tương tác hôm nay, top POI, ngôn ngữ, đánh giá; realtime thiết bị qua `ActiveDevicesWidget` (poll EF). Component `OnlineUsersWidget` có trong codebase nhưng chưa gắn trang chủ. |
 | A3 | **Quản lý POI / gian hàng** | `/admin/pois` (`PoiList.razor` + `PoiService`) | Tìm kiếm, lọc trạng thái, duyệt/ từ chối, chỉnh sửa thông tin, tọa độ, bán kính geofence. |
 | A4 | **Bản đồ POI** | `/admin/ban-do` (`BanDoPoi.razor`) | Hiển thị toàn bộ POI trên bản đồ kèm vị trí & vùng geofence. |
 | A5 | **Quản lý ngôn ngữ** | `/quan-ly-ngon-ngu` (`QuanLyNgonNgu.razor`) | Thêm/xóa/bật-tắt ngôn ngữ, cấu hình mã ngôn ngữ và TTS voice tương ứng. |
@@ -180,7 +180,7 @@ flowchart LR
 | A11 | **Quản lý nhân sự & Vendor** | `/nguoi-dung` (`NguoiDung.razor`) | Tạo/khóa tài khoản Admin, Vendor; gán Vendor với POI. |
 | A12 | **Gian hàng (nội bộ)** | `/gian-hang` (`GianHang.razor`) | Trang thao tác gian hàng phía admin. |
 | A13 | **Phản hồi từ app** | `/admin/phan-hoi-app` (`AppFeedback.razor`) | Xem feedback du khách gửi từ Mobile (API `Feedback/app`). |
-| A14 | **Heatmap & Tracking log** | `Home.razor` + API `Tracking` | Theo dõi log `qr_scan`, `enter`, `exit`, `listen_start`, `listen_end`, số thiết bị online. |
+| A14 | **Heatmap & Tracking log** | `/admin/ban-do` (`BanDoPoi.razor`) + Mobile → API `Tracking` | Heatmap: Blazor đọc `TrackingLogs` qua EF (bucket tọa độ), không qua HTTP nội bộ. Log vẫn do Mobile POST `/api/Tracking/log`. |
 
 ### 3.2. Web Vendor
 (Cùng app Blazor `Admin/`, hiển thị theo role `Vendor`)
@@ -410,45 +410,175 @@ sequenceDiagram
 
 ---
 
-### 4.5. SEQ-05 – Mobile gửi tracking log & Admin xem dashboard
+### 4.5. SEQ-05 – Mobile ghi log & Dashboard đọc cùng database
 
-**Mô tả:** Mobile gửi event qua `TrackingController`. Dashboard admin (`Home.razor`) truy vấn lại số liệu tổng hợp khi load trang và khi các widget polling định kỳ.
+**Mô tả:** Du khách gửi sự kiện qua **VKFoodTour.API** (`TrackingController`). Trang Dashboard (`Home.razor`, Blazor Server) **không gọi HTTP nội bộ tới API** để lấy thống kê: nó và các widget con dùng **EF Core** (`ApplicationDbContext` / `IDbContextFactory`) truy vấn trực tiếp **cùng SQL Server** mà API ghi vào. Làm tươi “realtime” nhờ **Timer** trong widget (không dùng SignalR nghiệp vụ).
 
 ```mermaid
 sequenceDiagram
     autonumber
     actor U as Du khách
     participant M as Mobile App<br/>DataService
-    participant T as TrackingController
-    participant DB as EF Core
-    actor Ad as Admin
-    participant H as Home.razor<br/>(Dashboard)
+    participant API as TrackingController<br/>(VKFoodTour.API)
+    participant DB as SQL Server<br/>TrackingLogs, Pois, Reviews…
 
-    par Trong lúc tour
-        U->>M: Quét QR, đi qua POI, nghe audio
-        M->>T: POST /api/Tracking/log { event, poiId, deviceId, lang }
-        T->>DB: Lưu TrackingLog
+    rect rgb(230, 242, 255)
+        Note over U,DB: Nhánh ghi — luồng dữ liệu vào DB
+        U->>M: QR, geofence, nghe audio…
+        M->>API: POST /api/Tracking/log
+        API->>DB: INSERT TrackingLog
     end
 
-    Note over Ad,H: Admin mở Dashboard
-    Ad->>H: GET /
-    H->>T: GET /api/Tracking/online-count
-    T->>DB: Đếm device có log gần đây
-    DB-->>T: n
-    T-->>H: { online: n }
-    H->>T: GET /api/Tracking/heatmap
-    T->>DB: Aggregate tọa độ
-    DB-->>T: Điểm heatmap
-    T-->>H: Danh sách điểm
-    H-->>Ad: Hiển thị widget online + heatmap + top POI
+    actor Op as Admin / Vendor
+    participant H as Home.razor
+    participant EF as EF Core<br/>DbContext / Factory
+    participant W as ActiveDevicesWidget
 
-    loop Polling định kỳ (OnlineUsersWidget)
-        H->>T: GET /api/Tracking/online-count
-        T-->>H: Số mới
+    rect rgb(236, 253, 245)
+        Note over Op,W: Nhánh đọc — Dashboard (Blazor Server)
+        Op->>H: Mở trang / (cookie auth)
+        H->>EF: OnInitializedAsync → theo role
+        alt Role Admin
+            H->>EF: LoadAdminStats (Count/GroupBy TrackingLogs, Pois, Reviews…)
+        else Role Vendor
+            H->>EF: LoadVendorStats (QR hôm nay, review, menu của POI chủ quán)
+        end
+        EF->>DB: SELECT tổng hợp
+        DB-->>EF: KPI + top POI + phân bố ngôn ngữ…
+        EF-->>H: Bind model
+        H-->>Op: Thẻ thống kê + bảng xếp hạng
+
+        H->>W: Render ActiveDevicesWidget
+        W->>EF: LoadAsync — log trong cửa sổ N giây, group theo DeviceId
+        EF->>DB: SELECT + join Poi (tên gian hàng gần nhất)
+        DB-->>EF: Danh sách thiết bị
+        EF-->>W: activeDevices
+        W-->>Op: Danh sách “thiết bị đang dùng app”
+
+        loop Mỗi RefreshSeconds (Timer, DbContext mới mỗi lần)
+            W->>EF: LoadAsync
+            EF->>DB: Poll TrackingLogs
+            DB-->>EF: …
+            EF-->>W: Cập nhật số + list
+        end
     end
 ```
 
-**Ghi chú:** Dự án không dùng SignalR cho nghiệp vụ – dashboard làm tươi dữ liệu bằng cách **polling** định kỳ từ widget.
+**Ghi chú:**
+
+- **Heatmap** trên bản đồ tổng quan nằm ở `/admin/ban-do` (`BanDoPoi.razor`): cũng đọc `TrackingLogs` qua EF + đẩy JSON sang JS (`updateOverviewHeatmap`), không đi qua `GET /api/Tracking/heatmap` từ Blazor.
+- Component **`OnlineUsersWidget`** cùng pattern (Timer + `IDbContextFactory`) nhưng **chưa được nhúng** vào `Home.razor`; trang chủ admin hiện dùng **`ActiveDevicesWidget`** (`WindowSeconds=45`, `RefreshSeconds=3`).
+
+#### 4.5.1. SEQ-05a – Admin Dashboard: phương thức trong `Home.razor` & `ActiveDevicesWidget`
+
+**Mô tả:** Chuỗi gọi **theo code thực tế** khi user role **Admin** mở `/`. File: `Admin/Components/Pages/Home.razor`, widget: `Admin/Components/Pages/Admin/ActiveDevicesWidget.razor`.
+
+**A) `Home.razor` — `OnInitializedAsync` → `LoadAdminStats` (inject `ApplicationDbContext Db`)**
+
+| Thứ tự | Phương thức / truy vấn |
+|--------|------------------------|
+| 1 | `AuthenticationStateProvider.GetAuthenticationStateAsync()` |
+| 2 | `LoadAdminStats()` |
+| 3 | `Db.Pois.CountAsync()` |
+| 4 | `Db.Pois.CountAsync(p => p.IsActive)` |
+| 5 | `Db.Narrations.CountAsync()` |
+| 6 | `Db.Languages.CountAsync(l => l.IsActive)` |
+| 7 | `Db.Users.CountAsync()` |
+| 8 | `Db.Users.CountAsync(u => u.Role == "Vendor")` |
+| 9 | `Db.TrackingLogs.CountAsync(t => t.EventType == "qr_scan" && t.CreatedAt >= today)` |
+| 10 | `Db.TrackingLogs.CountAsync(t => t.CreatedAt >= today && t.EventType != "move")` |
+| 11 | `listenLogs.AnyAsync()` rồi `listenLogs.AverageAsync(t => t.ListenedDurationSec!.Value)` (`listenLogs` = `TrackingLogs` lọc `listen_end`) |
+| 12 | `Db.TrackingLogs` … `GroupBy`/`OrderByDescending`/`Take(5)` → `ToListAsync()` (top POI) |
+| 13 | `Db.Pois.Where(...).ToDictionaryAsync(p => p.PoiId, p => p.Name)` |
+| 14 | Vòng `foreach` gán `TopPoiItem.PoiName` |
+| 15 | `Db.TrackingLogs` … `GroupBy` POI `listen_end` → `ToListAsync()` (top audio) |
+| 16 | `foreach` gán `TopAudioItem.PoiName` (dùng `poiNames`) |
+| 17 | `Db.TrackingLogs` group theo `LanguageCode` → `ToListAsync()` |
+| 18 | `Db.Languages.ToDictionaryAsync(l => l.Code, l => l.Name)` |
+| 19 | Build `languageStats` (LINQ trên bộ nhớ) |
+| 20 | `Db.Reviews.CountAsync()` |
+| 21 | `Db.Reviews.GroupBy(r => (int)r.Rating).ToDictionaryAsync(...)` → `ratingDistribution` |
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Ad as Admin
+    participant H as Home.razor
+    participant Auth as AuthenticationStateProvider
+    participant Db as ApplicationDbContext
+
+    Ad->>H: GET / (Blazor render)
+    H->>H: OnInitializedAsync()
+    H->>Auth: GetAuthenticationStateAsync()
+    Auth-->>H: ClaimsPrincipal (Role = Admin)
+    H->>H: LoadAdminStats()
+
+    H->>Db: Pois.CountAsync()
+    H->>Db: Pois.CountAsync(IsActive)
+    H->>Db: Narrations.CountAsync()
+    H->>Db: Languages.CountAsync(IsActive)
+    H->>Db: Users.CountAsync()
+    H->>Db: Users.CountAsync(Role == Vendor)
+    H->>Db: TrackingLogs.CountAsync(qr_scan, today)
+    H->>Db: TrackingLogs.CountAsync(today, ≠ move)
+    H->>Db: TrackingLogs (listen_end) AnyAsync + AverageAsync
+    H->>Db: TrackingLogs GroupBy PoiId → ToListAsync (top 5 POI)
+    H->>Db: Pois.ToDictionaryAsync(PoiId, Name)
+    Note over H: foreach gán PoiName top POI
+    H->>Db: TrackingLogs GroupBy listen_end → ToListAsync (top audio)
+    Note over H: foreach gán PoiName top audio
+    H->>Db: TrackingLogs GroupBy LanguageCode → ToListAsync
+    H->>Db: Languages.ToDictionaryAsync(Code, Name)
+    Note over H: build languageStats
+    H->>Db: Reviews.CountAsync()
+    H->>Db: Reviews.GroupBy(Rating).ToDictionaryAsync()
+    H-->>Ad: Render dashboard (KPI + bảng + phân tích)
+```
+
+**B) `ActiveDevicesWidget` — inject `IDbContextFactory<ApplicationDbContext> DbFactory`**
+
+| Thứ tự | Phương thức |
+|--------|-------------|
+| 1 | `OnInitializedAsync()` |
+| 2 | `Math.Clamp(WindowSeconds, 15, 300)` |
+| 3 | `LoadAsync()` |
+| 4 | `DbFactory.CreateDbContextAsync()` |
+| 5 | `db.TrackingLogs.AsNoTracking()…GroupBy(DeviceId)…ToListAsync()` |
+| 6 | `db.Pois.AsNoTracking()…ToDictionaryAsync(PoiId, Name)` (nếu có `poiIds`) |
+| 7 | Gán `activeDevices` (LINQ trên bộ nhớ) |
+| 8 | `new Timer(...)` — refresh mỗi `RefreshSeconds` (3s): gọi lại `LoadAsync()` + `InvokeAsync(StateHasChanged)` |
+| 9 | `new Timer(...)` — mỗi 1s: cập nhật `secondsAgo` + `StateHasChanged` |
+| 10 | `DisposeAsync()` — hủy hai timer |
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant H as Home.razor
+    participant W as ActiveDevicesWidget
+    participant F as IDbContextFactory
+    participant Db as ApplicationDbContext<br/>(instance mới mỗi lần)
+
+    H->>W: Render child (WindowSeconds=45, RefreshSeconds=3)
+    W->>W: OnInitializedAsync()
+    W->>W: Math.Clamp(WindowSeconds, 15, 300)
+    W->>W: LoadAsync()
+    W->>F: CreateDbContextAsync()
+    F-->>Db: factory tạo context
+    W->>Db: TrackingLogs AsNoTracking GroupBy DeviceId ToListAsync
+    W->>Db: Pois AsNoTracking ToDictionaryAsync (join tên quán)
+    W-->>H: Hiển thị danh sách thiết bị
+
+    loop Mỗi RefreshSeconds (3s)
+        W->>W: LoadAsync() (lặp bước CreateDbContext + query)
+        W->>W: InvokeAsync(StateHasChanged)
+    end
+
+    loop Mỗi 1 giây (_tickTimer)
+        W->>W: cập nhật secondsAgo, StateHasChanged
+    end
+```
+
+**Ghi chú thứ tự Blazor:** `Home.OnInitializedAsync` (gồm `LoadAdminStats`) chạy trước khi subtree render xong; `ActiveDevicesWidget` khởi tạo sau (lifecycle con), nên block **A** hoàn tất trước **B** trong cùng lần tải trang đầu.
 
 ---
 

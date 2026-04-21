@@ -73,7 +73,7 @@ Mục tiêu cốt lõi:
 | # | Chức năng | Route / File | Mô tả ngắn |
 |---|---|---|---|
 | A1 | **Đăng nhập / Đăng xuất** | `/login`, `/logout` | Xác thực bằng cookie, hỗ trợ Google OAuth. |
-| A2 | **Dashboard thống kê** | `/` (`Home.razor`) | Tổng hợp QR scan, tương tác hôm nay, top POI, thiết bị online (widget `OnlineUsersWidget`, `ActiveDevicesWidget`). |
+| A2 | **Dashboard thống kê** | `/` (`Home.razor`) | Tổng hợp QR scan, tương tác hôm nay, top POI, ngôn ngữ, đánh giá; realtime thiết bị qua `ActiveDevicesWidget` (poll EF). Component `OnlineUsersWidget` có trong codebase nhưng chưa gắn trang chủ. |
 | A3 | **Quản lý POI / gian hàng** | `/admin/pois` (`PoiList.razor` + `PoiService`) | Tìm kiếm, lọc trạng thái, duyệt/ từ chối, chỉnh sửa thông tin, tọa độ, bán kính geofence. |
 | A4 | **Bản đồ POI** | `/admin/ban-do` (`BanDoPoi.razor`) | Hiển thị toàn bộ POI trên bản đồ kèm vị trí & vùng geofence. |
 | A5 | **Quản lý ngôn ngữ** | `/quan-ly-ngon-ngu` (`QuanLyNgonNgu.razor`) | Thêm/xóa/bật-tắt ngôn ngữ, cấu hình mã ngôn ngữ và TTS voice tương ứng. |
@@ -85,7 +85,7 @@ Mục tiêu cốt lõi:
 | A11 | **Quản lý nhân sự & Vendor** | `/nguoi-dung` (`NguoiDung.razor`) | Tạo/khóa tài khoản Admin, Vendor; gán Vendor với POI. |
 | A12 | **Gian hàng (nội bộ)** | `/gian-hang` (`GianHang.razor`) | Trang thao tác gian hàng phía admin. |
 | A13 | **Phản hồi từ app** | `/admin/phan-hoi-app` (`AppFeedback.razor`) | Xem feedback du khách gửi từ Mobile (API `Feedback/app`). |
-| A14 | **Heatmap & Tracking log** | `Home.razor` + API `Tracking` | Theo dõi log `qr_scan`, `enter`, `exit`, `listen_start`, `listen_end`, số thiết bị online. |
+| A14 | **Heatmap & Tracking log** | `/admin/ban-do` (`BanDoPoi.razor`) + Mobile → API `Tracking` | Heatmap: Blazor đọc `TrackingLogs` qua EF (bucket tọa độ), không qua HTTP nội bộ. Log vẫn do Mobile POST `/api/Tracking/log`. |
 
 ### 3.2. Web Vendor
 (Cùng app Blazor `Admin/`, hiển thị theo role `Vendor`)
@@ -174,13 +174,67 @@ Mục tiêu cốt lõi:
 
 ---
 
-### 4.5. SEQ-05 – Mobile gửi tracking log & Admin xem dashboard
+### 4.5. SEQ-05 – Mobile ghi log & Dashboard đọc cùng database
 
-**Mô tả:** Mobile gửi event qua `TrackingController`. Dashboard admin (`Home.razor`) truy vấn lại số liệu tổng hợp khi load trang và khi các widget polling định kỳ.
+**Mô tả:** Du khách gửi sự kiện qua **VKFoodTour.API** (`TrackingController`). Trang Dashboard (`Home.razor`, Blazor Server) **không gọi HTTP nội bộ tới API** để lấy thống kê: nó và các widget con dùng **EF Core** (`ApplicationDbContext` / `IDbContextFactory`) truy vấn trực tiếp **cùng SQL Server** mà API ghi vào. Làm tươi “realtime” nhờ **Timer** trong widget (không dùng SignalR nghiệp vụ).
 
 ![diagram](./PRD.Rendered-7.svg)
 
-**Ghi chú:** Dự án không dùng SignalR cho nghiệp vụ – dashboard làm tươi dữ liệu bằng cách **polling** định kỳ từ widget.
+**Ghi chú:**
+
+- **Heatmap** trên bản đồ tổng quan nằm ở `/admin/ban-do` (`BanDoPoi.razor`): cũng đọc `TrackingLogs` qua EF + đẩy JSON sang JS (`updateOverviewHeatmap`), không đi qua `GET /api/Tracking/heatmap` từ Blazor.
+- Component **`OnlineUsersWidget`** cùng pattern (Timer + `IDbContextFactory`) nhưng **chưa được nhúng** vào `Home.razor`; trang chủ admin hiện dùng **`ActiveDevicesWidget`** (`WindowSeconds=45`, `RefreshSeconds=3`).
+
+#### 4.5.1. SEQ-05a – Admin Dashboard: phương thức trong `Home.razor` & `ActiveDevicesWidget`
+
+**Mô tả:** Chuỗi gọi **theo code thực tế** khi user role **Admin** mở `/`. File: `Admin/Components/Pages/Home.razor`, widget: `Admin/Components/Pages/Admin/ActiveDevicesWidget.razor`.
+
+**A) `Home.razor` — `OnInitializedAsync` → `LoadAdminStats` (inject `ApplicationDbContext Db`)**
+
+| Thứ tự | Phương thức / truy vấn |
+|--------|------------------------|
+| 1 | `AuthenticationStateProvider.GetAuthenticationStateAsync()` |
+| 2 | `LoadAdminStats()` |
+| 3 | `Db.Pois.CountAsync()` |
+| 4 | `Db.Pois.CountAsync(p => p.IsActive)` |
+| 5 | `Db.Narrations.CountAsync()` |
+| 6 | `Db.Languages.CountAsync(l => l.IsActive)` |
+| 7 | `Db.Users.CountAsync()` |
+| 8 | `Db.Users.CountAsync(u => u.Role == "Vendor")` |
+| 9 | `Db.TrackingLogs.CountAsync(t => t.EventType == "qr_scan" && t.CreatedAt >= today)` |
+| 10 | `Db.TrackingLogs.CountAsync(t => t.CreatedAt >= today && t.EventType != "move")` |
+| 11 | `listenLogs.AnyAsync()` rồi `listenLogs.AverageAsync(t => t.ListenedDurationSec!.Value)` (`listenLogs` = `TrackingLogs` lọc `listen_end`) |
+| 12 | `Db.TrackingLogs` … `GroupBy`/`OrderByDescending`/`Take(5)` → `ToListAsync()` (top POI) |
+| 13 | `Db.Pois.Where(...).ToDictionaryAsync(p => p.PoiId, p => p.Name)` |
+| 14 | Vòng `foreach` gán `TopPoiItem.PoiName` |
+| 15 | `Db.TrackingLogs` … `GroupBy` POI `listen_end` → `ToListAsync()` (top audio) |
+| 16 | `foreach` gán `TopAudioItem.PoiName` (dùng `poiNames`) |
+| 17 | `Db.TrackingLogs` group theo `LanguageCode` → `ToListAsync()` |
+| 18 | `Db.Languages.ToDictionaryAsync(l => l.Code, l => l.Name)` |
+| 19 | Build `languageStats` (LINQ trên bộ nhớ) |
+| 20 | `Db.Reviews.CountAsync()` |
+| 21 | `Db.Reviews.GroupBy(r => (int)r.Rating).ToDictionaryAsync(...)` → `ratingDistribution` |
+
+![diagram](./PRD.Rendered-8.svg)
+
+**B) `ActiveDevicesWidget` — inject `IDbContextFactory<ApplicationDbContext> DbFactory`**
+
+| Thứ tự | Phương thức |
+|--------|-------------|
+| 1 | `OnInitializedAsync()` |
+| 2 | `Math.Clamp(WindowSeconds, 15, 300)` |
+| 3 | `LoadAsync()` |
+| 4 | `DbFactory.CreateDbContextAsync()` |
+| 5 | `db.TrackingLogs.AsNoTracking()…GroupBy(DeviceId)…ToListAsync()` |
+| 6 | `db.Pois.AsNoTracking()…ToDictionaryAsync(PoiId, Name)` (nếu có `poiIds`) |
+| 7 | Gán `activeDevices` (LINQ trên bộ nhớ) |
+| 8 | `new Timer(...)` — refresh mỗi `RefreshSeconds` (3s): gọi lại `LoadAsync()` + `InvokeAsync(StateHasChanged)` |
+| 9 | `new Timer(...)` — mỗi 1s: cập nhật `secondsAgo` + `StateHasChanged` |
+| 10 | `DisposeAsync()` — hủy hai timer |
+
+![diagram](./PRD.Rendered-9.svg)
+
+**Ghi chú thứ tự Blazor:** `Home.OnInitializedAsync` (gồm `LoadAdminStats`) chạy trước khi subtree render xong; `ActiveDevicesWidget` khởi tạo sau (lifecycle con), nên block **A** hoàn tất trước **B** trong cùng lần tải trang đầu.
 
 ---
 
@@ -188,7 +242,7 @@ Mục tiêu cốt lõi:
 
 **Mô tả:** Sau khi nghe audio và xem chi tiết quán, du khách có thể gửi rating + bình luận về quán.
 
-![diagram](./PRD.Rendered-8.svg)
+![diagram](./PRD.Rendered-10.svg)
 
 ---
 
@@ -196,7 +250,7 @@ Mục tiêu cốt lõi:
 
 **Mô tả:** Kịch bản du khách đang nghe audio của POI A thì bước vào vùng geofence của POI B (2 vùng chồng lấn, hoặc 2 quán cạnh nhau). `AudioQueueService` quyết định xử lý dựa trên **tiến độ track A đang phát** so với ngưỡng **60%**.
 
-![diagram](./PRD.Rendered-9.svg)
+![diagram](./PRD.Rendered-11.svg)
 
 **Giải thích ý nghĩa ngưỡng 60%:**
 - Với ngưỡng **≥ 60%**: track đang phát đã gần xong → cho nghe trọn vẹn để giữ trải nghiệm liền mạch, POI mới xếp kế tiếp.
@@ -214,7 +268,7 @@ Mục tiêu cốt lõi:
 
 **Mô tả:** Sơ đồ **chung** cho tất cả chức năng CRUD có luồng duyệt trong hệ thống – áp dụng cho: quản lý POI, thực đơn, người dùng, ngôn ngữ, QR code, review, feedback, audio… Khi xem một chức năng CRUD trong bảng liệt kê (mục 3), tham chiếu sơ đồ này thay vì vẽ lại từng cái.
 
-![diagram](./PRD.Rendered-10.svg)
+![diagram](./PRD.Rendered-12.svg)
 
 **Áp dụng cho các chức năng:**
 
@@ -235,7 +289,7 @@ Mục tiêu cốt lõi:
 
 **Mô tả:** Luồng tải và hiển thị heatmap thực tế trên trang `BanDoPoi.razor`. Admin bật switch heatmap, chọn mốc thời gian, UI gọi API `Tracking/heatmap`, sau đó đẩy dữ liệu sang JS interop để cập nhật lớp heatmap trên bản đồ.
 
-![diagram](./PRD.Rendered-11.svg)
+![diagram](./PRD.Rendered-13.svg)
 
 **Điểm kỹ thuật chính (đúng code hiện tại):**
 - API endpoint: `GET /api/Tracking/heatmap` trong `TrackingController`.
@@ -248,7 +302,7 @@ Mục tiêu cốt lõi:
 
 **Mô tả:** Luồng quản lý ngôn ngữ trên trang `QuanLyNgonNgu.razor`: Admin thêm ngôn ngữ mới, cấu hình mã ngôn ngữ + voice, bật/tắt trạng thái hoạt động. Cấu hình này được dùng lại khi dịch nội dung và sinh audio thuyết minh.
 
-![diagram](./PRD.Rendered-12.svg)
+![diagram](./PRD.Rendered-14.svg)
 
 **Điểm kỹ thuật chính:**
 - Trang quản lý: `QuanLyNgonNgu.razor`.
@@ -263,13 +317,13 @@ Mục tiêu cốt lõi:
 
 **Mô tả:** Toàn bộ luồng của Mobile App từ khi mở app (WelcomePage) đến khi kết thúc tour.
 
-![diagram](./PRD.Rendered-13.svg)
+![diagram](./PRD.Rendered-15.svg)
 
 ---
 
 ### 5.2. ACT-02 – Duyệt POI của Admin trong `PoiList.razor`
 
-![diagram](./PRD.Rendered-14.svg)
+![diagram](./PRD.Rendered-16.svg)
 
 ---
 
@@ -277,13 +331,13 @@ Mục tiêu cốt lõi:
 
 **Mô tả:** Vendor dùng chung Blazor app, chỉ thấy các trang `/vendor/*` theo role.
 
-![diagram](./PRD.Rendered-15.svg)
+![diagram](./PRD.Rendered-17.svg)
 
 ---
 
 ### 5.4. ACT-04 – Dịch & sinh audio thuyết minh trong `ThuyetMinh.razor`
 
-![diagram](./PRD.Rendered-16.svg)
+![diagram](./PRD.Rendered-18.svg)
 
 ---
 
@@ -291,7 +345,7 @@ Mục tiêu cốt lõi:
 
 **Mô tả:** Logic thật của `HandlePoiEnteredAsync` trong `AudioQueueService.cs` khi nhận sự kiện `PoiEntered` từ `GeofenceMonitorService`.
 
-![diagram](./PRD.Rendered-17.svg)
+![diagram](./PRD.Rendered-19.svg)
 
 **Các hằng số tham chiếu trong code:**
 - `GeofenceMonitorService.DwellThresholdSec = 8` – phải ở trong zone 8 giây mới trigger.
@@ -306,7 +360,7 @@ Mục tiêu cốt lõi:
 
 **Mô tả:** Sơ đồ state diagram thể hiện các trạng thái và chuyển đổi của một POI từ lúc Vendor tạo đến khi xuất hiện trên Mobile App.
 
-![diagram](./PRD.Rendered-18.svg)
+![diagram](./PRD.Rendered-20.svg)
 
 **Ràng buộc chuyển trạng thái:**
 - Mọi thay đổi nội dung quan trọng của Vendor đều **reset về `Pending`** để Admin xem lại.
