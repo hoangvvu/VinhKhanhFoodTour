@@ -6,18 +6,16 @@ namespace VKFoodTour.Mobile;
 public partial class App : Application
 {
     private const int ForegroundHeartbeatSeconds = 20;
-    private readonly AppShell _shell;
     private readonly IServiceProvider _services;
     private readonly IAuthSessionService _session;
     private readonly ILocalizationService _localization;
     private readonly ISettingsService _settings;
     private System.Threading.Timer? _foregroundHeartbeatTimer;
 
-    public App(AppShell shell, IServiceProvider services, IAuthSessionService session, ILocalizationService localization, ISettingsService settings)
+    public App(IServiceProvider services, IAuthSessionService session, ILocalizationService localization, ISettingsService settings)
     {
         InitializeComponent(); // Colors.xaml / Styles.xaml được merge tại đây
         UserAppTheme = AppTheme.Light;
-        _shell = shell;
         _services = services;
         _session = session;
         _localization = localization;

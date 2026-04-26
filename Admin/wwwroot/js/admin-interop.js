@@ -27,7 +27,7 @@ window.initMapPicker = function(elementId, lat, lng, searchInputId, searchBtnId,
         attributionControl: false
     }).setView([lat, lng], 17);
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png', {
         maxZoom: 19
     }).addTo(pickerMap);
 
@@ -281,7 +281,7 @@ window.initPoiOverviewMap = function(elementId, pois) {
             zoomControl: false
         }).setView([10.7595, 106.7040], 16);
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png', {
             maxZoom: 20
         }).addTo(overviewMap);
 
