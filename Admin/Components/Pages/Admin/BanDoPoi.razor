@@ -12,8 +12,8 @@
 <div class="dash-page p-4">
     <div class="d-flex justify-content-between align-items-center mb-5">
         <div>
-            <h2 class="fw-bold mb-1" style="color: #F0EBE3;">BẢN ĐỒ GIAN HÀNG</h2>
-            <span style="color: #4a4a5a; font-size: 13px;"><i class="bi bi-map me-1"></i>Các POI đang hoạt động (OpenStreetMap + Leaflet)</span>
+            <h2 class="fw-bold mb-1" style="color: #1E293B;">BẢN ĐỒ GIAN HÀNG</h2>
+            <span style="color: #64748B; font-size: 13px;"><i class="bi bi-map me-1"></i>Các POI đang hoạt động (OpenStreetMap + Leaflet)</span>
         </div>
         <a href="admin/pois" class="btn btn-outline-danger rounded-pill px-4">Quản lý POI</a>
     </div>
@@ -22,7 +22,7 @@
     {
         <div class="text-center py-5">
             <div class="spinner-border text-danger" style="width:2.5rem;height:2.5rem;" role="status"></div>
-            <p style="color:#4a4a5a;font-size:13px;letter-spacing:1px;margin-top:12px;">ĐANG TẢI...</p>
+            <p style="color:#64748B;font-size:13px;letter-spacing:1px;margin-top:12px;">ĐANG TẢI...</p>
         </div>
     }
     else
@@ -33,7 +33,7 @@
                 <div class="d-flex align-items-center justify-content-between mb-2">
                     <div class="form-check form-switch m-0 d-flex align-items-center">
                         <input class="form-check-input me-2" type="checkbox" role="switch" id="heatmapToggle" @bind="showHeatmap" @bind:after="OnToggleHeatmap">
-                        <label class="form-check-label text-white small fw-bold" for="heatmapToggle" style="cursor: pointer; user-select: none;">
+                        <label class="form-check-label small fw-bold" for="heatmapToggle" style="cursor: pointer; user-select: none; color:#1E293B;">
                             <i class="bi bi-fire text-danger me-1"></i> HEATMAP
                         </label>
                     </div>
@@ -45,7 +45,7 @@
 
                 @if (showHeatmap)
                 {
-                    <div class="fade-in pt-2 mt-2 border-top border-secondary">
+                    <div class="fade-in pt-2 mt-2 border-top" style="border-color:#E2E8F0 !important;">
                         <div class="mb-3">
                             <label class="tiny-label">KHOẢNG THỜI GIAN</label>
                             <select class="form-select form-select-sm dash-select-sm" @bind="hours" @bind:after="ReloadHeatmapAsync">
@@ -59,7 +59,7 @@
                             <span class="live-indicator @(isHeatmapLoading ? "loading" : "")">
                                 <span class="dot"></span> LIVE
                             </span>
-                            <span class="text-white-50" style="font-size: 10px;">@totalPoints vùng ghi nhận</span>
+                            <span style="font-size: 10px; color:#64748B;">@totalPoints vùng ghi nhận</span>
                         </div>
                     </div>
                 }
@@ -76,20 +76,20 @@
         top: 15px;
         right: 15px;
         z-index: 1000;
-        background: rgba(15, 15, 15, 0.85);
+        background: rgba(255, 255, 255, 0.85);
         backdrop-filter: blur(15px);
         -webkit-backdrop-filter: blur(15px);
         padding: 14px 18px;
         border-radius: 16px;
         border: 1px solid rgba(200, 55, 45, 0.4);
         width: 200px;
-        box-shadow: 0 10px 40px rgba(0,0,0,0.8), 0 0 15px rgba(200, 55, 45, 0.15);
+        box-shadow: 0 10px 40px rgba(0,0,0,0.08), 0 0 15px rgba(200, 55, 45, 0.1);
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
     .live-indicator {
         font-size: 9px;
         font-weight: 800;
-        color: #4ade80;
+        color: #166534;
         display: flex;
         align-items: center;
         gap: 4px;
@@ -98,7 +98,7 @@
     .live-indicator .dot {
         width: 6px;
         height: 6px;
-        background-color: #4ade80;
+        background-color: #166534;
         border-radius: 50%;
         display: inline-block;
         animation: pulse 1.5s infinite;
@@ -127,9 +127,9 @@
         text-transform: uppercase;
     }
     .dash-select-sm {
-        background-color: #1a1a1a !important;
-        border: 1px solid #333 !important;
-        color: #ddd !important;
+        background-color: #FFFFFF !important;
+        border: 1px solid #E2E8F0 !important;
+        color: #1E293B !important;
         font-size: 11px !important;
         padding-top: 2px !important;
         padding-bottom: 2px !important;

@@ -1,30 +1,31 @@
 @page "/quan-ly-ngon-ngu"
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.EntityFrameworkCore
+@using global::Admin.Services
 @attribute [Authorize(Roles = "Admin")]
 @rendermode InteractiveServer
+@implements IDisposable
 
 @inject ApplicationDbContext Db
 @inject GoogleTranslateService TranslateService
-@inject TtsService TtsService
 @inject PoiService PoiService
-@inject IJSRuntime JS
+@inject LanguageProvisionJobService ProvisionJobs
 
 <style>
-    .lang-page-title { color: #F0EBE3; }
-    .lang-panel { border-radius: 16px; background: linear-gradient(145deg, #11151c, #171d26); border: 1px solid rgba(255,255,255,0.06); }
-    .lang-kpi { border-radius: 12px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); }
-    .audit-box { border-radius: 12px; border: 1px dashed rgba(255,255,255,0.2); background: rgba(255,255,255,0.02); }
+    .lang-page-title { color: #1E293B; }
+    .lang-panel { border-radius: 16px; background: #FFFFFF; border: 1px solid #E2E8F0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
+    .lang-kpi { border-radius: 12px; background: #F8FAFC; border: 1px solid #E2E8F0; }
+    .audit-box { border-radius: 12px; border: 1px dashed #CBD5E1; background: #F8FAFC; }
     .status-chip { border-radius: 999px; padding: 2px 10px; font-size: 12px; }
-    .lookup-item { border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; background: rgba(255,255,255,0.02); }
+    .lookup-item { border: 1px solid #E2E8F0; border-radius: 10px; background: #FFFFFF; }
 </style>
 
 <div class="dash-page p-4">
 
     <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
         <div>
-            <h2 class="fw-bold mb-1 lang-page-title"><i class="bi bi-translate me-2 text-danger"></i>QUẢN LÝ NGÔN NGỮ & DỊCH TỰ ĐỘNG</h2>
-            <div class="text-muted small">Thêm ngôn ngữ mới, dịch hàng loạt và kiểm tra nhanh chất lượng bản dịch trong cùng một màn hình.</div>
+            <h2 class="fw-bold mb-1 lang-page-title"><i class="bi bi-translate me-2 text-danger"></i>QUẢN LÝ NGÔN NGỮ & ĐỒNG BỘ TỰ ĐỘNG</h2>
+            <div class="text-muted small">Thêm ngôn ngữ mới sẽ tự động dịch + tạo TTS cho toàn bộ POI đã duyệt.</div>
         </div>
         <span class="badge px-3 py-2 rounded-pill" style="background:rgba(200,55,45,0.12);color:#C8372D;border:1px solid rgba(200,55,45,0.25);">
             <i class="bi bi-translate me-1"></i> Google Translate API
@@ -35,19 +36,19 @@
         <div class="col-md-4">
             <div class="lang-kpi p-3 h-100">
                 <div class="text-muted small">Tổng ngôn ngữ</div>
-                <div class="fs-4 fw-bold text-white">@languages.Count</div>
+                <div class="fs-4 fw-bold text-dark">@languages.Count</div>
             </div>
         </div>
         <div class="col-md-4">
             <div class="lang-kpi p-3 h-100">
                 <div class="text-muted small">Ngôn ngữ đang bật</div>
-                <div class="fs-4 fw-bold text-white">@languages.Count(l => l.IsActive)</div>
+                <div class="fs-4 fw-bold text-dark">@languages.Count(l => l.IsActive)</div>
             </div>
         </div>
         <div class="col-md-4">
             <div class="lang-kpi p-3 h-100">
                 <div class="text-muted small">POI có dữ liệu dịch (@GetLangCode(auditTargetLanguageId))</div>
-                <div class="fs-4 fw-bold text-white">@auditTranslatedPois/@auditTotalPois</div>
+                <div class="fs-4 fw-bold text-dark">@auditTranslatedPois/@auditTotalPois</div>
             </div>
         </div>
     </div>
@@ -62,6 +63,31 @@
         </div>
     }
 
+    @if (currentJobState is not null)
+    {
+        <div class="alert alert-info small d-flex justify-content-between align-items-center mb-3" style="border-radius:12px;">
+            <div>
+                <div><i class="bi bi-gear-wide-connected me-1"></i>@currentJobState.Message</div>
+                <div class="text-muted">Trạng thái: @currentJobState.Status | @currentJobState.Completed/@(currentJobState.Total == 0 ? "?" : currentJobState.Total)</div>
+            </div>
+            <button class="btn btn-sm btn-outline-secondary" @onclick="RefreshCurrentJob">Làm mới</button>
+        </div>
+    }
+
+    <div class="d-flex gap-2 flex-wrap mb-4">
+        <button class="btn rounded-pill px-3 @(activeTab == "languages" ? "btn-danger" : "btn-outline-secondary")" @onclick='() => SetAdminTab("languages")'>
+            <i class="bi bi-globe2 me-1"></i>Ngôn ngữ
+        </button>
+        <button class="btn rounded-pill px-3 @(activeTab == "add" ? "btn-danger" : "btn-outline-secondary")" @onclick='() => SetAdminTab("add")'>
+            <i class="bi bi-plus-circle me-1"></i>Thêm ngôn ngữ
+        </button>
+        <button class="btn rounded-pill px-3 @(activeTab == "audit" ? "btn-danger" : "btn-outline-secondary")" @onclick='() => SetAdminTab("audit")'>
+            <i class="bi bi-clipboard2-data me-1"></i>Kiểm tra bản dịch
+        </button>
+    </div>
+
+    @if (activeTab == "languages")
+    {
     <div class="lang-panel p-4 mb-4">
         <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
             <div class="dash-label mb-0"><i class="bi bi-globe2 me-2"></i>NGÔN NGỮ HIỆN CÓ</div>
@@ -90,6 +116,7 @@
                             <th>TÊN</th>
                             <th>TTS</th>
                             <th class="text-center">NARRATIONS</th>
+                            <th class="text-end">THAO TÁC</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -97,7 +124,7 @@
                         {
                             <tr>
                                 <td><span class="badge bg-secondary rounded-pill">@lang.Code.ToUpper()</span></td>
-                                <td class="text-white">@lang.Name</td>
+                                <td class="text-dark">@lang.Name</td>
                                 <td>
                                     @if (!string.IsNullOrWhiteSpace(lang.TtsVoice))
                                     {
@@ -109,6 +136,15 @@
                                     }
                                 </td>
                                 <td class="text-center"><span class="badge bg-info-subtle text-info">@lang.NarrationCount</span></td>
+                                <td class="text-end">
+                                    <div class="d-flex justify-content-end gap-1">
+                                        <button class="btn btn-sm btn-outline-secondary" @onclick="() => ToggleLanguage(lang)">
+                                            @(lang.IsActive ? "Tắt" : "Bật")
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-secondary" @onclick="() => FillEditVoice(lang)">Sửa voice</button>
+                                        <button class="btn btn-sm btn-outline-primary" @onclick="() => ResyncLanguage(lang)">Đồng bộ lại</button>
+                                    </div>
+                                </td>
                             </tr>
                         }
                     </tbody>
@@ -116,10 +152,11 @@
             </div>
         }
     </div>
+    }
 
-    <div class="row g-4">
-        <div class="col-lg-5">
-            <div class="lang-panel p-4 mb-4">
+    @if (activeTab == "add")
+    {
+        <div class="lang-panel p-4 mb-4">
                 <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
                     <div class="dash-label mb-0"><i class="bi bi-plus-circle me-2"></i>THÊM NGÔN NGỮ MỚI</div>
                     <small class="text-muted">1) Chọn mẫu 2) Kiểm tra mã 3) Thêm ngôn ngữ</small>
@@ -132,7 +169,7 @@
                                 <input type="text" @bind="newLangCode" @bind:event="oninput"
                                        class="form-control dash-input rounded-start-3"
                                        placeholder="vd: en, ja, ko, zh-TW" />
-                                <button class="btn btn-outline-light rounded-end-3" @onclick="CheckLanguageCode"
+                                <button class="btn btn-outline-secondary rounded-end-3" @onclick="CheckLanguageCode"
                                         disabled="@isCheckingCode">
                                     @if (isCheckingCode)
                                     {
@@ -162,16 +199,16 @@
 
                     @if (previewLangName != null)
                     {
-                        <div class="mt-3 p-3 rounded-3" style="background-color: #1a2e1a; border: 1px solid #2d5a2d;">
+                        <div class="mt-3 p-3 rounded-3" style="background-color: #ECFDF5; border: 1px solid #A7F3D0;">
                             <i class="bi bi-check-circle-fill text-success me-2"></i>
-                            <span class="text-white">Sẽ thêm: <strong>@previewLangName</strong> (<code>@newLangCode</code>)</span>
+                            <span class="text-dark">Sẽ thêm: <strong>@previewLangName</strong> (<code>@newLangCode</code>)</span>
                         </div>
                     }
                     else if (previewError != null)
                     {
-                        <div class="mt-3 p-3 rounded-3" style="background-color: #2e1a1a; border: 1px solid #5a2d2d;">
+                        <div class="mt-3 p-3 rounded-3" style="background-color: #FEF2F2; border: 1px solid #FECACA;">
                             <i class="bi bi-x-circle-fill text-danger me-2"></i>
-                            <span class="text-white">@previewError</span>
+                            <span class="text-dark">@previewError</span>
                         </div>
                     }
 
@@ -183,9 +220,9 @@
                         <div style="max-height:200px; overflow-y:auto;" class="d-flex flex-column gap-2">
                             @foreach (var item in FilteredVoiceLookupItems)
                             {
-                                <button type="button" class="lookup-item text-start p-2 btn btn-sm btn-outline-light"
+                                <button type="button" class="lookup-item text-start p-2 btn btn-sm btn-outline-secondary"
                                         @onclick="() => ApplyVoiceLookup(item)">
-                                    <div class="text-white fw-semibold">@item.DisplayName <span class="text-muted">(@item.Code)</span></div>
+                                    <div class="text-dark fw-semibold">@item.DisplayName <span class="text-muted">(@item.Code)</span></div>
                                     <div class="small text-muted">@item.Voice</div>
                                 </button>
                             }
@@ -212,101 +249,11 @@
                         }
                         <i class="bi bi-plus-lg"></i> Thêm ngôn ngữ
                     </button>
-            </div>
         </div>
+    }
 
-        <div class="col-lg-7">
-            <div class="lang-panel p-4 mb-4">
-                <div class="dash-label mb-4 d-flex align-items-center">
-                    <div class="me-3" style="width:32px;height:32px;background:rgba(200,55,45,0.1);color:#C8372D;border-radius:8px;display:flex;align-items:center;justify-content:center;">
-                        <i class="bi bi-lightning-charge-fill"></i>
-                    </div>
-                    CÔNG CỤ DỊCH HÀNG LOẠT & TTS TỰ ĐỘNG
-                </div>
-
-                <div class="p-4 rounded-4 mb-4" style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);">
-                    <div class="row g-3">
-                        <div class="col-md-4">
-                            <label class="form-label text-muted small fw-bold">NGÔN NGỮ NGUỒN</label>
-                            <select class="form-select dash-input" @bind="sourceLanguageId">
-                                @foreach (var l in languages)
-                                {
-                                    <option value="@l.LanguageId">@l.Name (@l.Code)</option>
-                                }
-                            </select>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label text-muted small fw-bold">NGÔN NGỮ ĐÍCH (DỊCH SANG)</label>
-                            <select class="form-select dash-input" @bind="targetLanguageId">
-                                <option value="0">-- Chọn ngôn ngữ --</option>
-                                <option value="-1">Tất cả ngôn ngữ đích đang bật</option>
-                                @foreach (var l in languages.Where(x => x.LanguageId != sourceLanguageId))
-                                {
-                                    <option value="@l.LanguageId">@l.Name (@l.Code)</option>
-                                }
-                            </select>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label text-muted small fw-bold">PHẠM VI POI</label>
-                            <select class="form-select dash-input" @bind="selectedPoiId">
-                                <option value="0">Tất cả POI</option>
-                                @foreach (var poi in pois)
-                                {
-                                    <option value="@poi.PoiId">@poi.Name</option>
-                                }
-                            </select>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="d-flex gap-3 mt-4">
-                    <button class="btn btn-danger rounded-pill px-4 shadow" @onclick="StartBatchTranslate" disabled="@isProcessing">
-                        @if (isProcessing)
-                        {
-                            <span class="spinner-border spinner-border-sm me-2"></span>
-                        }
-                        <i class="bi bi-translate me-2"></i>Dịch & Tạo Audio Hàng Loạt
-                    </button>
-                    <button class="btn btn-outline-danger rounded-pill px-4" @onclick="CleanupLegacyAudio" disabled="@isProcessing">
-                        <i class="bi bi-trash3 me-2"></i>Dọn dẹp Audio cũ
-                    </button>
-                </div>
-
-                @if (isTranslating || translateResults.Any())
-                {
-                    <div class="mt-4">
-                        @if (isTranslating)
-                        {
-                            <div class="progress rounded-pill mb-3" style="height: 8px; background-color: #2a2a2a;">
-                                <div class="progress-bar bg-danger progress-bar-striped progress-bar-animated" style="width: @progressPercent%"></div>
-                            </div>
-                            <div class="text-muted small mb-3">Đang xử lý: @translateCurrent / @translateTotal narration...</div>
-                        }
-
-                        <div style="max-height: 280px; overflow-y: auto;">
-                            @foreach (var result in translateResults.TakeLast(30))
-                            {
-                                <div class="d-flex align-items-start gap-2 mb-2 p-2 rounded-3" style="background-color: @(result.Success ? "#121a12" : "#1a1212");">
-                                    <i class="bi @(result.Success ? "bi-check-circle text-success" : "bi-x-circle text-danger") mt-1"></i>
-                                    <div class="small">
-                                        <div class="text-white fw-bold">@result.PoiName <span class="text-info">[@result.TargetCode]</span></div>
-                                        <div class="text-muted">@result.Title</div>
-                                        @if (!result.Success)
-                                        {
-                                            <div class="text-danger">@result.Error</div>
-                                        }
-                                        @if (result.Overwritten)
-                                        {
-                                            <span class="badge bg-warning-subtle text-warning small">Đã ghi đè</span>
-                                        }
-                                    </div>
-                                </div>
-                            }
-                        </div>
-                    </div>
-                }
-            </div>
-
+    @if (activeTab == "audit")
+    {
             <div class="lang-panel p-4 mb-4">
                 <div class="dash-label mb-3"><i class="bi bi-clipboard2-data me-2"></i>KIỂM TRA BẢN DỊCH</div>
                 <div class="row g-3">
@@ -329,7 +276,7 @@
                         </select>
                     </div>
                     <div class="col-md-2 d-flex align-items-end">
-                        <button class="btn btn-outline-light w-100" @onclick="RunTranslationAudit" disabled="@isAuditing">
+                        <button class="btn btn-outline-secondary w-100" @onclick="RunTranslationAudit" disabled="@isAuditing">
                             @if (isAuditing)
                             {
                                 <span class="spinner-border spinner-border-sm"></span>
@@ -345,7 +292,7 @@
                 <div class="audit-box p-3 mt-3">
                     <div class="d-flex justify-content-between flex-wrap gap-2">
                         <div class="text-muted small">Độ phủ dịch</div>
-                        <div class="text-white small fw-semibold">@auditTranslatedPois / @auditTotalPois POI</div>
+                        <div class="text-dark small fw-semibold">@auditTranslatedPois / @auditTotalPois POI</div>
                     </div>
                     <div class="progress mt-2" style="height:8px;">
                         <div class="progress-bar bg-info" style="width:@auditCoveragePercent%"></div>
@@ -367,7 +314,12 @@
                         {
                             @foreach (var issue in auditIssues.Take(6))
                             {
-                                <div class="small text-warning mb-1"><i class="bi bi-exclamation-triangle me-1"></i>@issue.PoiName: @issue.Message</div>
+                                <div class="d-flex justify-content-between align-items-center gap-2 mb-1">
+                                    <div class="small text-warning"><i class="bi bi-exclamation-triangle me-1"></i>@issue.PoiName: @issue.Message</div>
+                                    <button class="btn btn-sm btn-outline-secondary" disabled="@issue.IsRetrying" @onclick="() => RetryIssue(issue)">
+                                        @(issue.IsRetrying ? "Đang xử lý..." : "Đồng bộ POI")
+                                    </button>
+                                </div>
                             }
                         }
                         else
@@ -377,32 +329,7 @@
                     </div>
                 </div>
             </div>
-
-            @if (showOverwriteConfirm)
-            {
-                <div class="modal d-block" tabindex="-1" style="background: rgba(0,0,0,0.7);">
-                    <div class="modal-dialog modal-dialog-centered">
-                        <div class="modal-content bg-dark border-secondary rounded-4">
-                            <div class="modal-header border-secondary">
-                                <h6 class="modal-title text-warning">
-                                    <i class="bi bi-exclamation-triangle me-2"></i>Xác nhận ghi đè
-                                </h6>
-                            </div>
-                            <div class="modal-body text-white">
-                                <p>Đã tìm thấy <strong>@overwriteCount</strong> narration đã tồn tại ở ngôn ngữ đích.</p>
-                                <p class="text-muted small mb-0">Bạn muốn ghi đè nội dung cũ hay chỉ dịch những narration chưa có?</p>
-                            </div>
-                            <div class="modal-footer border-secondary">
-                                <button class="btn btn-outline-light rounded-pill px-3" @onclick="() => ConfirmOverwrite(false)">Bỏ qua đã có</button>
-                                <button class="btn btn-danger rounded-pill px-3" @onclick="() => ConfirmOverwrite(true)"><i class="bi bi-arrow-repeat me-1"></i> Ghi đè tất cả</button>
-                                <button class="btn btn-secondary rounded-pill px-3" @onclick="CancelTranslate">Hủy</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            }
-        </div>
-    </div>
+    }
 </div>
 
 @code {
@@ -410,7 +337,10 @@
     private List<LanguageRow> languages = new();
     private List<Poi> pois = new();
     private bool isLoadingLanguages = true;
-    private bool isProcessing;
+    private string activeTab = "languages";
+    private Guid? currentJobId;
+    private LanguageProvisionJobState? currentJobState;
+    private CancellationTokenSource? jobPollingCts;
 
     // ── Form thêm ngôn ngữ ──
     private string newLangCode = "";
@@ -421,21 +351,6 @@
     private bool isCheckingCode;
     private bool isAddingLanguage;
     private string voiceLookupKeyword = "";
-
-    // ── Dịch hàng loạt ──
-    private int sourceLanguageId;
-    private int targetLanguageId;
-    private int selectedPoiId; // 0 = tất cả
-    private bool isTranslating;
-    private int translateCurrent;
-    private int translateTotal;
-    private int progressPercent;
-    private List<TranslateResult> translateResults = new();
-
-    // ── Modal ghi đè ──
-    private bool showOverwriteConfirm;
-    private int overwriteCount;
-    private TaskCompletionSource<bool?>? overwriteTcs;
 
     // ── Audit chất lượng dịch ──
     private int auditSourceLanguageId;
@@ -497,8 +412,7 @@
 
             // Mặc định ngôn ngữ nguồn = "vi" nếu có
             var viLang = languages.FirstOrDefault(l => l.Code.Equals("vi", StringComparison.OrdinalIgnoreCase));
-            if (viLang != null) sourceLanguageId = viLang.LanguageId;
-            else if (languages.Any()) sourceLanguageId = languages.First().LanguageId;
+            var sourceLanguageId = viLang?.LanguageId ?? languages.FirstOrDefault()?.LanguageId ?? 0;
 
             if (languages.Any())
             {
@@ -611,23 +525,37 @@
         try
         {
             var code = newLangCode.Trim().ToLowerInvariant();
-            var duplicate = await Db.Languages.AnyAsync(l => l.Code.ToLower() == code);
-            if (duplicate)
+            if (!IsSupportedByMobile(code))
             {
-                ShowAlert($"Mã ngôn ngữ \"{code}\" đã tồn tại!", "warning");
+                ShowAlert($"Mã ngôn ngữ \"{code}\" chưa nằm trong tập ngôn ngữ app mobile hỗ trợ.", "warning");
                 return;
             }
-
-            var lang = new Language
+            var lang = await Db.Languages.FirstOrDefaultAsync(l => l.Code.ToLower() == code);
+            var isUpdate = lang is not null;
+            if (lang is null)
             {
-                Code = code,
-                Name = previewLangName,
-                TtsVoice = string.IsNullOrWhiteSpace(newTtsVoice) ? null : newTtsVoice.Trim(),
-                IsActive = true
-            };
+                lang = new Language
+                {
+                    Code = code,
+                    Name = previewLangName,
+                    TtsVoice = string.IsNullOrWhiteSpace(newTtsVoice) ? null : newTtsVoice.Trim(),
+                    IsActive = true
+                };
+                Db.Languages.Add(lang);
+            }
+            else
+            {
+                lang.Name = previewLangName;
+                lang.TtsVoice = string.IsNullOrWhiteSpace(newTtsVoice) ? null : newTtsVoice.Trim();
+                lang.IsActive = true;
+            }
 
-            Db.Languages.Add(lang);
             await Db.SaveChangesAsync();
+
+            // Đưa vào job nền để tránh chặn request UI
+            currentJobId = ProvisionJobs.Start(lang.LanguageId);
+            currentJobState = ProvisionJobs.Get(currentJobId.Value);
+            StartJobPolling();
 
             // Reset form
             newLangCode = "";
@@ -636,7 +564,9 @@
             previewLangName = null;
             previewError = null;
 
-            ShowAlert($"Đã thêm ngôn ngữ \"{lang.Name}\" ({lang.Code}) thành công!", "success");
+            ShowAlert(
+                $"{(isUpdate ? "Đã cập nhật" : "Đã thêm")} \"{lang.Name}\" ({lang.Code}). Job đồng bộ tự động đã được khởi chạy nền.",
+                "success");
             await LoadData();
         }
         catch (Exception ex)
@@ -649,241 +579,30 @@
         }
     }
 
-    // ══════════════════════════════════════════
-    // DỊCH HÀNG LOẠT
-    // ══════════════════════════════════════════
-    private async Task StartBatchTranslate()
+    private async Task RefreshCurrentJob()
     {
-        if (targetLanguageId == 0)
+        if (currentJobId is null) return;
+        currentJobState = ProvisionJobs.Get(currentJobId.Value);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void StartJobPolling()
+    {
+        if (currentJobId is null) return;
+        jobPollingCts?.Cancel();
+        jobPollingCts = new CancellationTokenSource();
+        var token = jobPollingCts.Token;
+        _ = Task.Run(async () =>
         {
-            ShowAlert("Vui lòng chọn ngôn ngữ đích.", "warning");
-            return;
-        }
-        if (targetLanguageId > 0 && sourceLanguageId == targetLanguageId)
-        {
-            ShowAlert("Ngôn ngữ nguồn và đích không được trùng nhau.", "warning");
-            return;
-        }
-
-        var sourceLang = languages.FirstOrDefault(l => l.LanguageId == sourceLanguageId);
-        if (sourceLang == null) return;
-
-        var targetLangs = targetLanguageId == -1
-            ? languages.Where(l => l.IsActive && l.LanguageId != sourceLanguageId).ToList()
-            : languages.Where(l => l.LanguageId == targetLanguageId).ToList();
-
-        if (!targetLangs.Any())
-        {
-            ShowAlert("Không tìm thấy ngôn ngữ đích hợp lệ để dịch.", "warning");
-            return;
-        }
-
-        var eligiblePoisQuery = Db.Pois
-            .AsNoTracking()
-            .Where(p => p.IsActive && p.Status != null && p.Status.ToUpper() == "APPROVED");
-
-        if (selectedPoiId > 0)
-            eligiblePoisQuery = eligiblePoisQuery.Where(p => p.PoiId == selectedPoiId);
-
-        var eligiblePois = await eligiblePoisQuery
-            .Select(p => new { p.PoiId, p.Name })
-            .OrderBy(p => p.Name)
-            .ToListAsync();
-
-        if (!eligiblePois.Any())
-        {
-            ShowAlert("Không có POI nào đang hoạt động và đã được admin duyệt trong phạm vi bạn chọn.", "warning");
-            return;
-        }
-
-        var eligiblePoiIds = eligiblePois.Select(p => p.PoiId).ToList();
-        var sourceNarrationsRaw = await Db.Narrations
-            .AsNoTracking()
-            .Where(n => n.LanguageId == sourceLanguageId && n.IsActive && eligiblePoiIds.Contains(n.PoiId))
-            .ToListAsync();
-
-        var sourceByPoi = sourceNarrationsRaw
-            .GroupBy(n => n.PoiId)
-            .ToDictionary(
-                g => g.Key,
-                g => g.OrderByDescending(x => x.UpdatedAt ?? DateTime.MinValue)
-                      .ThenByDescending(x => x.NarrationId)
-                      .First());
-
-        if (!sourceByPoi.Any())
-        {
-            ShowAlert("Không tìm thấy narration nguồn hợp lệ cho POI đang hoạt động và đã được admin duyệt.", "warning");
-            return;
-        }
-
-        // Kiểm tra narration đã tồn tại ở ngôn ngữ đích
-        var sourcePoiIds = sourceByPoi.Keys.ToList();
-        var targetLangIds = targetLangs.Select(t => t.LanguageId).ToList();
-        var existingTargetNarrations = await Db.Narrations
-            .Where(n => targetLangIds.Contains(n.LanguageId) && n.IsActive && sourcePoiIds.Contains(n.PoiId))
-            .AsNoTracking()
-            .ToListAsync();
-
-        var existingPairs = existingTargetNarrations
-            .Select(n => (n.PoiId, n.LanguageId))
-            .ToHashSet();
-
-        var overlapCount = sourcePoiIds.Sum(poiId => targetLangIds.Count(langId => existingPairs.Contains((poiId, langId))));
-
-        bool overwrite = false;
-        if (overlapCount > 0)
-        {
-            // Hiện modal xác nhận
-            overwriteCount = overlapCount;
-            showOverwriteConfirm = true;
-            overwriteTcs = new TaskCompletionSource<bool?>();
-            StateHasChanged();
-
-            var choice = await overwriteTcs.Task;
-            showOverwriteConfirm = false;
-
-            if (choice == null) return; // Hủy
-            overwrite = choice.Value;
-        }
-
-        // Bắt đầu dịch
-        isTranslating = true;
-        translateResults.Clear();
-        translateTotal = eligiblePois.Count * targetLangs.Count;
-        translateCurrent = 0;
-        progressPercent = 0;
-        alertMessage = null;
-        StateHasChanged();
-
-        foreach (var poi in eligiblePois)
-        {
-            if (!sourceByPoi.TryGetValue(poi.PoiId, out var sourceNarration))
+            while (!token.IsCancellationRequested)
             {
-                foreach (var targetLang in targetLangs)
-                {
-                    translateCurrent++;
-                    progressPercent = (int)((double)translateCurrent / Math.Max(1, translateTotal) * 100);
-                    translateResults.Add(new TranslateResult
-                    {
-                        PoiName = poi.Name,
-                        TargetCode = targetLang.Code.ToUpper(),
-                        Title = "(chưa có narration nguồn)",
-                        Success = false,
-                        Error = $"POI chưa có narration ở ngôn ngữ nguồn [{sourceLang.Code.ToUpper()}]."
-                    });
-                }
-                StateHasChanged();
-                continue;
+                currentJobState = ProvisionJobs.Get(currentJobId.Value);
+                await InvokeAsync(StateHasChanged);
+                if (currentJobState is null || currentJobState.Status is "success" or "warning" or "failed")
+                    break;
+                await Task.Delay(1000, token);
             }
-
-            var poiName = poi.Name;
-
-            foreach (var targetLang in targetLangs)
-            {
-                translateCurrent++;
-                progressPercent = (int)((double)translateCurrent / Math.Max(1, translateTotal) * 100);
-                StateHasChanged();
-                await Task.Delay(25); // Cho UI cập nhật
-
-                // Kiểm tra đã tồn tại
-                var existingNarration = await Db.Narrations
-                    .Where(n => n.PoiId == sourceNarration.PoiId && n.LanguageId == targetLang.LanguageId && n.IsActive)
-                    .OrderByDescending(n => n.UpdatedAt ?? DateTime.MinValue)
-                    .ThenByDescending(n => n.NarrationId)
-                    .FirstOrDefaultAsync();
-
-                if (existingNarration != null && !overwrite)
-                {
-                    translateResults.Add(new TranslateResult
-                    {
-                        PoiName = poiName,
-                        TargetCode = targetLang.Code.ToUpper(),
-                        Title = sourceNarration.Title,
-                        Success = true,
-                        Error = "Đã bỏ qua (narration đã tồn tại)"
-                    });
-                    continue;
-                }
-
-                try
-                {
-                    // Dịch title
-                    var translatedTitle = await TranslateService.TranslateAsync(
-                        sourceNarration.Title, sourceLang.Code, targetLang.Code);
-
-                    // Dịch content
-                    var translatedContent = await TranslateService.TranslateAsync(
-                        sourceNarration.Content, sourceLang.Code, targetLang.Code);
-
-                    // ── TỰ ĐỘNG SINH TTS ──
-                    string? autoAudioUrl = null;
-                    var voice = targetLang.TtsVoice;
-                    if (!string.IsNullOrEmpty(voice) && !string.IsNullOrEmpty(translatedContent))
-                    {
-                        var stem = $"auto_{targetLang.Code}_{sourceNarration.PoiId}";
-                        var tts = await TtsService.GenerateAndPersistLocalAsync(
-                            translatedContent, voice, stem, targetLang.Code);
-
-                        if (string.IsNullOrEmpty(tts.ErrorMessage))
-                            autoAudioUrl = tts.Url;
-                    }
-
-                    if (existingNarration != null)
-                    {
-                        // Ghi đè
-                        existingNarration.Title = translatedTitle;
-                        existingNarration.Content = translatedContent;
-                        existingNarration.AudioUrlAuto = autoAudioUrl ?? existingNarration.AudioUrlAuto;
-                        existingNarration.UpdatedAt = DateTime.Now;
-                        Db.Narrations.Update(existingNarration);
-                    }
-                    else
-                    {
-                        // Tạo mới
-                        var newNarration = new Narration
-                        {
-                            PoiId = sourceNarration.PoiId,
-                            LanguageId = targetLang.LanguageId,
-                            Title = translatedTitle,
-                            Content = translatedContent,
-                            AudioUrlAuto = autoAudioUrl,
-                            TtsVoice = targetLang.TtsVoice,
-                            IsActive = true,
-                            UpdatedAt = DateTime.Now
-                        };
-                        Db.Narrations.Add(newNarration);
-                    }
-
-                    await Db.SaveChangesAsync();
-
-                    translateResults.Add(new TranslateResult
-                    {
-                        PoiName = poiName,
-                        TargetCode = targetLang.Code.ToUpper(),
-                        Title = translatedTitle,
-                        Success = true,
-                        Overwritten = existingNarration != null
-                    });
-                }
-                catch (Exception ex)
-                {
-                    translateResults.Add(new TranslateResult
-                    {
-                        PoiName = poiName,
-                        TargetCode = targetLang.Code.ToUpper(),
-                        Title = sourceNarration.Title,
-                        Success = false,
-                        Error = ex.Message
-                    });
-                }
-
-                StateHasChanged();
-            }
-        }
-
-        isTranslating = false;
-        await LoadData(); // Reload để cập nhật số lượng narration
-        StateHasChanged();
+        }, token);
     }
 
     private async Task RunTranslationAudit()
@@ -957,7 +676,7 @@
 
                 if (!sourceByPoi.TryGetValue(poiId, out var sourceNarration))
                 {
-                    issues.Add(new AuditIssue { PoiName = poiName, Message = $"Chưa có narration nguồn ({sourceCode})." });
+                    issues.Add(new AuditIssue { PoiId = poiId, PoiName = poiName, Message = $"Chưa có narration nguồn ({sourceCode})." });
                     continue;
                 }
 
@@ -969,7 +688,7 @@
 
                 if (string.IsNullOrWhiteSpace(dst))
                 {
-                    issues.Add(new AuditIssue { PoiName = poiName, Message = "Nội dung đích đang trống." });
+                    issues.Add(new AuditIssue { PoiId = poiId, PoiName = poiName, Message = "Nội dung đích đang trống." });
                     continue;
                 }
 
@@ -977,12 +696,12 @@
                     string.Equals(src, dst, StringComparison.OrdinalIgnoreCase) &&
                     src.Length > 20)
                 {
-                    issues.Add(new AuditIssue { PoiName = poiName, Message = "Nội dung đích giống hệt nguồn, có thể chưa dịch." });
+                    issues.Add(new AuditIssue { PoiId = poiId, PoiName = poiName, Message = "Nội dung đích giống hệt nguồn, có thể chưa dịch." });
                     continue;
                 }
 
                 if (src.Length > 60 && dst.Length < (int)(src.Length * 0.35))
-                    issues.Add(new AuditIssue { PoiName = poiName, Message = "Nội dung đích quá ngắn so với nguồn, nên rà soát lại." });
+                    issues.Add(new AuditIssue { PoiId = poiId, PoiName = poiName, Message = "Nội dung đích quá ngắn so với nguồn, nên rà soát lại." });
             }
 
             auditIssues = issues;
@@ -996,49 +715,6 @@
             isAuditing = false;
             StateHasChanged();
         }
-    }
-
-    private void ConfirmOverwrite(bool doOverwrite)
-    {
-        overwriteTcs?.TrySetResult(doOverwrite);
-    }
-
-    private async Task CleanupLegacyAudio()
-    {
-        if (isProcessing) return;
-        
-        var confirm = await JS.InvokeAsync<bool>("confirm", "Bạn có chắc chắn muốn xóa tất cả liên kết audio thủ công cũ của TOÀN BỘ các quán không? Hành động này không thể hoàn tác.");
-        if (!confirm) return;
-
-        isProcessing = true;
-        alertMessage = "Đang dọn dẹp dữ liệu audio cũ...";
-        alertClass = "alert-info";
-        alertIcon = "bi-info-circle";
-        StateHasChanged();
-
-        try
-        {
-            var count = await PoiService.GlobalCleanupLegacyAudioAsync();
-            alertMessage = $"Đã dọn dẹp xong! Tổng cộng {count} bản ghi narration đã được đưa về trạng thái thuần AI.";
-            alertClass = "alert-success";
-            alertIcon = "bi-check-circle";
-        }
-        catch (Exception ex)
-        {
-            alertMessage = $"Lỗi khi dọn dẹp: {ex.Message}";
-            alertClass = "alert-danger";
-            alertIcon = "bi-exclamation-triangle";
-        }
-        finally
-        {
-            isProcessing = false;
-            StateHasChanged();
-        }
-    }
-
-    private void CancelTranslate()
-    {
-        overwriteTcs?.TrySetResult(null);
     }
 
     // ── Helpers ──
@@ -1080,6 +756,72 @@
     private string GetLangCode(int languageId)
         => languages.FirstOrDefault(l => l.LanguageId == languageId)?.Code?.ToUpper() ?? "--";
 
+    private async Task ToggleLanguage(LanguageRow row)
+    {
+        var entity = await Db.Languages.FirstOrDefaultAsync(l => l.LanguageId == row.LanguageId);
+        if (entity is null) return;
+        entity.IsActive = !entity.IsActive;
+        await Db.SaveChangesAsync();
+        await LoadData();
+        ShowAlert($"Đã {(entity.IsActive ? "bật" : "tắt")} ngôn ngữ {entity.Name}.", "success");
+    }
+
+    private void FillEditVoice(LanguageRow row)
+    {
+        newLangCode = row.Code;
+        newLangDisplayName = row.Name;
+        newTtsVoice = row.TtsVoice ?? "";
+        activeTab = "add";
+        ShowAlert("Bạn có thể chỉnh TTS voice rồi bấm Thêm ngôn ngữ để áp dụng cho mã hiện có.", "warning");
+    }
+
+    private void StartResyncForLanguage(int languageId)
+    {
+        currentJobId = ProvisionJobs.Start(languageId);
+        currentJobState = ProvisionJobs.Get(currentJobId.Value);
+        StartJobPolling();
+    }
+
+    private Task ResyncLanguage(LanguageRow row)
+    {
+        StartResyncForLanguage(row.LanguageId);
+        ShowAlert($"Đã chạy đồng bộ lại cho ngôn ngữ {row.Name}.", "success");
+        return Task.CompletedTask;
+    }
+
+    private async Task RetryIssue(AuditIssue issue)
+    {
+        issue.IsRetrying = true;
+        try
+        {
+            var result = await PoiService.SyncPoiLanguageAsync(issue.PoiId, auditTargetLanguageId);
+            ShowAlert(result.Success
+                ? $"Đồng bộ lại POI {issue.PoiName} thành công."
+                : $"Đồng bộ lại POI {issue.PoiName} thất bại: {result.Error}", result.Success ? "success" : "warning");
+            if (result.Success)
+                await RunTranslationAudit();
+        }
+        finally
+        {
+            issue.IsRetrying = false;
+        }
+    }
+
+    private void SetAdminTab(string tab)
+    {
+        activeTab = tab;
+    }
+
+    private static bool IsSupportedByMobile(string code)
+    {
+        var normalized = (code ?? string.Empty).Trim().ToLowerInvariant();
+        return normalized switch
+        {
+            "vi" or "en" or "ja" or "ko" or "zh" or "zh-cn" or "zh-tw" or "fr" or "th" => true,
+            _ => false
+        };
+    }
+
     // ── View Models ──
     private sealed class LanguageRow
     {
@@ -1091,20 +833,18 @@
         public int NarrationCount { get; set; }
     }
 
-    private sealed class TranslateResult
-    {
-        public string PoiName { get; set; } = "";
-        public string TargetCode { get; set; } = "";
-        public string Title { get; set; } = "";
-        public bool Success { get; set; }
-        public string? Error { get; set; }
-        public bool Overwritten { get; set; }
-    }
-
     private sealed class AuditIssue
     {
+        public int PoiId { get; set; }
         public string PoiName { get; set; } = "";
         public string Message { get; set; } = "";
+        public bool IsRetrying { get; set; }
+    }
+
+    public void Dispose()
+    {
+        jobPollingCts?.Cancel();
+        jobPollingCts?.Dispose();
     }
 
     private sealed class VoiceLookupItem

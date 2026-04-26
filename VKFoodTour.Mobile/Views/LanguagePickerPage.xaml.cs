@@ -68,8 +68,8 @@ public partial class LanguagePickerPage : ContentPage
         var border = new Border
         {
             StrokeThickness = 1,
-            Stroke = new SolidColorBrush(Color.FromArgb("#2A1A1A")),
-            BackgroundColor = Color.FromArgb("#1E1212"),
+            Stroke = new SolidColorBrush(Color.FromArgb("#E2E8F0")),
+            BackgroundColor = Color.FromArgb("#FFFFFF"),
             Padding = new Thickness(20, 15),
             StrokeShape = new RoundRectangle { CornerRadius = 12 }
         };
@@ -77,7 +77,7 @@ public partial class LanguagePickerPage : ContentPage
         var grid = new Grid { ColumnDefinitions = new ColumnDefinitionCollection { new(GridLength.Auto), new(GridLength.Star), new(GridLength.Auto) }, ColumnSpacing = 15 };
         
         var flagLabel = new Label { Text = GetFlag(lang.Code), FontSize = 24, VerticalOptions = LayoutOptions.Center };
-        var nameLabel = new Label { Text = lang.Name, TextColor = Color.FromArgb("#F0EBE3"), FontSize = 16, VerticalOptions = LayoutOptions.Center };
+        var nameLabel = new Label { Text = lang.Name, TextColor = Color.FromArgb("#1E293B"), FontSize = 16, VerticalOptions = LayoutOptions.Center };
         var checkLabel = new Label { Text = "✓", TextColor = Colors.Transparent, FontSize = 20, VerticalOptions = LayoutOptions.Center };
 
         grid.Add(flagLabel, 0);
@@ -109,13 +109,13 @@ public partial class LanguagePickerPage : ContentPage
                 if (b == selectedBorder)
                 {
                     b.Stroke = new SolidColorBrush(Color.FromArgb("#C8372D"));
-                    b.BackgroundColor = Color.FromArgb("#2D1515");
+                    b.BackgroundColor = Color.FromArgb("#FFF5F5");
                     check.TextColor = Color.FromArgb("#C8372D");
                 }
                 else
                 {
-                    b.Stroke = new SolidColorBrush(Color.FromArgb("#2A1A1A"));
-                    b.BackgroundColor = Color.FromArgb("#1E1212");
+                    b.Stroke = new SolidColorBrush(Color.FromArgb("#E2E8F0"));
+                    b.BackgroundColor = Color.FromArgb("#FFFFFF");
                     check.TextColor = Colors.Transparent;
                 }
             }

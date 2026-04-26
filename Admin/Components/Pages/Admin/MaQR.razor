@@ -13,8 +13,8 @@
 <div class="dash-page p-4">
     <div class="d-flex justify-content-between align-items-center mb-5">
         <div>
-            <h2 class="fw-bold mb-1" style="color: #F0EBE3;">QUẢN LÝ MÃ QR</h2>
-            <span style="color: #4a4a5a; font-size: 13px;"><i class="bi bi-clock me-1"></i>Mã QR đầu phố &amp; hệ thống</span>
+            <h2 class="fw-bold mb-1" style="color: #1E293B;">QUẢN LÝ MÃ QR</h2>
+            <span style="color: #64748B; font-size: 13px;"><i class="bi bi-clock me-1"></i>Mã QR đầu phố &amp; hệ thống</span>
         </div>
         <div class="d-flex gap-2">
             <button class="btn btn-danger rounded-pill" @onclick="DeleteAllQrAsync">
@@ -26,7 +26,7 @@
         </div>
     </div>
 
-    <div class="p-3 mb-4" style="background:rgba(232,160,32,0.08);border:1px solid rgba(232,160,32,0.2);border-radius:12px;color:#d1d5db;">
+    <div class="p-3 mb-4" style="background:rgba(232,160,32,0.08);border:1px solid rgba(232,160,32,0.2);border-radius:12px;color:#1E293B;">
         <i class="bi bi-info-circle me-2 text-warning"></i>
         Mã QR đầu phố do <strong>Admin quản lý</strong>. Chủ gian hàng chỉ quản lý TTS/audio.
     </div>
@@ -43,7 +43,7 @@
     {
         <div class="text-center py-5">
             <div class="spinner-border text-danger" style="width:2.5rem;height:2.5rem;" role="status"></div>
-            <p style="color:#4a4a5a;font-size:13px;letter-spacing:1px;margin-top:12px;">ĐANG TẢI...</p>
+            <p style="color:#64748B;font-size:13px;letter-spacing:1px;margin-top:12px;">ĐANG TẢI...</p>
         </div>
     }
     else
@@ -51,47 +51,47 @@
         <div class="dash-card p-4 mb-4">
             <div class="d-flex justify-content-between align-items-center">
                 <div>
-                    <div style="color:#4a4a5a;font-size:11px;letter-spacing:1.5px;font-weight:700;" class="mb-1">QR TỔNG HỆ THỐNG</div>
-                    <h5 style="color:#F0EBE3;" class="mb-1">@PoiService.MasterTourQrToken</h5>
-                    <div style="color:#4a4a5a;" class="small">Dùng 1 mã duy nhất để khởi động hàng đợi audio toàn tuyến.</div>
+                    <div style="color:#64748B;font-size:11px;letter-spacing:1.5px;font-weight:700;" class="mb-1">QR TỔNG HỆ THỐNG</div>
+                    <h5 style="color:#1E293B;" class="mb-1">@PoiService.MasterTourQrToken</h5>
+                    <div style="color:#64748B;" class="small">Dùng 1 mã duy nhất để khởi động hàng đợi audio toàn tuyến.</div>
                     <div class="mt-2 small">
-                        <span style="color:#4a4a5a;">Nội dung QR:</span>
-                        <code style="color:#E8A020;">@GetQrPayload(PoiService.MasterTourQrToken)</code>
+                        <span style="color:#64748B;">Nội dung QR:</span>
+                        <code style="color:#D97706;">@GetQrPayload(PoiService.MasterTourQrToken)</code>
                     </div>
                 </div>
-                <img src="@GetQrImageUrl(PoiService.MasterTourQrToken)" class="img-fluid bg-white p-2 rounded-3" alt="Master QR" style="width: 96px; height: 96px;" />
+                <img src="@GetQrImageUrl(PoiService.MasterTourQrToken)" class="img-fluid border p-2 rounded-3" alt="Master QR" style="width: 96px; height: 96px;" />
             </div>
         </div>
 
         <div class="row g-3 mb-4">
             <div class="col-md-4">
                 <div class="dash-card p-4">
-                    <div style="color:#4a4a5a;font-size:11px;letter-spacing:1.5px;font-weight:700;" class="mb-2">TỔNG MÃ QR</div>
+                    <div style="color:#64748B;font-size:11px;letter-spacing:1.5px;font-weight:700;" class="mb-2">TỔNG MÃ QR</div>
                     <div class="d-flex align-items-center gap-3">
-                        <div style="background:rgba(232,160,32,0.12);border-radius:12px;padding:10px;" class="d-flex align-items-center justify-content-center">
-                            <i class="bi bi-qr-code fs-4" style="color:#E8A020;"></i>
+                        <div style="background:rgba(245,158,11,0.12);border-radius:12px;padding:10px;" class="d-flex align-items-center justify-content-center">
+                            <i class="bi bi-qr-code fs-4" style="color:#F59E0B;"></i>
                         </div>
-                        <h3 class="fw-bold mb-0" style="color:#F0EBE3;">@qrList.Count</h3>
+                        <h3 class="fw-bold mb-0" style="color:#1E293B;">@qrList.Count</h3>
                     </div>
                 </div>
             </div>
             <div class="col-md-4">
                 <div class="dash-card p-4">
-                    <div style="color:#4a4a5a;font-size:11px;letter-spacing:1.5px;font-weight:700;" class="mb-2">ĐANG HOẠT ĐỘNG</div>
+                    <div style="color:#64748B;font-size:11px;letter-spacing:1.5px;font-weight:700;" class="mb-2">ĐANG HOẠT ĐỘNG</div>
                     <div class="d-flex align-items-center gap-3">
-                        <div style="background:rgba(34,197,94,0.12);border-radius:12px;padding:10px;" class="d-flex align-items-center justify-content-center">
-                            <i class="bi bi-check-circle fs-4" style="color:#4ade80;"></i>
+                        <div style="background:rgba(16,185,129,0.12);border-radius:12px;padding:10px;" class="d-flex align-items-center justify-content-center">
+                            <i class="bi bi-check-circle fs-4" style="color:#15803D;"></i>
                         </div>
-                        <h3 class="fw-bold mb-0" style="color:#4ade80;">@qrList.Count(q => q.IsActive)</h3>
+                        <h3 class="fw-bold mb-0 vk-text-success">@qrList.Count(q => q.IsActive)</h3>
                     </div>
                 </div>
             </div>
             <div class="col-md-4">
                 <div class="dash-card p-4">
-                    <div style="color:#4a4a5a;font-size:11px;letter-spacing:1.5px;font-weight:700;" class="mb-2">LƯỢT QUÉT HÔM NAY</div>
+                    <div style="color:#64748B;font-size:11px;letter-spacing:1.5px;font-weight:700;" class="mb-2">LƯỢT QUÉT HÔM NAY</div>
                     <div class="d-flex align-items-center gap-3">
-                        <div style="background:rgba(232,160,32,0.12);border-radius:12px;padding:10px;" class="d-flex align-items-center justify-content-center">
-                            <i class="bi bi-bar-chart fs-4" style="color:#E8A020;"></i>
+                        <div style="background:rgba(245,158,11,0.12);border-radius:12px;padding:10px;" class="d-flex align-items-center justify-content-center">
+                            <i class="bi bi-bar-chart fs-4" style="color:#F59E0B;"></i>
                         </div>
                         <h3 class="fw-bold mb-0" style="color:#E8A020;">@todayScans</h3>
                     </div>
@@ -107,24 +107,20 @@
                         <div class="p-3 bg-white rounded-4 shadow-sm mb-3 mx-auto" style="width: fit-content;">
                             <img src="@GetQrImageUrl(qr.QrToken)" class="img-fluid" alt="QR" style="width: 150px; height: 150px;" />
                         </div>
-                        <p class="fw-bold mb-1" style="color:#F0EBE3;">@qr.PoiName</p>
-                        <p class="small mb-2" style="color:#4a4a5a;">@qr.LocationNote</p>
-                        <div class="mb-2 text-start p-2 rounded-3" style="background:rgba(0,0,0,0.25); border:1px solid rgba(255,255,255,0.08);">
-                            <div class="small mb-1" style="color:#9ca3af;">Nội dung QR</div>
-                            <code style="color:#E8A020; word-break:break-all;" class="small">@GetQrPayload(qr.QrToken)</code>
-                        </div>
-                        <div class="d-inline-block mb-2" style="background:rgba(0,0,0,0.3);border-radius:8px;padding:6px 10px;">
-                            <span class="small" style="color:#9ca3af;">Token: </span>
-                            <code style="color:#E8A020;" class="small">@qr.QrToken</code>
+                        <p class="fw-bold mb-1" style="color:#1E293B;">@qr.PoiName</p>
+                        <p class="small mb-2" style="color:#64748B;">@qr.LocationNote</p>
+                        <div class="mb-2 text-start p-2 rounded-3" style="background:#F8FAFC; border:1px solid #E2E8F0;">
+                            <div class="small mb-1" style="color:#64748B;">Nội dung QR</div>
+                            <code style="color:#D97706; word-break:break-all;" class="small">@GetQrPayload(qr.QrToken)</code>
                         </div>
                         <div class="mb-2">
                             @if (qr.IsActive)
                             {
-                                <span class="badge px-3 py-2" style="background:rgba(34,197,94,0.12);color:#4ade80;border:1px solid rgba(34,197,94,0.25);border-radius:20px;">Hoạt động</span>
+                                <span class="badge px-3 py-2 vk-badge-success">Hoạt động</span>
                             }
                             else
                             {
-                                <span class="badge px-3 py-2" style="background:rgba(107,114,128,0.12);color:#6b7280;border:1px solid rgba(107,114,128,0.25);border-radius:20px;">Đã tắt</span>
+                                <span class="badge px-3 py-2" style="background:rgba(100,116,139,0.12);color:#475569;border:1px solid rgba(100,116,139,0.25);border-radius:20px;">Đã tắt</span>
                             }
                         </div>
 
@@ -142,7 +138,7 @@
                             <button class="btn btn-sm btn-outline-info rounded-pill" type="button" @onclick="() => DownloadQr(qr.QrToken)" title="Tải QR">
                                 <i class="bi bi-download"></i>
                             </button>
-                            <button class="btn btn-sm btn-outline-light rounded-pill" type="button" 
+                            <button class="btn btn-sm btn-outline-secondary rounded-pill" type="button" 
                                     @onclick="() => RegenerateByDescription(qr)" 
                                     disabled="@qr.IsSyncing"
                                     title="Cập nhật QR & Đồng bộ thuyết minh AI">
@@ -166,7 +162,7 @@
 
         @if (!qrList.Any())
         {
-            <div class="text-center py-5" style="color:#4a4a5a;">
+            <div class="text-center py-5" style="color:#64748B;">
                 <i class="bi bi-qr-code display-1 d-block mb-3 opacity-25"></i>
                 <p>Chưa có mã QR. Chủ quán tạo mã tại <strong>Mô tả &amp; hình ảnh</strong>.</p>
             </div>
@@ -201,13 +197,7 @@
             .ThenBy(q => q.QrToken)
             .ToListAsync();
 
-        var userIds = qrs.Select(q => q.Poi.OwnerId).Distinct().ToList();
-        var users = await Db.Users.AsNoTracking()
-            .Where(u => userIds.Contains(u.UserId))
-            .ToDictionaryAsync(u => u.UserId, u => u);
-
         qrList = qrs.Select(q => {
-            var u = q.Poi.OwnerId != null && users.ContainsKey(q.Poi.OwnerId.Value) ? users[q.Poi.OwnerId.Value] : null;
             return new QrDisplayItem
             {
                 QrId = q.QrId,
@@ -218,8 +208,6 @@
                 LocationNote = q.LocationNote ?? "",
                 IsActive = q.IsActive,
                 OwnerUserId = q.Poi.OwnerId ?? 0,
-                OwnerName = u?.Name ?? "—",
-                OwnerEmail = u?.Email ?? "—",
                 Narrations = q.Poi.Narrations.ToList()
             };
         }).ToList();
@@ -314,8 +302,6 @@
         public string PoiName { get; set; } = "";
         public string PoiDescription { get; set; } = "";
         public string LocationNote { get; set; } = "";
-        public string OwnerName { get; set; } = "";
-        public string OwnerEmail { get; set; } = "";
         public bool IsActive { get; set; }
         public bool IsSyncing { get; set; }
         public List<VKFoodTour.Infrastructure.Entities.Narration> Narrations { get; set; } = new();
@@ -337,13 +323,13 @@
 
     .badge-status.ready {
         background: rgba(34, 197, 94, 0.15);
-        color: #4ade80;
+        color: #166534;
         border: 1px solid rgba(34, 197, 94, 0.3);
     }
 
     .badge-status.missing {
-        background: rgba(255, 255, 255, 0.05);
-        color: rgba(255, 255, 255, 0.2);
-        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: #F8FAFC;
+        color: #94A3B8;
+        border: 1px solid #E2E8F0;
     }
 </style>

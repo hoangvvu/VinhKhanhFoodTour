@@ -655,6 +655,12 @@ namespace VKFoodTour.Infrastructure.Migrations
                         .HasColumnType("bit")
                         .HasColumnName("is_active");
 
+                    b.Property<string>("MembershipTier")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("membership_tier");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)

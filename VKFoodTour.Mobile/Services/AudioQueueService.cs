@@ -61,8 +61,15 @@ public class AudioQueueService : IAudioQueueService, IDisposable
     private CancellationTokenSource? _playCts;
     private DateTime _currentAudioStartTime;
 
-    // ── Constants ─────────────────────────────────────────────────
-    private const double InterruptThreshold = 0.60; // < 60% → interrupt; >= 60% → InsertNext
+    // ── Constants & Helpers ────────────────────────────────────────
+    /// <summary>Chuyển tier string → số: Diamond=4 (cao nhất), Standard=1 (thấp nhất).</summary>
+    private static int TierValue(string? tier) => (tier ?? "Standard") switch
+    {
+        "Diamond" => 4,
+        "Gold" => 3,
+        "Silver" => 2,
+        _ => 1
+    };
 
     // ── Public properties ─────────────────────────────────────────
     public ObservableCollection<AudioQueueItemDto> Queue { get; } = new();
@@ -153,28 +160,20 @@ public class AudioQueueService : IAudioQueueService, IDisposable
 
             if (CurrentlyPlaying != null)
             {
-                // Có track đang active (kể cả đang khởi động playback) thì không phát đè ngay.
-                if (_audioPlayer.IsPlaying)
+                var currentTier = TierValue(CurrentlyPlaying.MembershipTier);
+                var newTier = TierValue(item.MembershipTier);
+
+                if (newTier > currentTier)
                 {
-                    var progress = _audioPlayer.GetProgress();
-                    if (progress >= InterruptThreshold)
-                    {
-                        // Track hiện tại đã > 60% → chèn POI mới vào next slot
-                        InsertNext(item);
-                        System.Diagnostics.Debug.WriteLine($"[AudioQueue] InsertNext POI {poiId} (progress={progress:P0})");
-                    }
-                    else
-                    {
-                        // Track hiện tại < 60% → ngắt, phát POI mới ngay
-                        System.Diagnostics.Debug.WriteLine($"[AudioQueue] InterruptAndPlay POI {poiId} (progress={progress:P0})");
-                        await InterruptAndPlayAsync(item);
-                    }
+                    // Tier cao hơn → LUÔN ngắt tier thấp hơn
+                    System.Diagnostics.Debug.WriteLine($"[AudioQueue] InterruptAndPlay POI {poiId} (tier {item.MembershipTier} > {CurrentlyPlaying.MembershipTier})");
+                    await InterruptAndPlayAsync(item);
                 }
                 else
                 {
-                    // Tránh race-condition lúc track 1 vừa bắt đầu nhưng IsPlaying chưa true.
+                    // Cùng tier hoặc tier thấp hơn → KHÔNG BAO GIỜ ngắt, chỉ InsertNext
                     InsertNext(item);
-                    System.Diagnostics.Debug.WriteLine($"[AudioQueue] InsertNext POI {poiId} (bootstrap)");
+                    System.Diagnostics.Debug.WriteLine($"[AudioQueue] InsertNext POI {poiId} (tier {item.MembershipTier} <= {CurrentlyPlaying.MembershipTier})");
                 }
 
                 return;

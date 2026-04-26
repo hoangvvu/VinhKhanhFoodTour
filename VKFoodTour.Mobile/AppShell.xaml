@@ -3,9 +3,9 @@
        xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
        xmlns:pages="clr-namespace:VKFoodTour.Mobile.Views"
        Shell.NavBarIsVisible="False"
-       Shell.TabBarBackgroundColor="#0F0E0E"
-       Shell.TabBarForegroundColor="#E8A020"
-       Shell.TabBarUnselectedColor="#5A5050">
+       Shell.TabBarBackgroundColor="{StaticResource VKBg}"
+       Shell.TabBarForegroundColor="{StaticResource VKGold}"
+       Shell.TabBarUnselectedColor="{StaticResource VKTextMuted}">
 
     <TabBar>
         <!-- Không dùng Icon=*.png: nếu file không có trong Resources/Images, Android Shell hay crash khi vẽ TabBar (JavaProxyThrowable). Thêm lại khi đã có asset trong bundle. -->

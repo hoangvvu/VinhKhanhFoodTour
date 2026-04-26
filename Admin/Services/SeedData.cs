@@ -54,6 +54,7 @@ public static class SeedData
                 Email = "vendorvk@gmail.com",
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword("Vendor@123"),
                 Role = "Vendor",
+                MembershipTier = "Silver",
                 IsActive = true
             };
 
@@ -82,7 +83,6 @@ public static class SeedData
                 Latitude = 10.7578m,
                 Longitude = 106.7095m,
                 Radius = 20,
-                Priority = 2,
                 IsActive = true,
                 Description = "Gian hàng mẫu — chỉnh sửa tại trang Mô tả & hình ảnh."
             });

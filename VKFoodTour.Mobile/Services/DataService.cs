@@ -6,11 +6,15 @@ namespace VKFoodTour.Mobile.Services;
 
 public class DataService : IDataService
 {
+    private const string ApiLogTag = "VKAPI";
+    private const int ProbeTimeoutMs = 2500;
+    private const int MaxFallbackCandidates = 1;
     private readonly HttpClient _http;
     private readonly ISettingsService _settings;
     private readonly string _deviceId;
     private readonly SemaphoreSlim _apiDetectLock = new(1, 1);
     private bool _isApiBaseResolved;
+    private string _resolvedApiBase = string.Empty;
     private static readonly HashSet<string> AllowedEventTypes = new(StringComparer.OrdinalIgnoreCase)
     {
         "move", "enter", "exit", "qr_scan", "listen_start", "listen_end"
@@ -29,6 +33,10 @@ public class DataService : IDataService
 
     private async Task EnsureApiBaseResolvedAsync(CancellationToken cancellationToken = default)
     {
+        var current = ApiRoot;
+        if (!string.Equals(_resolvedApiBase, current, StringComparison.OrdinalIgnoreCase))
+            _isApiBaseResolved = false;
+
         if (_isApiBaseResolved)
             return;
 
@@ -38,15 +46,36 @@ public class DataService : IDataService
             if (_isApiBaseResolved)
                 return;
 
+            var currentFirst = ApiRoot;
+            if (await CanReachApiAsync(currentFirst, cancellationToken))
+            {
+                _settings.ApiBaseUrl = currentFirst;
+                _resolvedApiBase = currentFirst;
+                _isApiBaseResolved = true;
+                LogApi($"Using current base: {currentFirst}");
+                return;
+            }
+
+            var extraChecked = 0;
             foreach (var candidate in _settings.GetApiBaseCandidates())
             {
+                if (candidate.Equals(currentFirst, StringComparison.OrdinalIgnoreCase))
+                    continue;
+                if (extraChecked >= MaxFallbackCandidates)
+                    break;
+
                 if (await CanReachApiAsync(candidate, cancellationToken))
                 {
                     _settings.ApiBaseUrl = candidate;
+                    _resolvedApiBase = candidate;
                     _isApiBaseResolved = true;
+                    LogApi($"Switched to reachable base: {candidate}");
                     return;
                 }
+
+                extraChecked++;
             }
+            LogApi($"No reachable API base found. Current={currentFirst}");
         }
         finally
         {
@@ -54,17 +83,62 @@ public class DataService : IDataService
         }
     }
 
+    private async Task<HttpResponseMessage?> GetWithReconnectAsync(string relativePath, CancellationToken cancellationToken)
+    {
+        var firstBase = ApiRoot;
+        try
+        {
+            var first = await _http.GetAsync($"{firstBase}{relativePath}", cancellationToken);
+            if (first.IsSuccessStatusCode)
+                return first;
+            LogApi($"Request {firstBase}{relativePath} => {(int)first.StatusCode} {first.ReasonPhrase}");
+        }
+        catch (Exception ex)
+        {
+            LogApi($"Request failed {firstBase}{relativePath}: {ex.GetType().Name} - {ex.Message}");
+        }
+
+        _isApiBaseResolved = false;
+        await EnsureApiBaseResolvedAsync(cancellationToken);
+        var secondBase = ApiRoot;
+        if (string.Equals(firstBase, secondBase, StringComparison.OrdinalIgnoreCase))
+            return null;
+        LogApi($"Retrying request on new base: {secondBase}");
+
+        try
+        {
+            return await _http.GetAsync($"{secondBase}{relativePath}", cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            LogApi($"Retry failed {secondBase}{relativePath}: {ex.GetType().Name} - {ex.Message}");
+            return null;
+        }
+    }
+
     private async Task<bool> CanReachApiAsync(string baseUrl, CancellationToken cancellationToken)
     {
         try
         {
-            var response = await _http.GetAsync($"{baseUrl.TrimEnd('/')}/api/Languages", cancellationToken);
+            using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            timeoutCts.CancelAfter(ProbeTimeoutMs);
+            var response = await _http.GetAsync($"{baseUrl.TrimEnd('/')}/api/Languages", timeoutCts.Token);
+            LogApi($"Probe {baseUrl} => {(int)response.StatusCode} {response.ReasonPhrase}");
             return response.IsSuccessStatusCode;
         }
-        catch
+        catch (Exception ex)
         {
+            LogApi($"Probe failed {baseUrl}: {ex.GetType().Name} - {ex.Message}");
             return false;
         }
+    }
+
+    private static void LogApi(string message)
+    {
+#if ANDROID
+        Android.Util.Log.Warn(ApiLogTag, message);
+#endif
+        System.Diagnostics.Debug.WriteLine($"[API] {message}");
     }
 
     public async Task<List<Poi>> GetPoisAsync(CancellationToken cancellationToken = default)
@@ -73,8 +147,8 @@ public class DataService : IDataService
         try
         {
             var langQuery = $"?lang={Uri.EscapeDataString(_settings.SelectedLanguageCode)}";
-            var response = await _http.GetAsync($"{ApiRoot}/api/Poi{langQuery}", cancellationToken);
-            if (!response.IsSuccessStatusCode)
+            var response = await GetWithReconnectAsync($"/api/Poi{langQuery}", cancellationToken);
+            if (response is null || !response.IsSuccessStatusCode)
                 return FallbackDemo();
 
             var dtos = await response.Content.ReadFromJsonAsync<List<PoiDto>>(cancellationToken: cancellationToken);
@@ -267,8 +341,8 @@ public class DataService : IDataService
         await EnsureApiBaseResolvedAsync(cancellationToken);
         try
         {
-            var response = await _http.GetAsync($"{ApiRoot}/api/Languages", cancellationToken);
-            if (!response.IsSuccessStatusCode)
+            var response = await GetWithReconnectAsync("/api/Languages", cancellationToken);
+            if (response is null || !response.IsSuccessStatusCode)
                 return FallbackLanguages();
 
             var list = await response.Content.ReadFromJsonAsync<List<LanguageListItemDto>>(cancellationToken: cancellationToken);
@@ -469,7 +543,7 @@ public class DataService : IDataService
             Latitude = (double)d.Latitude,
             Longitude = (double)d.Longitude,
             Radius = d.Radius,
-            Priority = d.Priority,
+            MembershipTier = d.MembershipTier ?? "Standard",
             CoverEmoji = StallEmoji(d.Name),
             CoverImageUrl = NormalizeMediaUrl(d.ImageUrl)
         };

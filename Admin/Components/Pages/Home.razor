@@ -2,6 +2,7 @@
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.Authorization
 @using System.Security.Claims
+@using global::Admin.Services
 @using VKFoodTour.Infrastructure.Data
 @using VKFoodTour.Infrastructure.Entities
 @using Microsoft.EntityFrameworkCore
@@ -10,73 +11,30 @@
 
 @inject AuthenticationStateProvider AuthStateProvider
 @inject ApplicationDbContext Db
-@inject PoiService PoiService
+@inject DashboardMetricsService DashboardMetrics
 
 <PageTitle>Dashboard - Vĩnh Khánh</PageTitle>
 
 <style>
-    .dash-bg { background-color: #0f0f13; min-height: 100vh; }
-
-    .stat-card {
-        border-radius: 16px;
-        border: 1px solid rgba(255,255,255,0.06);
-        background: #1a1a24;
-        transition: transform 0.2s, box-shadow 0.2s;
-    }
-    .stat-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.4) !important; }
-
-    .section-label {
-        font-size: 11px;
-        letter-spacing: 2px;
-        font-weight: 700;
-        color: #4a4a5a;
-        text-transform: uppercase;
-        padding-bottom: 8px;
-        border-bottom: 1px solid rgba(255,255,255,0.05);
-        margin-bottom: 16px;
-    }
-
     .rank-row { transition: background 0.15s; border-radius: 10px; }
-    .rank-row:hover { background: rgba(255,255,255,0.04); }
+    .rank-row:hover { background: #F1F5F9; }
 
-    .progress-thin { height: 6px; border-radius: 3px; background: #2a2a38; }
+    .progress-thin { height: 6px; border-radius: 3px; background: #E2E8F0; }
 
     .pulse-dot { animation: pulse 2s infinite; }
     @@keyframes pulse {
         0%, 100% { opacity: 1; }
         50% { opacity: 0.4; }
     }
-
-    .online-card {
-        border-radius: 20px;
-        background: linear-gradient(135deg, #0d2818 0%, #0a3d1f 100%);
-        border: 1px solid rgba(34,197,94,0.25);
-        position: relative;
-        overflow: hidden;
-    }
-    .online-card::before {
-        content: '';
-        position: absolute;
-        top: -30px; right: -30px;
-        width: 120px; height: 120px;
-        background: rgba(34,197,94,0.08);
-        border-radius: 50%;
-    }
-
-    .vendor-stat-card {
-        border-radius: 20px;
-        border: 1px solid rgba(255,255,255,0.07);
-        background: #1a1a24;
-    }
 </style>
 
-<div class="dash-bg p-4">
+<div class="dash-page p-4">
 
     @if (isLoading)
     {
         <div class="d-flex flex-column align-items-center justify-content-center" style="min-height: 60vh;">
             <div class="spinner-border text-danger mb-3" style="width: 3rem; height: 3rem;" role="status"></div>
-            <span style="color: #4a4a5a; font-size: 13px; letter-spacing: 1px;">ĐANG TẢI DỮ LIỆU…</span>
+            <span style="color: #64748B; font-size: 13px; letter-spacing: 1px;">ĐANG TẢI DỮ LIỆU…</span>
         </div>
     }
     else
@@ -90,18 +48,18 @@
                 @* ── Header ── *@
                 <div class="d-flex justify-content-between align-items-center mb-5">
                     <div>
-                        <h2 class="fw-bold mb-1" style="color: #F0EBE3; letter-spacing: -0.5px;">Tổng quan hệ thống</h2>
-                        <span style="color: #4a4a5a; font-size: 13px;">
+                        <h2 class="fw-bold mb-1" style="color: #1E293B; letter-spacing: -0.5px;">Tổng quan hệ thống</h2>
+                        <span style="color: #64748B; font-size: 13px;">
                             <i class="bi bi-clock me-1"></i>Cập nhật lúc @DateTime.Now.ToString("HH:mm, dd/MM/yyyy")
                         </span>
                     </div>
-                    <span class="badge px-3 py-2" style="background: rgba(200,55,45,0.15); color: #f87171; border: 1px solid rgba(200,55,45,0.3); border-radius: 20px; font-size: 12px;">
+                    <span class="badge px-3 py-2" style="background: rgba(200,55,45,0.1); color: #C8372D; border: 1px solid rgba(200,55,45,0.2); border-radius: 20px; font-size: 12px;">
                         <i class="bi bi-shield-fill me-1"></i>Quản trị viên
                     </span>
                 </div>
 
                 @* ── REALTIME ROW ── *@
-                <div class="section-label"><i class="bi bi-wifi me-2"></i>REALTIME — THIẾT BỊ ĐANG DÙNG APP</div>
+                <div class="dash-label"><i class="bi bi-wifi me-2"></i>REALTIME — THIẾT BỊ ĐANG DÙNG APP</div>
                 <div class="row g-4 mb-5">
                     <div class="col-12">
                         <ActiveDevicesWidget WindowSeconds="45" RefreshSeconds="3" />
@@ -109,109 +67,59 @@
                 </div>
 
                 @* ── THỐNG KÊ HỆ THỐNG ── *@
-                <div class="section-label"><i class="bi bi-grid-1x2 me-2"></i>THỐNG KÊ HỆ THỐNG</div>
+                <div class="dash-label"><i class="bi bi-grid-1x2 me-2"></i>THỐNG KÊ HỆ THỐNG</div>
                 <div class="row g-3 mb-5">
-                    <div class="col-6 col-md-3">
-                        <div class="stat-card p-4">
-                            <div class="d-flex justify-content-between align-items-start mb-3">
-                                <div style="background: rgba(232,160,32,0.12); border-radius: 10px; padding: 10px;">
-                                    <i class="bi bi-shop" style="color: #E8A020; font-size: 1.3rem;"></i>
+                    @foreach (var card in adminSystemCards)
+                    {
+                        <div class="col-6 col-md-3">
+                            <div class="dash-card p-4">
+                                <div class="d-flex justify-content-between align-items-start mb-3">
+                                    <div style="background: @card.IconBg; border-radius: 10px; padding: 10px;">
+                                        <i class="bi @card.Icon" style="color: @card.IconColor; font-size: 1.3rem;"></i>
+                                    </div>
+                                    <span class="badge" style="background: @card.BadgeBg; color: @card.BadgeColor; font-size: 10px;">@GetAdminCardBadgeText(card)</span>
                                 </div>
-                                <span class="badge" style="background: rgba(232,160,32,0.1); color: #E8A020; font-size: 10px;">@activePois hoạt động</span>
+                                <h3 class="fw-bold mb-1" style="color: #1E293B;">@GetAdminCardValue(card)</h3>
+                                <div style="color: #64748B; font-size: 12px; letter-spacing: 0.5px;">@card.Title</div>
                             </div>
-                            <h3 class="text-white fw-bold mb-1">@totalPois</h3>
-                            <div style="color: #4a4a5a; font-size: 12px; letter-spacing: 0.5px;">TỔNG GIAN HÀNG</div>
                         </div>
-                    </div>
-                    <div class="col-6 col-md-3">
-                        <div class="stat-card p-4">
-                            <div class="d-flex justify-content-between align-items-start mb-3">
-                                <div style="background: rgba(13,202,240,0.12); border-radius: 10px; padding: 10px;">
-                                    <i class="bi bi-mic-fill" style="color: #0dcaf0; font-size: 1.3rem;"></i>
-                                </div>
-                                <span class="badge" style="background: rgba(13,202,240,0.1); color: #0dcaf0; font-size: 10px;">@totalLanguages ngôn ngữ</span>
-                            </div>
-                            <h3 class="text-white fw-bold mb-1">@totalNarrations</h3>
-                            <div style="color: #4a4a5a; font-size: 12px; letter-spacing: 0.5px;">THUYẾT MINH</div>
-                        </div>
-                    </div>
-                    <div class="col-6 col-md-3">
-                        <div class="stat-card p-4">
-                            <div class="d-flex justify-content-between align-items-start mb-3">
-                                <div style="background: rgba(200,55,45,0.12); border-radius: 10px; padding: 10px;">
-                                    <i class="bi bi-people-fill" style="color: #f87171; font-size: 1.3rem;"></i>
-                                </div>
-                                <span class="badge" style="background: rgba(200,55,45,0.1); color: #f87171; font-size: 10px;">@totalVendors vendor</span>
-                            </div>
-                            <h3 class="text-white fw-bold mb-1">@totalUsers</h3>
-                            <div style="color: #4a4a5a; font-size: 12px; letter-spacing: 0.5px;">NGƯỜI DÙNG</div>
-                        </div>
-                    </div>
-                    <div class="col-6 col-md-3">
-                        <div class="stat-card p-4">
-                            <div class="d-flex justify-content-between align-items-start mb-3">
-                                <div style="background: rgba(25,135,84,0.12); border-radius: 10px; padding: 10px;">
-                                    <i class="bi bi-qr-code-scan" style="color: #4ade80; font-size: 1.3rem;"></i>
-                                </div>
-                                <span class="badge" style="background: rgba(25,135,84,0.1); color: #4ade80; font-size: 10px;">hôm nay</span>
-                            </div>
-                            <h3 class="text-white fw-bold mb-1">@todayQrScans</h3>
-                            <div style="color: #4a4a5a; font-size: 12px; letter-spacing: 0.5px;">LƯỢT QUÉT QR</div>
-                        </div>
-                    </div>
+                    }
                 </div>
 
                 @* ── THỐNG KÊ HÀNH VI ── *@
-                <div class="section-label"><i class="bi bi-activity me-2"></i>HÀNH VI NGƯỜI DÙNG</div>
+                <div class="dash-label"><i class="bi bi-activity me-2"></i>HÀNH VI NGƯỜI DÙNG</div>
                 <div class="row g-3 mb-5">
-                    <div class="col-6 col-md-4">
-                        <div class="stat-card p-4">
-                            <div class="d-flex justify-content-between align-items-start mb-3">
-                                <div style="background: rgba(232,160,32,0.12); border-radius: 10px; padding: 10px;">
-                                    <i class="bi bi-cursor-fill" style="color: #E8A020; font-size: 1.3rem;"></i>
+                    @foreach (var card in adminBehaviorCards)
+                    {
+                        <div class="col-6 col-md-4">
+                            <div class="dash-card p-4">
+                                <div class="d-flex justify-content-between align-items-start mb-3">
+                                    <div style="background: @card.IconBg; border-radius: 10px; padding: 10px;">
+                                        <i class="bi @card.Icon" style="color: @card.IconColor; font-size: 1.3rem;"></i>
+                                    </div>
+                                    @if (!string.IsNullOrWhiteSpace(card.BadgeTemplate))
+                                    {
+                                        <span class="badge" style="background: @card.BadgeBg; color: @card.BadgeColor; font-size: 10px;">@GetAdminCardBadgeText(card)</span>
+                                    }
                                 </div>
-                                <span class="badge" style="background: rgba(232,160,32,0.1); color: #E8A020; font-size: 10px;">hôm nay</span>
+                                <h3 class="fw-bold mb-1" style="color: #1E293B;">@GetAdminCardValue(card)</h3>
+                                <div style="color: #64748B; font-size: 12px; letter-spacing: 0.5px;">@card.Title</div>
                             </div>
-                            <h3 class="text-white fw-bold mb-1">@totalEvents</h3>
-                            <div style="color: #4a4a5a; font-size: 12px; letter-spacing: 0.5px;">LƯỢT TƯƠNG TÁC HÔM NAY</div>
                         </div>
-                    </div>
-                    <div class="col-6 col-md-4">
-                        <div class="stat-card p-4">
-                            <div class="d-flex justify-content-between align-items-start mb-3">
-                                <div style="background: rgba(13,202,240,0.12); border-radius: 10px; padding: 10px;">
-                                    <i class="bi bi-headphones" style="color: #0dcaf0; font-size: 1.3rem;"></i>
-                                </div>
-                                <span class="badge" style="background: rgba(13,202,240,0.1); color: #0dcaf0; font-size: 10px;">giây/lần</span>
-                            </div>
-                            <h3 class="text-white fw-bold mb-1">@avgListenSec</h3>
-                            <div style="color: #4a4a5a; font-size: 12px; letter-spacing: 0.5px;">THỜI GIAN NGHE TB</div>
-                        </div>
-                    </div>
-                    <div class="col-6 col-md-4">
-                        <div class="stat-card p-4">
-                            <div class="d-flex justify-content-between align-items-start mb-3">
-                                <div style="background: rgba(250,204,21,0.12); border-radius: 10px; padding: 10px;">
-                                    <i class="bi bi-star-fill" style="color: #facc15; font-size: 1.3rem;"></i>
-                                </div>
-                            </div>
-                            <h3 class="text-white fw-bold mb-1">@totalReviews</h3>
-                            <div style="color: #4a4a5a; font-size: 12px; letter-spacing: 0.5px;">TỔNG ĐÁNH GIÁ</div>
-                        </div>
-                    </div>
+                    }
                 </div>
 
                 @* ── XẾP HẠNG ── *@
-                <div class="section-label"><i class="bi bi-trophy me-2"></i>XẾP HẠNG NỔI BẬT</div>
+                <div class="dash-label"><i class="bi bi-trophy me-2"></i>XẾP HẠNG NỔI BẬT</div>
                 <div class="row g-4 mb-5">
                     @* Top POI *@
                     <div class="col-md-6">
-                        <div class="stat-card p-4 h-100">
+                        <div class="dash-card p-4 h-100">
                             <div class="d-flex align-items-center gap-2 mb-4">
-                                <div style="background: rgba(232,160,32,0.12); border-radius: 10px; padding: 8px 10px;">
-                                    <i class="bi bi-geo-alt-fill" style="color: #E8A020;"></i>
+                                <div style="background: rgba(245,158,11,0.12); border-radius: 10px; padding: 8px 10px;">
+                                    <i class="bi bi-geo-alt-fill" style="color: #F59E0B;"></i>
                                 </div>
-                                <span class="fw-bold" style="color: #E8A020; letter-spacing: 0.5px; font-size: 13px;">TOP GIAN HÀNG ĐƯỢC QUAN TÂM</span>
+                                <span class="fw-bold" style="color: #F59E0B; letter-spacing: 0.5px; font-size: 13px;">TOP GIAN HÀNG ĐƯỢC QUAN TÂM</span>
                             </div>
                             @if (topPois.Any())
                             {
@@ -219,16 +127,16 @@
                                 {
                                     <div class="rank-row d-flex justify-content-between align-items-center px-2 py-2 mb-1">
                                         <div class="d-flex align-items-center gap-3">
-                                            <span class="fw-bold" style="min-width: 22px; color: @(i == 0 ? "#E8A020" : i == 1 ? "#9ca3af" : i == 2 ? "#cd7f32" : "#4a4a5a"); font-size: 14px;">@(i + 1)</span>
-                                            <span style="color: #d1d5db; font-size: 14px;">@poi.PoiName</span>
+                                            <span class="fw-bold" style="min-width: 22px; color: @(i == 0 ? "#F59E0B" : i == 1 ? "#94A3B8" : i == 2 ? "#D97706" : "#64748B"); font-size: 14px;">@(i + 1)</span>
+                                            <span style="color: #1E293B; font-size: 14px; font-weight: 500;">@poi.PoiName</span>
                                         </div>
-                                        <span class="fw-bold" style="color: #E8A020; font-size: 13px;">@poi.EventCount <span style="color: #4a4a5a; font-weight: 400;">lượt</span></span>
+                                        <span class="fw-bold" style="color: #F59E0B; font-size: 13px;">@poi.EventCount <span style="color: #64748B; font-weight: 400;">lượt</span></span>
                                     </div>
                                 }
                             }
                             else
                             {
-                                <div class="text-center py-4" style="color: #4a4a5a;">
+                                <div class="text-center py-4" style="color: #64748B;">
                                     <i class="bi bi-inbox fs-3 d-block mb-2"></i>Chưa có dữ liệu
                                 </div>
                             }
@@ -237,12 +145,12 @@
 
                     @* Top Audio *@
                     <div class="col-md-6">
-                        <div class="stat-card p-4 h-100">
+                        <div class="dash-card p-4 h-100">
                             <div class="d-flex align-items-center gap-2 mb-4">
-                                <div style="background: rgba(13,202,240,0.12); border-radius: 10px; padding: 8px 10px;">
-                                    <i class="bi bi-headphones" style="color: #0dcaf0;"></i>
+                                <div style="background: rgba(14,165,233,0.12); border-radius: 10px; padding: 8px 10px;">
+                                    <i class="bi bi-headphones" style="color: #0EA5E9;"></i>
                                 </div>
-                                <span class="fw-bold" style="color: #0dcaf0; letter-spacing: 0.5px; font-size: 13px;">TOP THUYẾT MINH ĐƯỢC NGHE</span>
+                                <span class="fw-bold" style="color: #0EA5E9; letter-spacing: 0.5px; font-size: 13px;">TOP THUYẾT MINH ĐƯỢC NGHE</span>
                             </div>
                             @if (topAudio.Any())
                             {
@@ -250,16 +158,16 @@
                                 {
                                     <div class="rank-row d-flex justify-content-between align-items-center px-2 py-2 mb-1">
                                         <div class="d-flex align-items-center gap-3">
-                                            <span class="fw-bold" style="min-width: 22px; color: @(i == 0 ? "#0dcaf0" : i == 1 ? "#9ca3af" : i == 2 ? "#cd7f32" : "#4a4a5a"); font-size: 14px;">@(i + 1)</span>
-                                            <span style="color: #d1d5db; font-size: 14px;">@item.PoiName</span>
+                                            <span class="fw-bold" style="min-width: 22px; color: @(i == 0 ? "#0EA5E9" : i == 1 ? "#94A3B8" : i == 2 ? "#D97706" : "#64748B"); font-size: 14px;">@(i + 1)</span>
+                                            <span style="color: #1E293B; font-size: 14px; font-weight: 500;">@item.PoiName</span>
                                         </div>
-                                        <span class="fw-bold" style="color: #0dcaf0; font-size: 13px;">@item.TotalMinutes <span style="color: #4a4a5a; font-weight: 400;">phút</span></span>
+                                        <span class="fw-bold" style="color: #0EA5E9; font-size: 13px;">@item.TotalMinutes <span style="color: #64748B; font-weight: 400;">phút</span></span>
                                     </div>
                                 }
                             }
                             else
                             {
-                                <div class="text-center py-4" style="color: #4a4a5a;">
+                                <div class="text-center py-4" style="color: #64748B;">
                                     <i class="bi bi-inbox fs-3 d-block mb-2"></i>Chưa có dữ liệu
                                 </div>
                             }
@@ -268,16 +176,16 @@
                 </div>
 
                 @* ── PHÂN TÍCH ── *@
-                <div class="section-label"><i class="bi bi-bar-chart-line me-2"></i>PHÂN TÍCH</div>
+                <div class="dash-label"><i class="bi bi-bar-chart-line me-2"></i>PHÂN TÍCH</div>
                 <div class="row g-4">
                     @* Ngôn ngữ *@
                     <div class="col-md-6">
-                        <div class="stat-card p-4 h-100">
+                        <div class="dash-card p-4 h-100">
                             <div class="d-flex align-items-center gap-2 mb-4">
-                                <div style="background: rgba(13,202,240,0.12); border-radius: 10px; padding: 8px 10px;">
-                                    <i class="bi bi-translate" style="color: #0dcaf0;"></i>
+                                <div style="background: rgba(14,165,233,0.12); border-radius: 10px; padding: 8px 10px;">
+                                    <i class="bi bi-translate" style="color: #0EA5E9;"></i>
                                 </div>
-                                <span class="fw-bold" style="color: #d1d5db; letter-spacing: 0.5px; font-size: 13px;">NGÔN NGỮ SỬ DỤNG</span>
+                                <span class="fw-bold" style="color: #1E293B; letter-spacing: 0.5px; font-size: 13px;">NGÔN NGỮ SỬ DỤNG</span>
                             </div>
                             @if (languageStats.Any())
                             {
@@ -285,18 +193,18 @@
                                 {
                                     <div class="mb-3">
                                         <div class="d-flex justify-content-between mb-1">
-                                            <span style="color: #9ca3af; font-size: 13px;">@lang.Name <span style="color: #4a4a5a;">(@lang.Code.ToUpper())</span></span>
-                                            <span class="fw-bold" style="color: #0dcaf0; font-size: 13px;">@lang.Percent%</span>
+                                            <span style="color: #1E293B; font-size: 13px; font-weight: 500;">@lang.Name <span style="color: #64748B; font-weight: normal;">(@lang.Code.ToUpper())</span></span>
+                                            <span class="fw-bold" style="color: #0EA5E9; font-size: 13px;">@lang.Percent%</span>
                                         </div>
                                         <div class="progress-thin">
-                                            <div class="progress-bar" style="background: linear-gradient(90deg, #0dcaf0, #0284c7); width: @lang.Percent%; height: 100%; border-radius: 3px;"></div>
+                                            <div class="progress-bar" style="background: linear-gradient(90deg, #0EA5E9, #0284c7); width: @lang.Percent%; height: 100%; border-radius: 3px;"></div>
                                         </div>
                                     </div>
                                 }
                             }
                             else
                             {
-                                <div class="text-center py-4" style="color: #4a4a5a;">
+                                <div class="text-center py-4" style="color: #64748B;">
                                     <i class="bi bi-inbox fs-3 d-block mb-2"></i>Chưa có dữ liệu
                                 </div>
                             }
@@ -305,12 +213,12 @@
 
                     @* Phân bổ đánh giá *@
                     <div class="col-md-6">
-                        <div class="stat-card p-4 h-100">
+                        <div class="dash-card p-4 h-100">
                             <div class="d-flex align-items-center gap-2 mb-4">
-                                <div style="background: rgba(250,204,21,0.12); border-radius: 10px; padding: 8px 10px;">
-                                    <i class="bi bi-star-fill" style="color: #facc15;"></i>
+                                <div style="background: rgba(234,179,8,0.12); border-radius: 10px; padding: 8px 10px;">
+                                    <i class="bi bi-star-fill" style="color: #EAB308;"></i>
                                 </div>
-                                <span class="fw-bold" style="color: #d1d5db; letter-spacing: 0.5px; font-size: 13px;">PHÂN BỔ ĐÁNH GIÁ</span>
+                                <span class="fw-bold" style="color: #1E293B; letter-spacing: 0.5px; font-size: 13px;">PHÂN BỔ ĐÁNH GIÁ</span>
                             </div>
                             @for (int star = 5; star >= 1; star--)
                             {
@@ -318,13 +226,13 @@
                                 var percent = totalReviews > 0 ? (count * 100 / totalReviews) : 0;
                                 <div class="d-flex align-items-center gap-3 mb-3">
                                     <div class="d-flex align-items-center gap-1" style="min-width: 50px;">
-                                        <span style="color: #facc15; font-size: 13px; font-weight: 600;">@star</span>
-                                        <i class="bi bi-star-fill" style="color: #facc15; font-size: 10px;"></i>
+                                        <span style="color: #EAB308; font-size: 13px; font-weight: 600;">@star</span>
+                                        <i class="bi bi-star-fill" style="color: #EAB308; font-size: 10px;"></i>
                                     </div>
                                     <div class="flex-grow-1 progress-thin">
-                                        <div style="background: linear-gradient(90deg, #facc15, #f59e0b); width: @percent%; height: 100%; border-radius: 3px;"></div>
+                                        <div style="background: linear-gradient(90deg, #EAB308, #D97706); width: @percent%; height: 100%; border-radius: 3px;"></div>
                                     </div>
-                                    <span style="color: #6b7280; font-size: 12px; min-width: 30px; text-align: right;">@count</span>
+                                    <span style="color: #64748B; font-size: 12px; min-width: 30px; text-align: right;">@count</span>
                                 </div>
                             }
                         </div>
@@ -341,58 +249,75 @@
             <Authorized>
                 <div class="d-flex justify-content-between align-items-center mb-5">
                     <div>
-                        <h2 class="fw-bold mb-1" style="color: #F0EBE3;">Xin chào, @vendorPoiName!</h2>
-                        <span style="color: #4a4a5a; font-size: 13px;">
+                        <h2 class="fw-bold mb-1" style="color: #1E293B;">Xin chào, @vendorPoiName!</h2>
+                        <span style="color: #64748B; font-size: 13px;">
                             <i class="bi bi-clock me-1"></i>@DateTime.Now.ToString("HH:mm, dd/MM/yyyy")
                         </span>
                     </div>
-                    <span class="badge px-3 py-2" style="background: rgba(13,202,240,0.12); color: #0dcaf0; border: 1px solid rgba(13,202,240,0.25); border-radius: 20px; font-size: 12px;">
+                    <span class="badge px-3 py-2" style="background: rgba(14,165,233,0.1); color: #0EA5E9; border: 1px solid rgba(14,165,233,0.2); border-radius: 20px; font-size: 12px;">
                         <i class="bi bi-person-badge me-1"></i>Đối tác (Vendor)
                     </span>
                 </div>
 
-                <div class="section-label"><i class="bi bi-grid me-2"></i>TỔNG QUAN QUÁN</div>
-                <div class="row g-4">
-                    <div class="col-md-4">
-                        <div class="vendor-stat-card p-4" style="border-left: 4px solid #E8A020;">
-                            <div style="background: rgba(232,160,32,0.12); border-radius: 10px; padding: 10px; width: fit-content; margin-bottom: 16px;">
-                                <i class="bi bi-qr-code-scan" style="color: #E8A020; font-size: 1.4rem;"></i>
+                <div class="dash-label"><i class="bi bi-grid me-2"></i>TỔNG QUAN QUÁN (GỘP)</div>
+                <div class="row g-4 mb-4">
+                    @foreach (var card in vendorOverviewCards)
+                    {
+                        <div class="col-6 col-md-3">
+                            <div class="dash-card p-4 h-100" style="border-left: 4px solid @card.AccentColor !important;">
+                                <div style="background: @card.IconBg; border-radius: 10px; padding: 10px; width: fit-content; margin-bottom: 12px;">
+                                    <i class="bi @card.Icon" style="color: @card.AccentColor; font-size: 1.3rem;"></i>
+                                </div>
+                                <h3 class="fw-bold mb-1" style="color: #1E293B;">@GetVendorCardValue(card)</h3>
+                                <div style="color: #64748B; font-size: 12px; letter-spacing: 0.5px;">@card.Title</div>
+                                @if (!string.IsNullOrWhiteSpace(card.Subtitle))
+                                {
+                                    <div style="color: #94A3B8; font-size: 12px; margin-top: 4px;">@card.Subtitle</div>
+                                }
                             </div>
-                            <h2 class="text-white fw-bold mb-1">@vendorQrScans</h2>
-                            <div style="color: #4a4a5a; font-size: 12px; letter-spacing: 0.5px;">LƯỢT QUÉT QR HÔM NAY</div>
-                            <div style="color: #6b7280; font-size: 12px; margin-top: 4px;">Tại quán của bạn</div>
                         </div>
+                    }
+                </div>
+
+                <div class="dash-label"><i class="bi bi-list-check me-2"></i>CHECKLIST VẬN HÀNH</div>
+                <div class="dash-card p-4 mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div style="color:#64748B;font-size:12px;">Những việc cần hoàn thiện để quán hoạt động hiệu quả</div>
+                        <div style="color:#94A3B8;font-size:11px;">Cập nhật: @vendorLastUpdated.ToString("HH:mm dd/MM")</div>
+                    </div>
+                    <div class="d-flex flex-column gap-2">
+                        @foreach (var item in vendorChecklist)
+                        {
+                            <a href="@item.Url" class="d-flex align-items-center justify-content-between p-3 rounded-3" style="background:#F8FAFC;border:1px solid #E2E8F0;">
+                                <div class="d-flex align-items-center gap-2">
+                                    <i class="bi @(item.Done ? "bi-check-circle-fill text-success" : "bi-exclamation-circle-fill text-warning")"></i>
+                                    <span style="color:#1E293B;font-size:14px;">@item.Label</span>
+                                </div>
+                                <span class="small @(item.Done ? "text-success" : "text-muted")">@(item.Done ? "Đã xong" : "Cần làm")</span>
+                            </a>
+                        }
+                    </div>
+                </div>
+
+                <div class="dash-label"><i class="bi bi-lightning-charge me-2"></i>HÀNH ĐỘNG NHANH</div>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <a class="dash-card p-4 d-block h-100" href="vendor/thong-tin">
+                            <div class="fw-bold mb-2" style="color:#1E293B;"><i class="bi bi-shop me-2 text-danger"></i>Thông tin gian hàng</div>
+                            <div style="color:#64748B;font-size:13px;">Sửa mô tả, địa chỉ, hình ảnh và đồng bộ audio đa ngôn ngữ.</div>
+                        </a>
                     </div>
                     <div class="col-md-4">
-                        <div class="vendor-stat-card p-4" style="border-left: 4px solid #facc15;">
-                            <div style="background: rgba(250,204,21,0.12); border-radius: 10px; padding: 10px; width: fit-content; margin-bottom: 16px;">
-                                <i class="bi bi-star-fill" style="color: #facc15; font-size: 1.4rem;"></i>
-                            </div>
-                            @if (vendorAvgRating > 0)
-                            {
-                                <h2 class="text-white fw-bold mb-1">
-                                    @vendorAvgRating.ToString("0.0")
-                                    <i class="bi bi-star-fill text-warning" style="font-size: 1rem;"></i>
-                                </h2>
-                                <div style="color: #4a4a5a; font-size: 12px; letter-spacing: 0.5px;">ĐÁNH GIÁ TRUNG BÌNH</div>
-                                <div style="color: #6b7280; font-size: 12px; margin-top: 4px;">Từ @vendorReviewCount đánh giá</div>
-                            }
-                            else
-                            {
-                                <h4 style="color: #4a4a5a;" class="fw-bold mb-1">Chưa có</h4>
-                                <div style="color: #4a4a5a; font-size: 12px; letter-spacing: 0.5px;">ĐÁNH GIÁ TRUNG BÌNH</div>
-                            }
-                        </div>
+                        <a class="dash-card p-4 d-block h-100" href="vendor/thuc-don">
+                            <div class="fw-bold mb-2" style="color:#1E293B;"><i class="bi bi-card-list me-2 text-info"></i>Thực đơn</div>
+                            <div style="color:#64748B;font-size:13px;">Thêm/sửa/ẩn món ăn để cập nhật hiển thị trên app ngay.</div>
+                        </a>
                     </div>
                     <div class="col-md-4">
-                        <div class="vendor-stat-card p-4" style="border-left: 4px solid #0dcaf0;">
-                            <div style="background: rgba(13,202,240,0.12); border-radius: 10px; padding: 10px; width: fit-content; margin-bottom: 16px;">
-                                <i class="bi bi-card-list" style="color: #0dcaf0; font-size: 1.4rem;"></i>
-                            </div>
-                            <h2 class="text-white fw-bold mb-1">@vendorMenuCount</h2>
-                            <div style="color: #4a4a5a; font-size: 12px; letter-spacing: 0.5px;">MÓN ĂN TRONG THỰC ĐƠN</div>
-                            <div style="color: #6b7280; font-size: 12px; margin-top: 4px;">Đang hiển thị trên app</div>
-                        </div>
+                        <a class="dash-card p-4 d-block h-100" href="">
+                            <div class="fw-bold mb-2" style="color:#1E293B;"><i class="bi bi-gem me-2 text-warning"></i>Dashboard tổng hợp</div>
+                            <div style="color:#64748B;font-size:13px;">Số liệu doanh thu, đánh giá và gói thành viên đã gộp tại đây.</div>
+                        </a>
                     </div>
                 </div>
             </Authorized>
@@ -402,6 +327,22 @@
 
 @code {
     private bool isLoading = true;
+    
+    // Chỉnh nhanh hiển thị dashboard admin tại đây (text/icon/màu/badge/value key).
+    private readonly List<AdminStatCardConfig> adminSystemCards =
+    [
+        new("totalPois", "TỔNG GIAN HÀNG", "bi-shop", "rgba(245,158,11,0.12)", "#F59E0B", "{activePois} hoạt động", "rgba(245,158,11,0.1)", "#F59E0B"),
+        new("totalNarrations", "THUYẾT MINH", "bi-mic-fill", "rgba(14,165,233,0.12)", "#0EA5E9", "{totalLanguages} ngôn ngữ", "rgba(14,165,233,0.1)", "#0EA5E9"),
+        new("totalUsers", "NGƯỜI DÙNG", "bi-people-fill", "rgba(200,55,45,0.12)", "#C8372D", "{totalVendors} vendor", "rgba(200,55,45,0.1)", "#C8372D"),
+        new("todayQrScans", "LƯỢT QUÉT QR", "bi-qr-code-scan", "rgba(16,185,129,0.12)", "#10B981", "hôm nay", "rgba(16,185,129,0.1)", "#10B981")
+    ];
+
+    private readonly List<AdminStatCardConfig> adminBehaviorCards =
+    [
+        new("totalEvents", "LƯỢT TƯƠNG TÁC HÔM NAY", "bi-cursor-fill", "rgba(245,158,11,0.12)", "#F59E0B", "hôm nay", "rgba(245,158,11,0.1)", "#F59E0B"),
+        new("avgListenSec", "THỜI GIAN NGHE TB", "bi-headphones", "rgba(14,165,233,0.12)", "#0EA5E9", "giây/lần", "rgba(14,165,233,0.1)", "#0EA5E9"),
+        new("totalReviews", "TỔNG ĐÁNH GIÁ", "bi-star-fill", "rgba(234,179,8,0.12)", "#EAB308")
+    ];
 
     // ── Admin stats – hệ thống ───────────────
     private int totalPois, activePois, totalNarrations, totalLanguages;
@@ -416,8 +357,19 @@
 
     // ── Vendor stats ─────────────────────────
     private string vendorPoiName = "Chủ quán";
-    private int vendorQrScans, vendorReviewCount, vendorMenuCount;
+    private int vendorQrScans, vendorReviewCount, vendorMenuCount, vendorAudioPlayCount;
     private double vendorAvgRating;
+    private string vendorMembershipTier = "Standard";
+    private DateTime vendorLastUpdated = DateTime.Now;
+    private List<VendorChecklistItem> vendorChecklist = new();
+
+    private readonly List<VendorOverviewCardConfig> vendorOverviewCards =
+    [
+        new("vendorQrScans", "LƯỢT QUÉT QR HÔM NAY", "bi-qr-code-scan", "#F59E0B", "rgba(245,158,11,0.12)", "Tại quán của bạn"),
+        new("vendorAudioPlayCount", "LƯỢT NGHE AUDIO HÔM NAY", "bi-headphones", "#0EA5E9", "rgba(14,165,233,0.12)", "Nguồn: tracking app"),
+        new("vendorAvgRating", "ĐÁNH GIÁ TRUNG BÌNH", "bi-star-fill", "#EAB308", "rgba(234,179,8,0.12)", null),
+        new("vendorMembershipTier", "GÓI THÀNH VIÊN", "bi-gem", "#7C3AED", "rgba(124,58,237,0.12)", null)
+    ];
 
     protected override async Task OnInitializedAsync()
     {
@@ -450,7 +402,7 @@
         activePois    = await Db.Pois.CountAsync(p => p.IsActive);
         totalNarrations = await Db.Narrations.CountAsync();
         totalLanguages  = await Db.Languages.CountAsync(l => l.IsActive);
-        totalUsers    = await Db.Users.CountAsync();
+        totalUsers = await Db.Users.CountAsync();
         totalVendors  = await Db.Users.CountAsync(u => u.Role == "Vendor");
         todayQrScans  = await Db.TrackingLogs
             .CountAsync(t => t.EventType == "qr_scan" && t.CreatedAt >= today);
@@ -528,21 +480,26 @@
         var userIdStr = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (!int.TryParse(userIdStr, out int userId)) return;
 
-        var poi = await PoiService.GetPoiByOwnerIdAsync(userId);
-        if (poi == null) return;
+        var metrics = await DashboardMetrics.GetVendorMetricsAsync(userId);
+        if (metrics is null) return;
 
-        vendorPoiName = poi.Name;
-        var today = DateTime.Today;
+        vendorPoiName = metrics.PoiName;
+        vendorMembershipTier = metrics.MembershipTier;
+        vendorQrScans = metrics.QrScanCountToday;
+        vendorAudioPlayCount = metrics.AudioPlayCountToday;
+        vendorReviewCount = metrics.TotalReviews;
+        vendorAvgRating = metrics.AverageRating;
+        vendorMenuCount = metrics.MenuCount;
+        vendorLastUpdated = metrics.LastUpdated;
 
-        vendorQrScans = await Db.TrackingLogs
-            .CountAsync(t => t.PoiId == poi.PoiId && t.EventType == "qr_scan" && t.CreatedAt >= today);
-
-        var reviews = Db.Reviews.Where(r => r.PoiId == poi.PoiId);
-        vendorReviewCount = await reviews.CountAsync();
-        if (vendorReviewCount > 0)
-            vendorAvgRating = await reviews.AverageAsync(r => (double)r.Rating);
-
-        vendorMenuCount = await Db.Foods.CountAsync(f => f.PoiId == poi.PoiId && f.IsAvailable);
+        vendorChecklist =
+        [
+            new("Có mô tả gian hàng", metrics.HasDescription, "vendor/thong-tin"),
+            new("Có địa chỉ + vị trí bản đồ", metrics.HasAddress && metrics.HasValidMap, "vendor/thong-tin"),
+            new("Có ảnh bìa gian hàng", metrics.HasCover, "vendor/thong-tin"),
+            new("Có audio tự động ít nhất 1 ngôn ngữ", metrics.HasAudio, "vendor/thong-tin"),
+            new("Có món ăn đang bán", metrics.MenuCount > 0, "vendor/thuc-don")
+        ];
     }
 
     private class TopPoiItem
@@ -560,4 +517,56 @@
     }
 
     private class LangStat { public string Code = ""; public string Name = ""; public int Percent; }
+
+    private sealed record AdminStatCardConfig(
+        string Key,
+        string Title,
+        string Icon,
+        string IconBg,
+        string IconColor,
+        string? BadgeTemplate = null,
+        string BadgeBg = "transparent",
+        string BadgeColor = "#64748B");
+
+    private string GetAdminCardValue(AdminStatCardConfig card) => card.Key switch
+    {
+        "totalPois" => totalPois.ToString(),
+        "totalNarrations" => totalNarrations.ToString(),
+        "totalUsers" => totalUsers.ToString(),
+        "todayQrScans" => todayQrScans.ToString(),
+        "totalEvents" => totalEvents.ToString(),
+        "avgListenSec" => avgListenSec.ToString(),
+        "totalReviews" => totalReviews.ToString(),
+        _ => "0"
+    };
+
+    private string GetAdminCardBadgeText(AdminStatCardConfig card)
+    {
+        if (string.IsNullOrWhiteSpace(card.BadgeTemplate))
+            return string.Empty;
+
+        return card.BadgeTemplate
+            .Replace("{activePois}", activePois.ToString())
+            .Replace("{totalLanguages}", totalLanguages.ToString())
+            .Replace("{totalVendors}", totalVendors.ToString());
+    }
+
+    private sealed record VendorOverviewCardConfig(
+        string Key,
+        string Title,
+        string Icon,
+        string AccentColor,
+        string IconBg,
+        string? Subtitle = null);
+
+    private sealed record VendorChecklistItem(string Label, bool Done, string Url);
+
+    private string GetVendorCardValue(VendorOverviewCardConfig card) => card.Key switch
+    {
+        "vendorQrScans" => vendorQrScans.ToString(),
+        "vendorAudioPlayCount" => vendorAudioPlayCount.ToString(),
+        "vendorAvgRating" => vendorAvgRating > 0 ? $"{vendorAvgRating:0.0} ★" : "Chưa có",
+        "vendorMembershipTier" => vendorMembershipTier,
+        _ => "—"
+    };
 }

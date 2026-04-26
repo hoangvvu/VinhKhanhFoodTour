@@ -88,13 +88,17 @@ public partial class FullMapPage : ContentPage
 
             var loc = new Location(p.Latitude, p.Longitude);
 
-            var priorityPrefix = _localization.GetString("StallList_Priority");
+            var tierBadge = p.MembershipTier switch
+            {
+                "Diamond" => "💎",
+                "Gold" => "🥇",
+                "Silver" => "🥈",
+                _ => ""
+            };
             var pin = new Pin
             {
-                Label = p.Name,
-                Address = string.IsNullOrWhiteSpace(p.Address)
-                    ? $"{priorityPrefix} {p.Priority}"
-                    : p.Address,
+                Label = $"{tierBadge} {p.Name}".Trim(),
+                Address = p.Address ?? "",
                 Location = loc,
                 Type = PinType.Place,
                 BindingContext = p
@@ -102,9 +106,10 @@ public partial class FullMapPage : ContentPage
             pin.MarkerClicked += OnPinClicked;
             bigMap.Pins.Add(pin);
 
-            // Vùng Geofence — cam đậm, khớp với GeofenceMonitorService (radius + 10m buffer)
+            // Vùng Geofence — cam đậm, khớp với GeofenceMonitorService (radius + tierBonus + 10m buffer)
+            var tierBonus = p.MembershipTier switch { "Diamond" => 15, "Gold" => 10, "Silver" => 5, _ => 0 };
             var baseRadius = Math.Clamp(p.Radius > 0 ? p.Radius : 20, 5, 200);
-            var geofenceRadius = baseRadius + 10;
+            var geofenceRadius = baseRadius + tierBonus + 10;
             bigMap.MapElements.Add(new Circle
             {
                 Center = loc,

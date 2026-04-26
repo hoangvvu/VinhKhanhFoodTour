@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace VKFoodTour.Infrastructure.Entities;
@@ -32,6 +32,11 @@ public class User
 
     [Column("is_active")]
     public bool IsActive { get; set; } = true;
+
+    /// <summary>Gói thành viên: Standard, Silver, Gold, Diamond. Ảnh hưởng đến ưu tiên audio và bán kính geofence.</summary>
+    [MaxLength(20)]
+    [Column("membership_tier")]
+    public string MembershipTier { get; set; } = "Standard";
 
     [Column("created_at")]
     public DateTime CreatedAt { get; set; } = DateTime.Now;

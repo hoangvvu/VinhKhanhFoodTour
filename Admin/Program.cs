@@ -114,6 +114,8 @@ builder.Services.AddHttpClient<GoogleTranslateService>();
 builder.Services.AddScoped<PoiService>();
 builder.Services.AddScoped<MenuService>();
 builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<DashboardMetricsService>();
+builder.Services.AddSingleton<LanguageProvisionJobService>();
 
 var app = builder.Build();
 

@@ -11,42 +11,42 @@
 <PageTitle>Phản hồi ứng dụng - Vĩnh Khánh Admin</PageTitle>
 
 <style>
-    .fb-bg { background-color: #0f0f13; min-height: 100vh; }
+    .fb-bg { background-color: #F4F6FA; min-height: 100vh; }
 
     .stat-card {
         border-radius: 16px;
-        border: 1px solid rgba(255,255,255,0.06);
-        background: #1a1a24;
+        border: 1px solid #E2E8F0;
+        background: #FFFFFF;
         transition: transform 0.2s, box-shadow 0.2s;
     }
-    .stat-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.4) !important; }
+    .stat-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.05) !important; }
 
     .section-label {
         font-size: 11px;
         letter-spacing: 2px;
         font-weight: 700;
-        color: #4a4a5a;
+        color: #64748B;
         text-transform: uppercase;
         padding-bottom: 8px;
-        border-bottom: 1px solid rgba(255,255,255,0.05);
+        border-bottom: 1px solid #E2E8F0;
         margin-bottom: 16px;
     }
 
     .fb-row {
-        background: #1a1a24;
-        border: 1px solid rgba(255,255,255,0.05);
+        background: #FFFFFF;
+        border: 1px solid #E2E8F0;
         border-radius: 14px;
         transition: border-color 0.15s, background 0.15s;
     }
-    .fb-row:hover { border-color: rgba(232,160,32,0.3); background: #1e1e2c; }
+    .fb-row:hover { border-color: #FCD34D; background: #F8FAFC; }
 
     .star-filled  { color: #facc15; }
     .star-empty   { color: #2a2a38; }
 
     .filter-btn {
-        background: #1a1a24;
-        border: 1px solid rgba(255,255,255,0.08);
-        color: #9ca3af;
+        background: #FFFFFF;
+        border: 1px solid #E2E8F0;
+        color: #64748B;
         border-radius: 10px;
         padding: 6px 14px;
         font-size: 13px;
@@ -59,29 +59,29 @@
         color: #E8A020;
     }
 
-    .progress-thin { height: 6px; border-radius: 3px; background: #2a2a38; }
+    .progress-thin { height: 6px; border-radius: 3px; background: #E2E8F0; }
 
     .device-badge {
-        background: rgba(255,255,255,0.05);
-        border: 1px solid rgba(255,255,255,0.08);
+        background: #F8FAFC;
+        border: 1px solid #E2E8F0;
         border-radius: 8px;
         padding: 2px 8px;
         font-size: 11px;
-        color: #6b7280;
+        color: #64748B;
         font-family: monospace;
     }
 
     .delete-btn {
         background: transparent;
-        border: 1px solid rgba(200,55,45,0.3);
-        color: #f87171;
+        border: 1px solid var(--vk-danger-border);
+        color: var(--vk-danger);
         border-radius: 8px;
         padding: 4px 10px;
         font-size: 12px;
         cursor: pointer;
         transition: all 0.15s;
     }
-    .delete-btn:hover { background: rgba(200,55,45,0.12); border-color: #f87171; }
+    .delete-btn:hover { background: var(--vk-danger-bg); border-color: var(--vk-danger); }
 </style>
 
 <div class="fb-bg p-4">
@@ -90,7 +90,7 @@
     {
         <div class="d-flex flex-column align-items-center justify-content-center" style="min-height: 60vh;">
             <div class="spinner-border text-warning mb-3" style="width: 3rem; height: 3rem;" role="status"></div>
-            <span style="color: #4a4a5a; font-size: 13px; letter-spacing: 1px;">ĐANG TẢI DỮ LIỆU…</span>
+            <span style="color: #64748B; font-size: 13px; letter-spacing: 1px;">ĐANG TẢI DỮ LIỆU…</span>
         </div>
     }
     else
@@ -98,10 +98,10 @@
         @* ── HEADER ── *@
         <div class="d-flex justify-content-between align-items-center mb-5">
             <div>
-                <h2 class="fw-bold mb-1" style="color: #F0EBE3; letter-spacing: -0.5px;">
+                <h2 class="fw-bold mb-1" style="color: #1E293B; letter-spacing: -0.5px;">
                     <i class="bi bi-chat-heart-fill me-2" style="color: #E8A020;"></i>Phản hồi ứng dụng
                 </h2>
-                <span style="color: #4a4a5a; font-size: 13px;">
+                <span style="color: #64748B; font-size: 13px;">
                     Đánh giá số sao và góp ý từ du khách qua tab Hồ sơ trong app
                 </span>
             </div>
@@ -118,8 +118,8 @@
                     <div style="background: rgba(232,160,32,0.12); border-radius: 10px; padding: 10px; width: fit-content; margin-bottom: 12px;">
                         <i class="bi bi-chat-dots-fill" style="color: #E8A020; font-size: 1.3rem;"></i>
                     </div>
-                    <h3 class="text-white fw-bold mb-1">@totalFeedbacks</h3>
-                    <div style="color: #4a4a5a; font-size: 12px; letter-spacing: 0.5px;">TỔNG PHẢN HỒI</div>
+                    <h3 class="text-dark fw-bold mb-1">@totalFeedbacks</h3>
+                    <div style="color: #64748B; font-size: 12px; letter-spacing: 0.5px;">TỔNG PHẢN HỒI</div>
                 </div>
             </div>
             <div class="col-6 col-md-3">
@@ -128,16 +128,16 @@
                         <i class="bi bi-star-fill" style="color: #facc15; font-size: 1.3rem;"></i>
                     </div>
                     <h3 class="fw-bold mb-1" style="color: #facc15;">@avgRating.ToString("0.0") ★</h3>
-                    <div style="color: #4a4a5a; font-size: 12px; letter-spacing: 0.5px;">ĐIỂM TRUNG BÌNH</div>
+                    <div style="color: #64748B; font-size: 12px; letter-spacing: 0.5px;">ĐIỂM TRUNG BÌNH</div>
                 </div>
             </div>
             <div class="col-6 col-md-3">
                 <div class="stat-card p-4">
                     <div style="background: rgba(74,222,128,0.1); border-radius: 10px; padding: 10px; width: fit-content; margin-bottom: 12px;">
-                        <i class="bi bi-emoji-smile-fill" style="color: #4ade80; font-size: 1.3rem;"></i>
+                        <i class="bi bi-emoji-smile-fill" style="color: var(--vk-success-strong); font-size: 1.3rem;"></i>
                     </div>
-                    <h3 class="fw-bold mb-1" style="color: #4ade80;">@positivePct%</h3>
-                    <div style="color: #4a4a5a; font-size: 12px; letter-spacing: 0.5px;">TÍCH CỰC (4–5 SAO)</div>
+                    <h3 class="fw-bold mb-1" style="color: var(--vk-success-strong);">@positivePct%</h3>
+                    <div style="color: #64748B; font-size: 12px; letter-spacing: 0.5px;">TÍCH CỰC (4–5 SAO)</div>
                 </div>
             </div>
             <div class="col-6 col-md-3">
@@ -145,8 +145,8 @@
                     <div style="background: rgba(13,202,240,0.12); border-radius: 10px; padding: 10px; width: fit-content; margin-bottom: 12px;">
                         <i class="bi bi-calendar-check" style="color: #0dcaf0; font-size: 1.3rem;"></i>
                     </div>
-                    <h3 class="text-white fw-bold mb-1">@todayCount</h3>
-                    <div style="color: #4a4a5a; font-size: 12px; letter-spacing: 0.5px;">HÔM NAY</div>
+                    <h3 class="text-dark fw-bold mb-1">@todayCount</h3>
+                    <div style="color: #64748B; font-size: 12px; letter-spacing: 0.5px;">HÔM NAY</div>
                 </div>
             </div>
         </div>
@@ -159,7 +159,7 @@
                         <div style="background: rgba(250,204,21,0.12); border-radius: 10px; padding: 8px 10px;">
                             <i class="bi bi-star-half" style="color: #facc15;"></i>
                         </div>
-                        <span class="fw-bold" style="color: #d1d5db; letter-spacing: 0.5px; font-size: 13px;">PHÂN BỔ SỐ SAO</span>
+                        <span class="fw-bold" style="color: #1E293B; letter-spacing: 0.5px; font-size: 13px;">PHÂN BỔ SỐ SAO</span>
                     </div>
                     @for (int star = 5; star >= 1; star--)
                     {
@@ -193,7 +193,7 @@
                         <div style="background: rgba(232,160,32,0.12); border-radius: 10px; padding: 8px 10px;">
                             <i class="bi bi-chat-left-quote-fill" style="color: #E8A020;"></i>
                         </div>
-                        <span class="fw-bold" style="color: #d1d5db; letter-spacing: 0.5px; font-size: 13px;">GÓP Ý GẦN NHẤT</span>
+                        <span class="fw-bold" style="color: #1E293B; letter-spacing: 0.5px; font-size: 13px;">GÓP Ý GẦN NHẤT</span>
                     </div>
                     @if (recentComments.Any())
                     {
@@ -207,15 +207,15 @@
                                     }
                                 </div>
                                 <div>
-                                    <div style="color: #d1d5db; font-size: 13px; line-height: 1.5;">@fb.Comment</div>
-                                    <div style="color: #4a4a5a; font-size: 11px; margin-top: 4px;">@fb.CreatedAt.ToString("dd/MM/yyyy HH:mm")</div>
+                                    <div style="color: #1E293B; font-size: 13px; line-height: 1.5;">@fb.Comment</div>
+                                    <div style="color: #64748B; font-size: 11px; margin-top: 4px;">@fb.CreatedAt.ToString("dd/MM/yyyy HH:mm")</div>
                                 </div>
                             </div>
                         }
                     }
                     else
                     {
-                        <div class="text-center py-4" style="color: #4a4a5a;">
+                        <div class="text-center py-4" style="color: #64748B;">
                             <i class="bi bi-chat-slash fs-3 d-block mb-2"></i>Chưa có góp ý nào có nội dung
                         </div>
                     }
@@ -237,7 +237,7 @@
 
         @if (!filteredList.Any())
         {
-            <div class="text-center py-5" style="color: #4a4a5a;">
+            <div class="text-center py-5" style="color: #64748B;">
                 <i class="bi bi-inbox fs-1 d-block mb-3"></i>
                 <div style="font-size: 15px;">Chưa có phản hồi nào</div>
                 <div style="font-size: 12px; margin-top: 4px;">Du khách gửi từ tab Hồ sơ trong app</div>
@@ -264,11 +264,11 @@
                             <div class="col">
                                 @if (!string.IsNullOrWhiteSpace(fb.Comment))
                                 {
-                                    <div style="color: #e5e7eb; font-size: 14px; line-height: 1.6;">@fb.Comment</div>
+                                    <div style="color: #1E293B; font-size: 14px; line-height: 1.6;">@fb.Comment</div>
                                 }
                                 else
                                 {
-                                    <div style="color: #4a4a5a; font-size: 13px; font-style: italic;">— Không có góp ý —</div>
+                                    <div style="color: #64748B; font-size: 13px; font-style: italic;">— Không có góp ý —</div>
                                 }
                                 <div class="d-flex flex-wrap gap-2 mt-2">
                                     <span class="device-badge">

@@ -33,8 +33,7 @@ public class PoiService
     public async Task<List<Poi>> GetAllAsync()
     {
         return await _db.Pois
-            .OrderByDescending(p => p.Priority)
-            .ThenBy(p => p.Name)
+            .OrderBy(p => p.Name)
             .AsNoTracking()
             .ToListAsync();
     }
@@ -55,8 +54,7 @@ public class PoiService
     {
         return await _db.Pois
             .Where(p => p.OwnerId == ownerId)
-            .OrderByDescending(p => p.Priority)
-            .ThenBy(p => p.Name)
+            .OrderBy(p => p.Name)
             .AsNoTracking()
             .ToListAsync();
     }
@@ -91,7 +89,6 @@ public class PoiService
             Latitude = 10.7578m,
             Longitude = 106.7095m,
             Radius = 20,
-            Priority = 3,
             IsActive = false,
             Status = "Pending"
         };
@@ -269,8 +266,7 @@ public class PoiService
         var anchorPoi = await _db.Pois
             .AsNoTracking()
             .Where(p => p.IsActive && p.OwnerId != null)
-            .OrderByDescending(p => p.Priority)
-            .ThenBy(p => p.PoiId)
+            .OrderBy(p => p.PoiId)
             .FirstOrDefaultAsync();
 
         if (anchorPoi is null)
@@ -434,8 +430,7 @@ public class PoiService
     {
         return await _db.Pois
             .Where(p => p.IsActive)
-            .OrderByDescending(p => p.Priority)
-            .ThenBy(p => p.Name)
+            .OrderBy(p => p.Name)
             .AsNoTracking()
             .ToListAsync();
     }
@@ -468,7 +463,6 @@ public class PoiService
         existing.Latitude = poi.Latitude;
         existing.Longitude = poi.Longitude;
         existing.Radius = poi.Radius;
-        existing.Priority = poi.Priority;
         existing.OwnerId = poi.OwnerId;
         existing.IsActive = poi.IsActive;
         existing.Status = poi.Status;
@@ -479,14 +473,13 @@ public class PoiService
         return true;
     }
 
-    public async Task<bool> ApprovePoiAsync(int poiId, int priority)
+    public async Task<bool> ApprovePoiAsync(int poiId)
     {
         var poi = await _db.Pois.FindAsync(poiId);
         if (poi is null) return false;
 
         poi.Status = "Approved";
         poi.IsActive = true;
-        poi.Priority = priority;
         poi.UpdatedAt = DateTime.Now;
         poi.RejectionNote = null;
 
@@ -552,8 +545,7 @@ public class PoiService
         return await _db.Pois
             .Include(p => p.Narrations.Where(n => n.IsActive))
             .Include(p => p.QrCodes.Where(q => q.IsActive))
-            .OrderByDescending(p => p.Priority)
-            .ThenBy(p => p.Name)
+            .OrderBy(p => p.Name)
             .AsNoTracking()
             .ToListAsync();
     }
@@ -689,5 +681,184 @@ public class PoiService
 
         await _db.SaveChangesAsync();
         return results;
+    }
+
+    /// <summary>
+    /// Tự động đồng bộ 1 ngôn ngữ mới cho toàn bộ POI đã duyệt và đang hoạt động:
+    /// dịch từ tiếng Việt + tạo TTS nếu có voice.
+    /// </summary>
+    public async Task<(int TotalPois, int SuccessCount, int FailedCount, List<string> Errors)> AutoProvisionLanguageForApprovedPoisAsync(
+        int targetLanguageId,
+        Action<int, int, string>? onProgress = null)
+    {
+        var errors = new List<string>();
+        var targetLang = await _db.Languages.AsNoTracking().FirstOrDefaultAsync(l => l.LanguageId == targetLanguageId && l.IsActive);
+        if (targetLang is null)
+            return (0, 0, 0, new List<string> { "Ngôn ngữ đích không tồn tại hoặc đang tắt." });
+
+        var viLang = await _db.Languages.AsNoTracking().FirstOrDefaultAsync(l => l.Code.ToLower() == "vi");
+        if (viLang is null)
+            return (0, 0, 0, new List<string> { "Thiếu ngôn ngữ nguồn tiếng Việt (vi)." });
+
+        var pois = await _db.Pois
+            .AsNoTracking()
+            .Where(p => p.IsActive && p.Status != null && p.Status.ToUpper() == "APPROVED")
+            .OrderBy(p => p.Name)
+            .Select(p => new { p.PoiId, p.Name, p.Description })
+            .ToListAsync();
+
+        var total = pois.Count;
+        var success = 0;
+
+        var processed = 0;
+        foreach (var poi in pois)
+        {
+            try
+            {
+                var sourceContent = (poi.Description ?? string.Empty).Trim();
+                if (string.IsNullOrWhiteSpace(sourceContent))
+                {
+                    var viNarration = await _db.Narrations
+                        .AsNoTracking()
+                        .Where(n => n.PoiId == poi.PoiId && n.LanguageId == viLang.LanguageId && n.IsActive)
+                        .OrderByDescending(n => n.UpdatedAt ?? DateTime.MinValue)
+                        .ThenByDescending(n => n.NarrationId)
+                        .FirstOrDefaultAsync();
+                    sourceContent = viNarration?.Content?.Trim() ?? string.Empty;
+                }
+
+                if (string.IsNullOrWhiteSpace(sourceContent))
+                {
+                    errors.Add($"{poi.Name}: Không có nội dung tiếng Việt để dịch.");
+                    continue;
+                }
+
+                var sourceTitle = string.IsNullOrWhiteSpace(poi.Name) ? $"Gian hàng #{poi.PoiId}" : poi.Name;
+                var targetTitle = sourceTitle;
+                var targetContent = sourceContent;
+                if (!targetLang.Code.Equals("vi", StringComparison.OrdinalIgnoreCase))
+                {
+                    targetTitle = await _translate.TranslateAsync(sourceTitle, "vi", targetLang.Code);
+                    targetContent = await _translate.TranslateAsync(sourceContent, "vi", targetLang.Code);
+                }
+
+                string? audioUrl = null;
+                if (!string.IsNullOrWhiteSpace(targetLang.TtsVoice))
+                {
+                    var stem = $"auto_{targetLang.Code}_p{poi.PoiId}";
+                    var tts = await _tts.GenerateAndPersistLocalAsync(targetContent, targetLang.TtsVoice, stem, targetLang.Code);
+                    if (!string.IsNullOrWhiteSpace(tts.ErrorMessage))
+                    {
+                        errors.Add($"{poi.Name}: Lỗi TTS ({tts.ErrorMessage})");
+                    }
+                    else
+                    {
+                        audioUrl = tts.Url;
+                    }
+                }
+
+                var existing = await _db.Narrations.FirstOrDefaultAsync(n => n.PoiId == poi.PoiId && n.LanguageId == targetLang.LanguageId);
+                if (existing is null)
+                {
+                    _db.Narrations.Add(new Narration
+                    {
+                        PoiId = poi.PoiId,
+                        LanguageId = targetLang.LanguageId,
+                        Title = TruncateForDb(targetTitle, 200),
+                        Content = targetContent,
+                        AudioUrlAuto = audioUrl,
+                        AudioUrlQr = audioUrl,
+                        AudioUrl = audioUrl,
+                        TtsVoice = targetLang.TtsVoice,
+                        IsActive = true,
+                        UpdatedAt = DateTime.Now
+                    });
+                }
+                else
+                {
+                    existing.Title = TruncateForDb(targetTitle, 200);
+                    existing.Content = targetContent;
+                    if (!string.IsNullOrWhiteSpace(audioUrl))
+                    {
+                        existing.AudioUrlAuto = audioUrl;
+                        existing.AudioUrlQr = audioUrl;
+                        existing.AudioUrl = audioUrl;
+                    }
+                    existing.TtsVoice = targetLang.TtsVoice;
+                    existing.IsActive = true;
+                    existing.UpdatedAt = DateTime.Now;
+                }
+
+                await _db.SaveChangesAsync();
+                success++;
+                processed++;
+                onProgress?.Invoke(processed, total, $"Đã xử lý {poi.Name}");
+            }
+            catch (Exception ex)
+            {
+                errors.Add($"{poi.Name}: {ex.Message}");
+                processed++;
+                onProgress?.Invoke(processed, total, $"Lỗi tại {poi.Name}");
+            }
+        }
+
+        return (total, success, total - success, errors);
+    }
+
+    public async Task<(bool Success, string? Error)> SyncPoiLanguageAsync(int poiId, int targetLanguageId)
+    {
+        var poi = await _db.Pois.AsNoTracking().FirstOrDefaultAsync(p => p.PoiId == poiId);
+        if (poi is null)
+            return (false, "Không tìm thấy POI.");
+
+        var targetLang = await _db.Languages.AsNoTracking().FirstOrDefaultAsync(l => l.LanguageId == targetLanguageId && l.IsActive);
+        if (targetLang is null)
+            return (false, "Ngôn ngữ đích không hợp lệ.");
+
+        try
+        {
+            string sourceContent = (poi.Description ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(sourceContent))
+            {
+                var viLang = await _db.Languages.AsNoTracking().FirstOrDefaultAsync(l => l.Code.ToLower() == "vi");
+                if (viLang is not null)
+                {
+                    var viNarration = await _db.Narrations.AsNoTracking()
+                        .Where(n => n.PoiId == poiId && n.LanguageId == viLang.LanguageId && n.IsActive)
+                        .OrderByDescending(n => n.UpdatedAt ?? DateTime.MinValue)
+                        .ThenByDescending(n => n.NarrationId)
+                        .FirstOrDefaultAsync();
+                    sourceContent = viNarration?.Content?.Trim() ?? string.Empty;
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(sourceContent))
+                return (false, "POI chưa có nội dung tiếng Việt để dịch.");
+
+            var sourceTitle = string.IsNullOrWhiteSpace(poi.Name) ? $"Gian hàng #{poi.PoiId}" : poi.Name;
+            var targetTitle = sourceTitle;
+            var targetContent = sourceContent;
+            if (!targetLang.Code.Equals("vi", StringComparison.OrdinalIgnoreCase))
+            {
+                targetTitle = await _translate.TranslateAsync(sourceTitle, "vi", targetLang.Code);
+                targetContent = await _translate.TranslateAsync(sourceContent, "vi", targetLang.Code);
+            }
+
+            string? audioUrl = null;
+            if (!string.IsNullOrWhiteSpace(targetLang.TtsVoice))
+            {
+                var stem = $"auto_{targetLang.Code}_p{poiId}";
+                var tts = await _tts.GenerateAndPersistLocalAsync(targetContent, targetLang.TtsVoice, stem, targetLang.Code);
+                if (string.IsNullOrWhiteSpace(tts.ErrorMessage))
+                    audioUrl = tts.Url;
+            }
+
+            await UpsertNarrationAutoAsync(poiId, targetLang.LanguageId, targetTitle, targetContent, targetLang.TtsVoice, audioUrl);
+            return (true, null);
+        }
+        catch (Exception ex)
+        {
+            return (false, ex.Message);
+        }
     }
 }

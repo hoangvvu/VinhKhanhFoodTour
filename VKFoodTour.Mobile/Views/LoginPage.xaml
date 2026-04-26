@@ -7,7 +7,7 @@
 
     <Grid>
         <!-- Background accent -->
-        <BoxView VerticalOptions="Start" HeightRequest="340" Color="#1A0808"/>
+        <BoxView VerticalOptions="Start" HeightRequest="340" Color="#FFE4E6"/>
 
         <ScrollView>
             <VerticalStackLayout Padding="28" Spacing="0" VerticalOptions="Center">

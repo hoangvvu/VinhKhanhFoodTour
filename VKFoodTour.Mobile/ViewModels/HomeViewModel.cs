@@ -87,6 +87,15 @@ public partial class HomeViewModel : ObservableObject
         _ = LoadDataAsync();
     }
 
+    /// <summary>Chuyển tier string → số để sắp xếp: Diamond=4, Gold=3, Silver=2, Standard=1.</summary>
+    private static int TierValue(string? tier) => (tier ?? "Standard") switch
+    {
+        "Diamond" => 4,
+        "Gold" => 3,
+        "Silver" => 2,
+        _ => 1
+    };
+
     private void RefreshHomeUiStrings()
     {
         UiGreeting = _localization.GetString("Home_Greeting");
@@ -121,9 +130,11 @@ public partial class HomeViewModel : ObservableObject
 
             if (result != null && result.Any())
             {
-                // 1. Sắp xếp quán NỔI BẬT (Priority cao nhất) lên đầu 
-                // và gán vào ObservableCollection để giao diện cập nhật
-                var sortedPois = result.OrderByDescending(p => p.Priority).ToList();
+                // 1. Sắp xếp quán theo gói thành viên (Diamond → Standard) và tên
+                var sortedPois = result
+                    .OrderByDescending(p => TierValue(p.MembershipTier))
+                    .ThenBy(p => p.Name)
+                    .ToList();
                 foreach (var p in sortedPois)
                     p.IsFavorite = _favorites.IsFavorite(p.PoiId);
 
@@ -254,7 +265,7 @@ public partial class StallListViewModel : ObservableObject
     private string uiPageTitle = string.Empty;
 
     [ObservableProperty]
-    private string uiPriorityLabel = string.Empty;
+    private string uiTierLabel = string.Empty;
 
     public StallListViewModel(IDataService dataService, IFavoriteService favorites, ILocalizationService localization)
     {
@@ -270,7 +281,7 @@ public partial class StallListViewModel : ObservableObject
     private void RefreshStallListUiStrings()
     {
         UiPageTitle = _localization.GetString("StallList_Title");
-        UiPriorityLabel = _localization.GetString("StallList_Priority");
+        UiTierLabel = _localization.GetString("StallList_Tier");
     }
 
     [RelayCommand]

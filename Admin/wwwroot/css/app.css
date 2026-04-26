@@ -61,9 +61,22 @@ h1:focus {
 
 /* --- VĨNH KHÁNH ADMIN PORTAL STYLE --- */
 :root {
-    --admin-sidebar: #1a1616; /* Màu đen sidebar */
+    --admin-sidebar: #ffffff; /* Trắng sidebar */
     --admin-red: #c8372d; /* Màu đỏ chủ đạo */
-    --admin-bg: #f8f9fa; /* Màu nền xám nhạt */
+    --admin-bg: #f4f6fa; /* Màu nền xám nhạt */
+    --vk-success: #166534;
+    --vk-success-strong: #15803D;
+    --vk-success-bg: rgba(22,163,74,0.12);
+    --vk-success-border: rgba(22,163,74,0.25);
+    --vk-danger: #B91C1C;
+    --vk-danger-bg: rgba(200,55,45,0.10);
+    --vk-danger-border: rgba(200,55,45,0.25);
+    --vk-warning: #B45309;
+    --vk-warning-bg: rgba(232,160,32,0.12);
+    --vk-warning-border: rgba(232,160,32,0.25);
+    --vk-info: #0369A1;
+    --vk-info-bg: rgba(14,165,233,0.12);
+    --vk-info-border: rgba(14,165,233,0.25);
 }
 
 /* Sidebar */
@@ -72,17 +85,16 @@ h1:focus {
     width: 250px;
 }
 
-/* Các mục menu */
 .nav-item a {
-    color: #8a8078 !important;
+    color: #64748B !important;
     font-size: 0.9rem;
     border-left: 4px solid transparent;
     transition: 0.3s;
 }
 
     .nav-item a.active {
-        background-color: #262121 !important;
-        color: white !important;
+        background-color: #FEF2F2 !important;
+        color: #C8372D !important;
         border-left: 4px solid var(--admin-red) !important;
     }
 
@@ -132,8 +144,8 @@ h1:focus {
 
 /* --- SITE-WIDE UPDATES --- */
 body {
-    background-color: #262121;
-    color: #F0EBE3;
+    background-color: #F4F6FA;
+    color: #1E293B;
     font-family: 'DMSans-Regular', sans-serif; /* Bạn có thể thêm font DMSans */
 }
 
@@ -154,7 +166,7 @@ a {
     border: none;
     cursor: pointer;
     font-size: 14px;
-    color: #8A8078;
+    color: #64748B;
 }
 
     .nav-card span.bi {
@@ -163,22 +175,22 @@ a {
     }
 
     .nav-card:hover {
-        background-color: #1A1818;
-        color: #F0EBE3;
+        background-color: #F8FAFC;
+        color: #1E293B;
     }
 
     .active-nav, .nav-card.active {
-        background-color: #1A1818;
-        color: #F0EBE3 !important;
-        border-left: 3px solid #E8A020;
+        background-color: #FEF2F2;
+        color: #C8372D !important;
+        border-left: 3px solid #C8372D;
     }
 
 /* --- STATISTICS CARDS & CONTENT CARDS STYLE --- */
 .stats-card, .content-card {
-    background-color: #1A1818;
+    background-color: #FFFFFF;
     border-radius: 16px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    border: none;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    border: 1px solid #E2E8F0;
 }
 
 .bg-light-danger {
@@ -192,12 +204,12 @@ a {
 }
 
 .bg-light-secondary {
-    background-color: rgba(138, 128, 120, 0.1);
-    color: #8A8078;
+    background-color: rgba(100, 116, 139, 0.1);
+    color: #64748B;
 }
 
 .content-card h5 {
-    color: #F0EBE3;
+    color: #1E293B;
     font-weight: 600;
 }
 
@@ -240,57 +252,57 @@ a {
     border: 1px solid #ddd;
 }
 /* ========================================
-   UNIFIED DARK DESIGN SYSTEM
+   UNIFIED LIGHT DESIGN SYSTEM
    ======================================== */
 
 /* Page wrapper */
 .dash-page {
-    background: #0f0f13;
+    background: #F4F6FA;
     min-height: 100vh;
 }
 
 /* Card */
 .dash-card {
-    background: #1a1a24 !important;
-    border: 1px solid rgba(255,255,255,0.06) !important;
+    background: #FFFFFF !important;
+    border: 1px solid #E2E8F0 !important;
     border-radius: 16px !important;
-    color: #F0EBE3 !important;
+    color: #1E293B !important;
     transition: box-shadow 0.2s, transform 0.2s;
 }
 .dash-card:hover {
-    box-shadow: 0 8px 24px rgba(0,0,0,0.45) !important;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.05) !important;
 }
 
 /* Inputs & Selects */
 .dash-input,
 .dash-input:focus {
-    background: #0f0f13 !important;
-    border: 1px solid rgba(255,255,255,0.12) !important;
-    color: #d1d5db !important;
+    background: #F8FAFC !important;
+    border: 1px solid #E2E8F0 !important;
+    color: #1E293B !important;
     border-radius: 10px !important;
     padding: 10px 14px !important;
     outline: none !important;
     box-shadow: none !important;
 }
-.dash-input::placeholder { color: #4a4a5a !important; }
+.dash-input::placeholder { color: #94A3B8 !important; }
 
 /* Section divider labels */
 .dash-label {
     font-size: 11px;
     letter-spacing: 2px;
     font-weight: 700;
-    color: #4a4a5a;
+    color: #64748B;
     text-transform: uppercase;
     padding-bottom: 8px;
-    border-bottom: 1px solid rgba(255,255,255,0.05);
+    border-bottom: 1px solid #E2E8F0;
     margin-bottom: 16px;
 }
 
 /* Table */
-.dash-table { color: #d1d5db !important; }
-.dash-table thead tr { background: rgba(0,0,0,0.4) !important; }
+.dash-table { color: #1E293B !important; }
+.dash-table thead tr { background: #F1F5F9 !important; }
 .dash-table thead th {
-    color: #4a4a5a !important;
+    color: #64748B !important;
     font-size: 11px !important;
     letter-spacing: 1.5px !important;
     font-weight: 700 !important;
@@ -298,42 +310,76 @@ a {
     border: none !important;
     padding: 14px 16px !important;
 }
-.dash-table tbody tr { border-bottom: 1px solid rgba(255,255,255,0.04) !important; }
-.dash-table tbody tr:hover { background: rgba(255,255,255,0.025) !important; }
+.dash-table tbody tr { border-bottom: 1px solid #F1F5F9 !important; }
+.dash-table tbody tr:hover { background: #F8FAFC !important; }
 .dash-table tbody td { border: none !important; padding: 14px 16px !important; vertical-align: middle !important; }
 
-/* Keep bg-dark-card for backward compat */
+/* Keep bg-dark-card for backward compat but style as light */
 .bg-dark-card {
-    background-color: #1a1a24 !important;
-    color: #F0EBE3 !important;
+    background-color: #FFFFFF !important;
+    color: #1E293B !important;
+    border: 1px solid #E2E8F0;
 }
 
 .bg-dark-card .text-muted {
-    color: #8A8078 !important;
+    color: #64748B !important;
 }
 
 .bg-dark-card h3,
 .bg-dark-card h4,
 .bg-dark-card h5 {
-    color: #F0EBE3 !important;
+    color: #1E293B !important;
 }
 
 /* Input/select dark mode cho filter trên trang Heatmap và các page admin */
 .bg-dark-card select,
 .bg-dark-card input {
-    background-color: #2A2525 !important;
-    color: #F0EBE3 !important;
-    border-color: #3A3030 !important;
+    background-color: #F8FAFC !important;
+    color: #1E293B !important;
+    border-color: #E2E8F0 !important;
 }
 
-/* Progress bar nền tối */
+/* Progress bar nền sáng */
 .progress {
-    background-color: #2A2525 !important;
+    background-color: #F1F5F9 !important;
 }
 
-/* List group items trong dark-card */
+/* List group items trong bg-dark-card */
 .bg-dark-card .list-group-item {
     background-color: transparent !important;
-    color: #F0EBE3 !important;
-    border-color: #3A3030 !important;
+    color: #1E293B !important;
+    border-color: #E2E8F0 !important;
+}
+
+.vk-text-success { color: var(--vk-success) !important; }
+.vk-text-danger { color: var(--vk-danger) !important; }
+.vk-text-warning { color: var(--vk-warning) !important; }
+.vk-text-info { color: var(--vk-info) !important; }
+
+.vk-badge-success {
+    background: var(--vk-success-bg);
+    color: var(--vk-success);
+    border: 1px solid var(--vk-success-border);
+    border-radius: 20px;
+}
+
+.vk-badge-danger {
+    background: var(--vk-danger-bg);
+    color: var(--vk-danger);
+    border: 1px solid var(--vk-danger-border);
+    border-radius: 20px;
+}
+
+.vk-badge-warning {
+    background: var(--vk-warning-bg);
+    color: var(--vk-warning);
+    border: 1px solid var(--vk-warning-border);
+    border-radius: 20px;
+}
+
+.vk-badge-info {
+    background: var(--vk-info-bg);
+    color: var(--vk-info);
+    border: 1px solid var(--vk-info-border);
+    border-radius: 20px;
 }

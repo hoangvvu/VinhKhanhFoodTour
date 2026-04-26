@@ -1,4 +1,4 @@
-﻿using System.ComponentModel;
+using System.ComponentModel;
 using SQLite;
 
 namespace VKFoodTour.Mobile.Models;
@@ -14,7 +14,7 @@ public class Poi : INotifyPropertyChanged
     public double Latitude { get; set; }
     public double Longitude { get; set; }
     public int Radius { get; set; } = 20;
-    public int Priority { get; set; } = 1;
+    public string MembershipTier { get; set; } = "Standard";
     public double Rating { get; set; } = 5.0; // Điểm sao (ví dụ: 4.8)
     public int ReviewCount { get; set; } = 0; // Số lượng đánh giá
 

@@ -26,30 +26,30 @@
         border-radius: 8px;
     }
     .vk-dev-list-item:hover {
-        background: rgba(124,58,237,0.12) !important;
+        background: #F8FAFC !important;
     }
 </style>
 
-<div class="h-100 p-4" style="border-radius: 20px; background: linear-gradient(135deg, #1e0a3c 0%, #2d1b69 100%); border: 1px solid rgba(124,58,237,0.3); position: relative; overflow: hidden; min-height: 160px;">
+<div class="h-100 p-4" style="border-radius: 16px; background: #FFFFFF; border: 1px solid #E2E8F0; box-shadow: 0 4px 12px rgba(0,0,0,0.05); position: relative; overflow: hidden; min-height: 160px;">
     @* Decorative circles *@
-    <div style="position: absolute; top: -25px; right: -25px; width: 120px; height: 120px; background: rgba(124,58,237,0.12); border-radius: 50%; pointer-events:none;"></div>
-    <div style="position: absolute; bottom: -20px; right: 40px; width: 65px; height: 65px; background: rgba(124,58,237,0.07); border-radius: 50%; pointer-events:none;"></div>
+    <div style="position: absolute; top: -25px; right: -25px; width: 120px; height: 120px; background: rgba(139,92,246,0.05); border-radius: 50%; pointer-events:none;"></div>
+    <div style="position: absolute; bottom: -20px; right: 40px; width: 65px; height: 65px; background: rgba(139,92,246,0.03); border-radius: 50%; pointer-events:none;"></div>
 
     @* Header row *@
     <div class="d-flex justify-content-between align-items-start mb-3 position-relative">
         <div>
-            <div class="small fw-bold mb-2" style="letter-spacing: 1.5px; color: #a78bfa;">
+            <div class="small fw-bold mb-2" style="letter-spacing: 1px; color: #8B5CF6;">
                 @if (isLive)
                 {
-                    <span class="vk-dev-dot" style="color: #4ade80;">●</span>
+                    <span class="vk-dev-dot" style="color: #10B981;">●</span>
                 }
                 else if (isFirstLoad)
                 {
-                    <span style="color: #374151;">◌</span>
+                    <span style="color: #94A3B8;">◌</span>
                 }
                 else
                 {
-                    <span style="color: #6b7280;">○</span>
+                    <span style="color: #CBD5E1;">○</span>
                 }
                 <span class="ms-1">THIẾT BỊ ĐANG DÙNG APP</span>
             </div>
@@ -57,42 +57,42 @@
             @if (isFirstLoad)
             {
                 <div class="d-flex align-items-center gap-2 mt-1">
-                    <div class="spinner-border spinner-border-sm" style="color:#a78bfa; width:1.4rem; height:1.4rem;" role="status"></div>
-                    <span style="color:#4a3a7a; font-size:12px;">Đang kết nối…</span>
+                    <div class="spinner-border spinner-border-sm" style="color:#8B5CF6; width:1.4rem; height:1.4rem;" role="status"></div>
+                    <span style="color:#64748B; font-size:12px;">Đang kết nối…</span>
                 </div>
             }
             else
             {
-                <h1 class="vk-dev-count fw-bold mb-0" style="font-size: 3.2rem; color: #fff; line-height: 1;">@activeCount</h1>
-                <small style="color: #7c6faa; font-size: 11px; display: block; margin-top: 4px;">
+                <h1 class="vk-dev-count fw-bold mb-0" style="font-size: 3.2rem; color: #1E293B; line-height: 1;">@activeCount</h1>
+                <small style="color: #64748B; font-size: 11px; display: block; margin-top: 4px;">
                     thiết bị trong @windowSeconds giây qua
                 </small>
-                <small style="color: #4a3a7a; font-size: 10px;">
+                <small style="color: #94A3B8; font-size: 10px;">
                     cập nhật @secondsAgo giây trước
                 </small>
             }
         </div>
 
-        <div style="background: rgba(124,58,237,0.2); border-radius: 14px; padding: 12px; flex-shrink: 0;">
-            <i class="bi bi-phone-fill" style="font-size: 1.8rem; color: #a78bfa;"></i>
+        <div style="background: rgba(139,92,246,0.1); border-radius: 14px; padding: 12px; flex-shrink: 0;">
+            <i class="bi bi-phone-fill" style="font-size: 1.8rem; color: #8B5CF6;"></i>
         </div>
     </div>
 
     @* Device list *@
     @if (!isFirstLoad && activeDevices.Any())
     {
-        <div style="max-height: 160px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #4a3a7a transparent;">
+        <div style="max-height: 160px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #CBD5E1 transparent;">
             @foreach (var dev in activeDevices.Take(8))
             {
                 <div class="vk-dev-list-item d-flex justify-content-between align-items-center py-1 px-2 mb-1"
-                     style="background: rgba(255,255,255,0.03);">
+                     style="background: #F1F5F9;">
                     <div class="d-flex align-items-center gap-2">
-                        <span style="width:7px;height:7px;background:#4ade80;border-radius:50%;display:inline-block;flex-shrink:0;box-shadow:0 0 6px #4ade80;"></span>
-                        <small style="color:#d1c4f0;font-size:11px;font-family:monospace;">
+                        <span style="width:7px;height:7px;background:#10B981;border-radius:50%;display:inline-block;flex-shrink:0;box-shadow:0 0 6px rgba(16,185,129,0.5);"></span>
+                        <small style="color:#475569;font-size:11px;font-family:monospace;font-weight:500;">
                             @(dev.DeviceId.Length > 12 ? dev.DeviceId[..12] + "…" : dev.DeviceId)
                         </small>
                     </div>
-                    <small style="color:#a78bfa;font-size:11px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                    <small style="color:#8B5CF6;font-size:11px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500;">
                         @(dev.PoiName ?? "Đang khám phá")
                     </small>
                 </div>
@@ -100,7 +100,7 @@
             @if (activeDevices.Count > 8)
             {
                 <div class="text-center mt-1">
-                    <small style="color:#6b7280; font-size:11px;">+@(activeDevices.Count - 8) thiết bị khác</small>
+                    <small style="color:#94A3B8; font-size:11px;">+@(activeDevices.Count - 8) thiết bị khác</small>
                 </div>
             }
         </div>
@@ -108,8 +108,8 @@
     else if (!isFirstLoad)
     {
         <div class="text-center py-3">
-            <i class="bi bi-moon-stars" style="color:#4a3a7a; font-size:1.5rem;"></i>
-            <p class="mb-0 mt-1" style="color:#4a3a7a; font-size:12px;">Không có thiết bị hoạt động</p>
+            <i class="bi bi-moon-stars" style="color:#94A3B8; font-size:1.5rem;"></i>
+            <p class="mb-0 mt-1" style="color:#64748B; font-size:12px;">Không có thiết bị hoạt động</p>
         </div>
     }
 </div>

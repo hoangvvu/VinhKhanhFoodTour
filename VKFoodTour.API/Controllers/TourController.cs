@@ -69,7 +69,7 @@ public class TourController : ControllerBase
         
         var languageId = language?.LanguageId ?? 1; // fallback to Vietnamese
 
-        // Lấy tất cả POI active có audio
+        // Lấy tất cả POI active có audio — kèm Owner để lấy MembershipTier
         var poisWithAudio = await _context.Pois
             .AsNoTracking()
             .Include(p => p.Narrations.Where(n => n.IsActive && n.LanguageId == languageId))
@@ -82,6 +82,12 @@ public class TourController : ControllerBase
                  !string.IsNullOrEmpty(n.AudioUrlAuto) || 
                  !string.IsNullOrEmpty(n.AudioUrlQr))))
             .ToListAsync();
+
+        // Lookup membership tier cho từng vendor
+        var ownerIds = poisWithAudio.Where(p => p.OwnerId.HasValue).Select(p => p.OwnerId!.Value).Distinct();
+        var ownerTiers = await _context.Users.AsNoTracking()
+            .Where(u => ownerIds.Contains(u.UserId))
+            .ToDictionaryAsync(u => u.UserId, u => u.MembershipTier ?? "Standard");
 
         if (!poisWithAudio.Any())
         {
@@ -114,6 +120,7 @@ public class TourController : ControllerBase
                 request.Latitude, request.Longitude,
                 (double)poi.Latitude, (double)poi.Longitude);
 
+            var tier = poi.OwnerId.HasValue && ownerTiers.TryGetValue(poi.OwnerId.Value, out var t) ? t : "Standard";
             audioQueue.Add(new AudioQueueItemDto
             {
                 PoiId = poi.PoiId,
@@ -123,29 +130,33 @@ public class TourController : ControllerBase
                 AudioUrl = NormalizeAudioUrl(audioUrl, apiBaseUrl),
                 DistanceMeters = distance,
                 DurationSeconds = EstimateAudioDuration(narration.Content),
-                SortOrder = poi.Priority,
+                SortOrder = TierSortOrder(tier),
                 LanguageCode = narration.Language?.Code ?? "vi",
                 CoverImageUrl = NormalizeAudioUrl(poi.ImageUrl, apiBaseUrl),
                 Latitude = (double)poi.Latitude,
                 Longitude = (double)poi.Longitude,
-                PoiRadiusMeters = poi.Radius
+                PoiRadiusMeters = poi.Radius,
+                MembershipTier = tier,
+                TierBonusMeters = TierBonus(tier)
             });
         }
 
-        // Sắp xếp: nếu có priority POI (từ QR) thì đưa lên đầu, còn lại theo khoảng cách
+        // Sắp xếp: QR POI đầu → Tier (Diamond trước) → Khoảng cách → Tên
         if (priorityPoiId.HasValue)
         {
             audioQueue = audioQueue
                 .OrderByDescending(a => a.PoiId == priorityPoiId.Value) // POI từ QR lên đầu
-                .ThenBy(a => a.DistanceMeters) // Sau đó theo khoảng cách
-                .ThenBy(a => a.SortOrder) // Cuối cùng theo priority
+                .ThenBy(a => a.SortOrder)        // Tier: Diamond(1) → Standard(4)
+                .ThenBy(a => a.DistanceMeters)   // Gần hơn trước
+                .ThenBy(a => a.PoiName)          // Cuối cùng theo tên
                 .ToList();
         }
         else
         {
             audioQueue = audioQueue
-                .OrderBy(a => a.DistanceMeters)
-                .ThenBy(a => a.SortOrder)
+                .OrderBy(a => a.SortOrder)        // Tier: Diamond(1) → Standard(4)
+                .ThenBy(a => a.DistanceMeters)
+                .ThenBy(a => a.PoiName)
                 .ToList();
         }
 
@@ -222,6 +233,12 @@ public class TourController : ControllerBase
                  !string.IsNullOrEmpty(n.AudioUrlAuto))))
             .ToListAsync();
 
+        // Lookup membership tier cho từng vendor
+        var ownerIds2 = poisWithAudio.Where(p => p.OwnerId.HasValue).Select(p => p.OwnerId!.Value).Distinct();
+        var ownerTiers2 = await _context.Users.AsNoTracking()
+            .Where(u => ownerIds2.Contains(u.UserId))
+            .ToDictionaryAsync(u => u.UserId, u => u.MembershipTier ?? "Standard");
+
         var apiBaseUrl = GetApiBaseUrl();
         var audioQueue = new List<AudioQueueItemDto>();
 
@@ -238,6 +255,7 @@ public class TourController : ControllerBase
 
             var distance = CalculateDistanceMeters(lat, lng, (double)poi.Latitude, (double)poi.Longitude);
 
+            var tier2 = poi.OwnerId.HasValue && ownerTiers2.TryGetValue(poi.OwnerId.Value, out var t2) ? t2 : "Standard";
             audioQueue.Add(new AudioQueueItemDto
             {
                 PoiId = poi.PoiId,
@@ -247,18 +265,21 @@ public class TourController : ControllerBase
                 AudioUrl = NormalizeAudioUrl(audioUrl, apiBaseUrl),
                 DistanceMeters = distance,
                 DurationSeconds = EstimateAudioDuration(narration.Content),
-                SortOrder = poi.Priority,
+                SortOrder = TierSortOrder(tier2),
                 LanguageCode = narration.Language?.Code ?? "vi",
                 CoverImageUrl = NormalizeAudioUrl(poi.ImageUrl, apiBaseUrl),
                 Latitude = (double)poi.Latitude,
                 Longitude = (double)poi.Longitude,
-                PoiRadiusMeters = poi.Radius
+                PoiRadiusMeters = poi.Radius,
+                MembershipTier = tier2,
+                TierBonusMeters = TierBonus(tier2)
             });
         }
 
         var sorted = audioQueue
-            .OrderBy(a => a.DistanceMeters)
-            .ThenBy(a => a.SortOrder)
+            .OrderBy(a => a.SortOrder)
+            .ThenBy(a => a.DistanceMeters)
+            .ThenBy(a => a.PoiName)
             .ToList();
 
         if (limit.HasValue && limit.Value > 0)
@@ -368,6 +389,24 @@ public class TourController : ControllerBase
 
         return AllowedEventTypes.Contains(normalized) ? normalized : "move";
     }
+
+    /// <summary>Chuyển tier thành sort order: Diamond=1 (cao nhất), Standard=4 (thấp nhất).</summary>
+    private static int TierSortOrder(string? tier) => (tier ?? "Standard") switch
+    {
+        "Diamond" => 1,
+        "Gold" => 2,
+        "Silver" => 3,
+        _ => 4
+    };
+
+    /// <summary>Bonus bán kính geofence (meters) theo gói thành viên.</summary>
+    private static int TierBonus(string? tier) => (tier ?? "Standard") switch
+    {
+        "Diamond" => 15,
+        "Gold" => 10,
+        "Silver" => 5,
+        _ => 0
+    };
 
     #endregion
 }

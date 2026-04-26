@@ -5,15 +5,18 @@ namespace VKFoodTour.Mobile;
 
 public partial class App : Application
 {
+    private const int ForegroundHeartbeatSeconds = 20;
     private readonly AppShell _shell;
     private readonly IServiceProvider _services;
     private readonly IAuthSessionService _session;
     private readonly ILocalizationService _localization;
     private readonly ISettingsService _settings;
+    private System.Threading.Timer? _foregroundHeartbeatTimer;
 
     public App(AppShell shell, IServiceProvider services, IAuthSessionService session, ILocalizationService localization, ISettingsService settings)
     {
         InitializeComponent(); // Colors.xaml / Styles.xaml được merge tại đây
+        UserAppTheme = AppTheme.Light;
         _shell = shell;
         _services = services;
         _session = session;
@@ -31,9 +34,27 @@ public partial class App : Application
         var welcome = _services.GetRequiredService<WelcomePage>();
         var window = new Window(new NavigationPage(welcome));
 
+        void StopForegroundHeartbeat()
+        {
+            _foregroundHeartbeatTimer?.Dispose();
+            _foregroundHeartbeatTimer = null;
+        }
+
+        void StartForegroundHeartbeat()
+        {
+            StopForegroundHeartbeat();
+            _foregroundHeartbeatTimer = new System.Threading.Timer(_ =>
+            {
+                var dataService = _services.GetService<IDataService>();
+                if (dataService != null)
+                    _ = dataService.TrackEventAsync(poiId: null, eventType: "move");
+            }, null, TimeSpan.FromSeconds(ForegroundHeartbeatSeconds), TimeSpan.FromSeconds(ForegroundHeartbeatSeconds));
+        }
+
         // Báo offline khi thoát/ẩn app
         window.Stopped += (s, e) =>
         {
+            StopForegroundHeartbeat();
             var dataService = _services.GetService<IDataService>();
             if (dataService != null)
                 _ = dataService.TrackEventAsync(poiId: null, eventType: "exit");
@@ -41,6 +62,7 @@ public partial class App : Application
 
         window.Destroying += (s, e) =>
         {
+            StopForegroundHeartbeat();
             var dataService = _services.GetService<IDataService>();
             if (dataService != null)
                 _ = dataService.TrackEventAsync(poiId: null, eventType: "exit");
@@ -49,10 +71,14 @@ public partial class App : Application
         // Báo online lại khi mở app lên
         window.Resumed += (s, e) =>
         {
+            StartForegroundHeartbeat();
             var dataService = _services.GetService<IDataService>();
             if (dataService != null)
                 _ = dataService.TrackEventAsync(poiId: null, eventType: "move");
         };
+
+        // Bắt đầu heartbeat ngay khi app mở lần đầu.
+        StartForegroundHeartbeat();
 
         return window;
     }

@@ -9,8 +9,8 @@
 <div class="dash-page p-4">
     <div class="d-flex justify-content-between align-items-center mb-5">
         <div>
-            <h2 class="fw-bold mb-1" style="color: #F0EBE3;">NHÂN SỰ QUẢN TRỊ</h2>
-            <span style="color: #4a4a5a; font-size: 13px;"><i class="bi bi-clock me-1"></i>Quản lý tài khoản hệ thống</span>
+            <h2 class="fw-bold mb-1" style="color: #1E293B;">NHÂN SỰ QUẢN TRỊ</h2>
+            <span style="color: #64748B; font-size: 13px;"><i class="bi bi-clock me-1"></i>Quản lý tài khoản hệ thống</span>
         </div>
         <button class="btn btn-danger rounded-pill px-4 shadow" @onclick="ShowModal">
             <i class="bi bi-person-plus me-2"></i>Thêm người dùng
@@ -21,7 +21,7 @@
     {
         <div class="text-center py-5">
             <div class="spinner-border text-danger" style="width:2.5rem;height:2.5rem;" role="status"></div>
-            <p style="color:#4a4a5a;font-size:13px;letter-spacing:1px;margin-top:12px;">ĐANG TẢI...</p>
+            <p style="color:#64748B;font-size:13px;letter-spacing:1px;margin-top:12px;">ĐANG TẢI...</p>
         </div>
     }
     else
@@ -37,13 +37,13 @@
                                     @(string.IsNullOrWhiteSpace(user.Name) ? "U" : user.Name.Substring(0, 1).ToUpper())
                                 </div>
                                 <div class="flex-grow-1">
-                                    <h6 class="mb-1 fw-bold" style="color:#F0EBE3;">@user.Name</h6>
-                                    <small style="color:#4a4a5a;" class="d-block mb-2">@user.Email</small>
+                                    <h6 class="mb-1 fw-bold" style="color:#1E293B;">@user.Name</h6>
+                                    <small style="color:#64748B;" class="d-block mb-2">@user.Email</small>
                                     <div>
-                                        <span class="badge px-3 py-2" style="@(user.Role == "Admin" ? "background:rgba(232,160,32,0.12);color:#E8A020;border:1px solid rgba(232,160,32,0.25);border-radius:20px;" : "background:rgba(34,197,94,0.12);color:#4ade80;border:1px solid rgba(34,197,94,0.25);border-radius:20px;")">@user.Role</span>
+                                        <span class="badge px-3 py-2 @(user.Role == "Admin" ? "vk-badge-warning" : "vk-badge-success")">@user.Role</span>
                                         @if (user.IsActive)
                                         {
-                                            <span class="badge px-3 py-2 ms-1" style="background:rgba(34,197,94,0.12);color:#4ade80;border:1px solid rgba(34,197,94,0.25);border-radius:20px;">Hoạt động</span>
+                                            <span class="badge px-3 py-2 ms-1 vk-badge-success">Hoạt động</span>
                                         }
                                         else
                                         {
@@ -52,7 +52,7 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="mt-3 pt-3" style="border-top:1px solid rgba(255,255,255,0.06);">
+                            <div class="mt-3 pt-3" style="border-top:1px solid #E2E8F0;">
                                 <button type="button"
                                         class="btn btn-sm w-100 rounded-pill @(user.IsActive ? "btn-outline-warning" : "btn-outline-success")"
                                         disabled="@(user.UserId == currentUserId || togglingId == user.UserId)"
@@ -66,7 +66,7 @@
                                 </button>
                                 @if (user.UserId == currentUserId)
                                 {
-                                    <small style="color:#4a4a5a;" class="d-block mt-2 text-center">Không thể ẩn chính mình.</small>
+                                    <small style="color:#64748B;" class="d-block mt-2 text-center">Không thể ẩn chính mình.</small>
                                 }
                             </div>
                         </div>
@@ -80,12 +80,12 @@
 @* ── MODAL THÊM NGƯỜI DÙNG & GIAN HÀNG ── *@
 @if (isShowModal)
 {
-    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.8); backdrop-filter: blur(4px); overflow-y: auto;">
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.4); backdrop-filter: blur(4px); overflow-y: auto;">
         <div class="modal-dialog modal-dialog-centered" style="max-width: 600px;">
-            <div class="modal-content border-0" style="background:#1a1a24;border-radius:20px;border:1px solid rgba(255,255,255,0.08);">
-                <div class="modal-header" style="border-bottom:1px solid rgba(255,255,255,0.06);">
-                    <h5 class="modal-title fw-bold" style="color:#F0EBE3;">Thêm Nhân Sự & Gian Hàng Mới</h5>
-                    <button type="button" class="btn-close btn-close-white" @onclick="HideModal"></button>
+            <div class="modal-content shadow border-0" style="background:#FFFFFF;border-radius:20px;border:1px solid #E2E8F0 !important;">
+                <div class="modal-header" style="border-bottom:1px solid #E2E8F0;">
+                    <h5 class="modal-title fw-bold" style="color:#1E293B;">Thêm Nhân Sự & Gian Hàng Mới</h5>
+                    <button type="button" class="btn-close" @onclick="HideModal"></button>
                 </div>
                 <div class="modal-body p-4">
                     @if (!string.IsNullOrEmpty(errorMessage))
@@ -95,22 +95,22 @@
 
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label class="form-label" style="color:#8A8078;font-size:11px;letter-spacing:1px;font-weight:700;">HỌ VÀ TÊN</label>
+                            <label class="form-label" style="color:#64748B;font-size:11px;letter-spacing:1px;font-weight:700;">HỌ VÀ TÊN</label>
                             <input type="text" class="form-control dash-input rounded-3" @bind="newName" placeholder="VD: Nguyễn Văn A" />
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label class="form-label" style="color:#8A8078;font-size:11px;letter-spacing:1px;font-weight:700;">EMAIL ĐĂNG NHẬP</label>
+                            <label class="form-label" style="color:#64748B;font-size:11px;letter-spacing:1px;font-weight:700;">EMAIL ĐĂNG NHẬP</label>
                             <input type="email" class="form-control dash-input rounded-3" @bind="newEmail" placeholder="VD: vendor1@vinhkhanh.vn" />
                         </div>
                     </div>
 
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label class="form-label" style="color:#8A8078;font-size:11px;letter-spacing:1px;font-weight:700;">MẬT KHẨU</label>
+                            <label class="form-label" style="color:#64748B;font-size:11px;letter-spacing:1px;font-weight:700;">MẬT KHẨU</label>
                             <input type="password" class="form-control dash-input rounded-3" @bind="newPassword" placeholder="Tạo mật khẩu..." />
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label class="form-label" style="color:#8A8078;font-size:11px;letter-spacing:1px;font-weight:700;">PHÂN QUYỀN</label>
+                            <label class="form-label" style="color:#64748B;font-size:11px;letter-spacing:1px;font-weight:700;">PHÂN QUYỀN</label>
                             <select class="form-select dash-input rounded-3" @bind="newRole">
                                 <option value="Vendor">Vendor (Chủ quán ăn)</option>
                                 <option value="Admin">Admin (Quản trị viên)</option>
@@ -120,21 +120,21 @@
 
                     @if (newRole == "Vendor")
                     {
-                        <hr style="border-color: rgba(255,255,255,0.06);" />
-                        <h6 class="fw-bold mb-3" style="color:#F0EBE3;">Thông Tin Kèm Theo (Gian Hàng)</h6>
+                        <hr style="border-color: #E2E8F0;" />
+                        <h6 class="fw-bold mb-3" style="color:#1E293B;">Thông Tin Kèm Theo (Gian Hàng)</h6>
                         
                         <div class="row">
                             <div class="col-12 mb-3">
-                                <label class="form-label" style="color:#8A8078;font-size:11px;letter-spacing:1px;font-weight:700;">TÊN QUÁN ĂN (SƠ BỘ)</label>
+                                <label class="form-label" style="color:#64748B;font-size:11px;letter-spacing:1px;font-weight:700;">TÊN QUÁN ĂN (SƠ BỘ)</label>
                                 <input type="text" class="form-control dash-input rounded-3" @bind="newPoiName" placeholder="Tên gian hàng..." />
-                                <div class="form-text mt-1" style="color:#4a4a5a; font-size: 11px;">Vendor sẽ tự cập nhật địa chỉ và tọa độ sau khi đăng nhập.</div>
+                                <div class="form-text mt-1" style="color:#64748B; font-size: 11px;">Vendor sẽ tự cập nhật địa chỉ và tọa độ sau khi đăng nhập.</div>
                             </div>
                         </div>
                     }
 
                 </div>
-                <div class="modal-footer" style="border-top:1px solid rgba(255,255,255,0.06);">
-                    <button type="button" class="btn btn-outline-light rounded-pill px-4" @onclick="HideModal">Hủy</button>
+                <div class="modal-footer" style="border-top:1px solid #E2E8F0;">
+                    <button type="button" class="btn btn-outline-secondary rounded-pill px-4" @onclick="HideModal">Hủy</button>
                     <button type="button" class="btn btn-danger rounded-pill px-4 fw-bold shadow-sm" @onclick="SaveUser" disabled="@isSaving">
                         @if (isSaving) {
                             <span class="spinner-border spinner-border-sm me-2"></span> <span>Đang lưu...</span>

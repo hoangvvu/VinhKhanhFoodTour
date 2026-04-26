@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using VKFoodTour.Infrastructure.Data;
 using VKFoodTour.Shared.DTOs; // <-- Thêm dòng này
@@ -21,11 +21,14 @@ namespace VKFoodTour.Api.Controllers
         {
             var targetCode = NormalizeLanguageCode(lang);
 
+            // Lookup membership tier cho các vendor
+            var vendorTiers = await _context.Users.AsNoTracking()
+                .Where(u => u.Role == "Vendor")
+                .ToDictionaryAsync(u => u.UserId, u => u.MembershipTier ?? "Standard");
+
             var pois = await _context.Pois
                 .AsNoTracking()
                 .Where(p => p.IsActive)
-                .OrderBy(p => p.Priority)
-                .ThenBy(p => p.Name)
                 .Select(p => new PoiDto
                 {
                     PoiId = p.PoiId,
@@ -49,7 +52,9 @@ namespace VKFoodTour.Api.Controllers
                     Latitude = p.Latitude,
                     Longitude = p.Longitude,
                     Radius = p.Radius,
-                    Priority = p.Priority,
+                    MembershipTier = p.OwnerId.HasValue
+                        ? _context.Users.Where(u => u.UserId == p.OwnerId.Value).Select(u => u.MembershipTier ?? "Standard").FirstOrDefault() ?? "Standard"
+                        : "Standard",
                     Description =
                         _context.Narrations
                             .Where(n => n.PoiId == p.PoiId && n.IsActive && n.Language != null && n.Language.Code == targetCode)
@@ -104,7 +109,9 @@ namespace VKFoodTour.Api.Controllers
                     Latitude = p.Latitude,
                     Longitude = p.Longitude,
                     Radius = p.Radius,
-                    Priority = p.Priority,
+                    MembershipTier = p.OwnerId.HasValue
+                        ? _context.Users.Where(u => u.UserId == p.OwnerId.Value).Select(u => u.MembershipTier ?? "Standard").FirstOrDefault() ?? "Standard"
+                        : "Standard",
                     Description =
                         _context.Narrations
                             .Where(n => n.PoiId == p.PoiId && n.IsActive && n.Language != null && n.Language.Code == targetCode)

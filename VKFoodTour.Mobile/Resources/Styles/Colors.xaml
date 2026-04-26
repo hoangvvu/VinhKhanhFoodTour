@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="UTF-8" ?>
+<?xml version="1.0" encoding="UTF-8" ?>
 <ResourceDictionary
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
@@ -6,12 +6,12 @@
     <!-- ══════════════════════════════════════════════
          VĨNH KHÁNH BRAND COLORS
          ══════════════════════════════════════════════ -->
-    <Color x:Key="VKBg">#0F0E0E</Color>
-    <Color x:Key="VKCard">#1A1818</Color>
-    <Color x:Key="VKCardDeep">#141212</Color>
-    <Color x:Key="VKCardLight">#222020</Color>
-    <Color x:Key="VKStroke">#2E2A2A</Color>
-    <Color x:Key="VKStrokeFaint">#201E1E</Color>
+    <Color x:Key="VKBg">#F4F6FA</Color>
+    <Color x:Key="VKCard">#FFFFFF</Color>
+    <Color x:Key="VKCardDeep">#F8FAFC</Color>
+    <Color x:Key="VKCardLight">#F1F5F9</Color>
+    <Color x:Key="VKStroke">#E2E8F0</Color>
+    <Color x:Key="VKStrokeFaint">#F1F5F9</Color>
 
     <Color x:Key="VKRed">#C8372D</Color>
     <Color x:Key="VKRedDark">#8B1E1E</Color>
@@ -19,23 +19,23 @@
     <Color x:Key="VKGold">#E8A020</Color>
     <Color x:Key="VKGoldDark">#B87800</Color>
 
-    <Color x:Key="VKText">#F0EBE3</Color>
-    <Color x:Key="VKTextMuted">#8A8078</Color>
-    <Color x:Key="VKTextFaint">#5A5050</Color>
-    <Color x:Key="VKTextDisabled">#3A3030</Color>
+    <Color x:Key="VKText">#1E293B</Color>
+    <Color x:Key="VKTextMuted">#64748B</Color>
+    <Color x:Key="VKTextFaint">#94A3B8</Color>
+    <Color x:Key="VKTextDisabled">#CBD5E1</Color>
 
     <!-- System colors (kept for backward compat) -->
     <Color x:Key="Primary">#C8372D</Color>
     <Color x:Key="PrimaryDark">#8B1E1E</Color>
-    <Color x:Key="PrimaryDarkText">#F0EBE3</Color>
+    <Color x:Key="PrimaryDarkText">#1E293B</Color>
     <Color x:Key="Secondary">#E8A020</Color>
-    <Color x:Key="SecondaryDarkText">#0F0E0E</Color>
-    <Color x:Key="Tertiary">#1A1818</Color>
+    <Color x:Key="SecondaryDarkText">#1E293B</Color>
+    <Color x:Key="Tertiary">#FFFFFF</Color>
 
     <!-- Required by Styles.xaml — keep these keys to avoid KeyNotFoundException -->
     <Color x:Key="Magenta">#D600AA</Color>
     <Color x:Key="MidnightBlue">#190649</Color>
-    <Color x:Key="OffBlack">#0F0E0E</Color>
+    <Color x:Key="OffBlack">#1E293B</Color>
 
     <Color x:Key="White">#FFFFFF</Color>
     <Color x:Key="Black">#000000</Color>
@@ -49,8 +49,8 @@
     <Color x:Key="Gray950">#141414</Color>
 
     <!-- Brush variants for Border.Stroke (Brush type, not Color) -->
-    <SolidColorBrush x:Key="VKStrokeBrush"      Color="#2E2A2A"/>
-    <SolidColorBrush x:Key="VKStrokeFaintBrush" Color="#201E1E"/>
+    <SolidColorBrush x:Key="VKStrokeBrush"      Color="#E2E8F0"/>
+    <SolidColorBrush x:Key="VKStrokeFaintBrush" Color="#F1F5F9"/>
     <SolidColorBrush x:Key="VKRedBrush"         Color="#C8372D"/>
     <SolidColorBrush x:Key="VKGoldBrush"        Color="#E8A020"/>
 

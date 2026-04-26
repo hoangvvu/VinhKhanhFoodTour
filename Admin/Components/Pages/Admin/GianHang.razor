@@ -10,8 +10,8 @@
 <div class="dash-page p-4">
     <div class="d-flex justify-content-between align-items-center mb-5">
         <div>
-            <h2 class="fw-bold mb-1" style="color: #F0EBE3;">QUẢN LÝ GIAN HÀNG</h2>
-            <span style="color: #4a4a5a; font-size: 13px;"><i class="bi bi-shop me-1"></i>Toàn bộ gian hàng trên phố Vĩnh Khánh</span>
+            <h2 class="fw-bold mb-1" style="color: #1E293B;">QUẢN LÝ GIAN HÀNG</h2>
+            <span style="color: #64748B; font-size: 13px;"><i class="bi bi-shop me-1"></i>Toàn bộ gian hàng trên phố Vĩnh Khánh</span>
         </div>
         <a href="/admin/pois" class="btn btn-danger rounded-pill px-4 shadow">
             <i class="bi bi-pencil-square me-2"></i>Chỉnh sửa / ẩn gian hàng
@@ -22,7 +22,7 @@
     {
         <div class="text-center py-5">
             <div class="spinner-border text-danger" style="width:2.5rem;height:2.5rem;" role="status"></div>
-            <p style="color:#4a4a5a;font-size:13px;letter-spacing:1px;margin-top:12px;">ĐANG TẢI...</p>
+            <p style="color:#64748B;font-size:13px;letter-spacing:1px;margin-top:12px;">ĐANG TẢI...</p>
         </div>
     }
     else
@@ -30,7 +30,7 @@
         <div class="dash-card" style="overflow:hidden;">
             <div class="table-responsive">
                 <table class="table dash-table mb-0">
-                        <thead class="bg-black text-muted small">
+                        <thead class="bg-light text-muted small">
                             <tr>
                                 <th class="ps-4 py-3">GIAN HÀNG</th>
                                 <th>CHỦ &amp; GMAIL</th>
@@ -53,7 +53,7 @@
                                         </span>
                                     </td>
                                     <td class="small">
-                                        <div class="text-white">@row.OwnerName</div>
+                                        <div class="text-dark">@row.OwnerName</div>
                                         <div class="text-muted">@row.OwnerEmail</div>
                                     </td>
                                     <td>
@@ -122,30 +122,30 @@
 
 @if (editRow is not null)
 {
-    <div class="modal fade show d-block" tabindex="-1" style="background:rgba(0,0,0,0.75);">
+    <div class="modal fade show d-block" tabindex="-1" style="background:rgba(0,0,0,0.4); backdrop-filter: blur(4px);">
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content border-0" style="background:#1a1a24;border-radius:18px;">
+            <div class="modal-content border-0" style="background:#FFFFFF;border-radius:18px;border:1px solid #E2E8F0;">
                 <div class="modal-header border-0">
-                    <h5 class="modal-title text-white">Sửa ưu tiên & geofence</h5>
-                    <button type="button" class="btn-close btn-close-white" @onclick="CloseQuickEdit"></button>
+                    <h5 class="modal-title text-dark">Sửa ưu tiên & geofence</h5>
+                    <button type="button" class="btn-close" @onclick="CloseQuickEdit"></button>
                 </div>
                 <div class="modal-body">
                     <div class="text-muted small mb-3">@editRow.PoiName</div>
                     <div class="mb-3">
-                        <label class="form-label text-white-50 small">MỨC ƯU TIÊN</label>
+                        <label class="form-label text-muted small">MỨC ƯU TIÊN</label>
                         <input type="number" min="1" max="5" class="form-control"
-                               style="background:#121520;color:#F0EBE3;border-color:rgba(255,255,255,0.2);"
+                               style="background:#F8FAFC;color:#1E293B;border-color:#E2E8F0;"
                                @bind="editPriority" />
                     </div>
                     <div>
-                        <label class="form-label text-white-50 small">BÁN KÍNH GEOFENCE (m)</label>
+                        <label class="form-label text-muted small">BÁN KÍNH GEOFENCE (m)</label>
                         <input type="number" min="5" max="200" class="form-control"
-                               style="background:#121520;color:#F0EBE3;border-color:rgba(255,255,255,0.2);"
+                               style="background:#F8FAFC;color:#1E293B;border-color:#E2E8F0;"
                                @bind="editRadius" />
                     </div>
                 </div>
                 <div class="modal-footer border-0">
-                    <button class="btn btn-outline-light rounded-pill" @onclick="CloseQuickEdit">Hủy</button>
+                    <button class="btn btn-outline-secondary rounded-pill" @onclick="CloseQuickEdit">Hủy</button>
                     <button class="btn btn-warning rounded-pill" disabled="@isSavingQuickEdit" @onclick="SaveQuickEditAsync">
                         @if (isSavingQuickEdit)
                         {

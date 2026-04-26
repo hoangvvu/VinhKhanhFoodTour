@@ -15,23 +15,23 @@
    redirect sang trang chính (Interactive).
    ══════════════════════════════════════════════════════════ *@
 
-<div style="background-color: #0F0E0E; min-height: 100vh; display: flex; align-items: center; justify-content: center;">
+<div style="background: linear-gradient(135deg, #F4F6FA 0%, #E8ECFF 50%, #FDE8E8 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center;">
     <div style="width: 400px;">
 
         @* Logo *@
         <div class="text-center mb-4">
-            <div style="font-size: 32px; color: #E8A020; font-weight: bold; letter-spacing: 2px;">
+            <div style="font-size: 32px; color: #C8372D; font-weight: bold; letter-spacing: 2px;">
                 VĨNH KHÁNH
             </div>
-            <div style="font-size: 12px; color: #8A8078; letter-spacing: 3px;">
+            <div style="font-size: 12px; color: #64748B; letter-spacing: 3px;">
                 ADMIN PORTAL
             </div>
         </div>
 
         @* Card đăng nhập *@
-        <div style="background-color: #1A1818; border-radius: 20px; padding: 40px;">
+        <div style="background-color: #FFFFFF; border-radius: 20px; padding: 40px; box-shadow: 0 8px 32px rgba(0,0,0,0.08); border: 1px solid #E2E8F0;">
 
-            <h5 class="text-center mb-4" style="color: #F0EBE3; font-weight: 600;">
+            <h5 class="text-center mb-4" style="color: #1E293B; font-weight: 600;">
                 Đăng nhập
             </h5>
 
@@ -47,24 +47,24 @@
                 <AntiforgeryToken />
 
                 <div class="mb-3">
-                    <label class="form-label small" style="color: #8A8078; text-transform: uppercase; letter-spacing: 1px;">
+                    <label class="form-label small" style="color: #64748B; text-transform: uppercase; letter-spacing: 1px;">
                         Email
                     </label>
                     <input type="email" name="email"
                            class="form-control border-0 ps-3"
-                           style="background-color: #262121; color: #F0EBE3; border-radius: 12px; height: 48px;"
+                           style="background-color: #F8FAFC; color: #1E293B; border-radius: 12px; height: 48px; border: 1px solid #E2E8F0 !important;"
                            placeholder="admin@vinhkhanh.vn"
                            @bind="email"
                            required />
                 </div>
 
                 <div class="mb-4">
-                    <label class="form-label small" style="color: #8A8078; text-transform: uppercase; letter-spacing: 1px;">
+                    <label class="form-label small" style="color: #64748B; text-transform: uppercase; letter-spacing: 1px;">
                         Mật khẩu
                     </label>
                     <input type="password" name="password"
                            class="form-control border-0 ps-3"
-                           style="background-color: #262121; color: #F0EBE3; border-radius: 12px; height: 48px;"
+                           style="background-color: #F8FAFC; color: #1E293B; border-radius: 12px; height: 48px; border: 1px solid #E2E8F0 !important;"
                            placeholder="••••••••"
                            @bind="password"
                            required />
@@ -80,14 +80,14 @@
             @if (!string.IsNullOrWhiteSpace(Configuration["Authentication:Google:ClientId"]))
             {
                 <div class="text-center text-muted small my-3">hoặc</div>
-                <a href="/auth/google" class="btn w-100 btn-outline-light" style="border-radius: 12px; height: 48px; font-weight: 600;">
+                <a href="/auth/google" class="btn w-100 btn-outline-secondary" style="border-radius: 12px; height: 48px; font-weight: 600;">
                     <i class="bi bi-google me-2"></i>Đăng nhập bằng Google
                 </a>
                 <p class="text-muted small mt-2 mb-0 text-center">Lần đầu: tạo tài khoản chủ quán và gian hàng mặc định theo email.</p>
             }
         </div>
 
-        <p class="text-center mt-3" style="color: #8A8078; font-size: 12px;">
+        <p class="text-center mt-3" style="color: #64748B; font-size: 12px;">
             Vĩnh Khánh Food Tour &copy; 2026
         </p>
     </div>

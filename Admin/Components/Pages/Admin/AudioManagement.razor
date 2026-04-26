@@ -13,7 +13,7 @@
 <div class="dash-page p-4">
     <div class="d-flex justify-content-between align-items-center mb-5">
         <div>
-            <h2 class="fw-bold mb-1" style="color:#F0EBE3;"><i class="bi bi-soundwave me-2 text-danger"></i>Quản lý Audio Toàn Hệ Thống</h2>
+            <h2 class="fw-bold mb-1" style="color:#1E293B;"><i class="bi bi-soundwave me-2 text-danger"></i>Quản lý Audio Toàn Hệ Thống</h2>
             <p class="text-muted mb-0">Tạo, xem và quản lý audio thuyết minh cho tất cả gian hàng</p>
         </div>
         <button class="btn btn-danger rounded-pill" @onclick="GenerateAllTtsAsync" disabled="@isGeneratingAll">
@@ -79,7 +79,7 @@
             <div class="col-md-4 text-end">
                 <img src="@masterQrImageUrl" alt="Master QR" class="img-fluid" style="max-width: 150px;" />
                 <div class="mt-2">
-                    <a href="@masterQrImageUrl" download="VinhKhanh-Tour-QR.png" class="btn btn-outline-light btn-sm rounded-pill">
+                    <a href="@masterQrImageUrl" download="VinhKhanh-Tour-QR.png" class="btn btn-outline-secondary btn-sm rounded-pill">
                         <i class="bi bi-download me-1"></i>Tải ảnh QR
                     </a>
                 </div>
@@ -116,7 +116,7 @@
                             <tr>
                                 <td class="text-muted">@(index + 1)</td>
                                 <td>
-                                    <div class="fw-bold text-white">@poi.Name</div>
+                                    <div class="fw-bold text-dark">@poi.Name</div>
                                     <div class="text-muted small">@(poi.Address ?? "Chưa có địa chỉ")</div>
                                 </td>
                                 <td class="text-muted small">@(poi.OwnerId?.ToString() ?? "—")</td>
@@ -131,14 +131,14 @@
                                             var hasAudio = !string.IsNullOrEmpty(nar?.AudioUrlQr) || !string.IsNullOrEmpty(nar?.AudioUrlAuto);
                                             
                                             <div class="btn-group btn-group-sm">
-                                                <span class="badge @(hasAudio ? "bg-success" : "bg-dark border border-secondary text-muted")" 
+                                                <span class="badge @(hasAudio ? "bg-success" : "bg-light border border-secondary text-muted")" 
                                                       style="min-width: 35px; cursor: default;" 
                                                       title="@(hasAudio ? $"Đã có audio {lang.Name}" : $"Chưa có audio {lang.Name}")">
                                                     @lang.Code.ToUpper()
                                                 </span>
                                                 @if (hasAudio)
                                                 {
-                                                    <button class="btn btn-sm btn-outline-light py-0 px-1" style="font-size: 10px;"
+                                                    <button class="btn btn-sm btn-outline-secondary py-0 px-1" style="font-size: 10px;"
                                                             @onclick="() => PlayAudio(nar?.AudioUrlQr ?? nar?.AudioUrlAuto)">
                                                         <i class="bi bi-play-fill"></i>
                                                     </button>
@@ -173,7 +173,7 @@
                                                 <i class="bi bi-arrow-repeat"></i>
                                             }
                                         </button>
-                                        <button class="btn btn-outline-light" title="Tạo QR" 
+                                        <button class="btn btn-outline-secondary" title="Tạo QR" 
                                                 @onclick="() => CreateQrForPoiAsync(poi)">
                                             <i class="bi bi-qr-code"></i>
                                         </button>
@@ -189,7 +189,7 @@
     <!-- Audio Player (floating) -->
     @if (!string.IsNullOrEmpty(currentPlayingUrl))
     {
-        <div class="position-fixed bottom-0 start-50 translate-middle-x mb-3 p-3 bg-dark rounded-pill shadow-lg border border-secondary"
+        <div class="position-fixed bottom-0 start-50 translate-middle-x mb-3 p-3 bg-white rounded-pill shadow-lg border border-light"
              style="z-index: 1050; min-width: 400px;">
             <div class="d-flex align-items-center gap-3">
                 <button class="btn btn-danger btn-sm rounded-circle" @onclick="StopAudio">
@@ -198,7 +198,7 @@
                 <audio id="audioPlayer" controls autoplay class="flex-grow-1" style="height: 36px;">
                     <source src="@currentPlayingUrl" type="audio/mpeg" />
                 </audio>
-                <button class="btn btn-outline-light btn-sm rounded-circle" @onclick="() => currentPlayingUrl = null">
+                <button class="btn btn-outline-secondary btn-sm rounded-circle" @onclick="() => currentPlayingUrl = null">
                     <i class="bi bi-x"></i>
                 </button>
             </div>

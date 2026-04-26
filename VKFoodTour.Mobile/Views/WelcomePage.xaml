@@ -2,12 +2,12 @@
 <ContentPage x:Class="VKFoodTour.Mobile.Views.WelcomePage"
              xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-             BackgroundColor="#0F0E0E"
+             BackgroundColor="{StaticResource VKBg}"
              Shell.NavBarIsVisible="False">
 
     <Grid>
         <!-- Decorative top accent strip -->
-        <BoxView Color="#2A0A08"
+        <BoxView Color="#FFE4E6"
                  VerticalOptions="Start"
                  HeightRequest="380"/>
 
@@ -43,20 +43,20 @@
                        FontFamily="BebasNeue"
                        FontSize="48"
                        CharacterSpacing="1"
-                       TextColor="#F0EBE3"
+                       TextColor="{StaticResource VKText}"
                        HorizontalOptions="Center"/>
 
                 <!-- Tagline -->
                 <Label Text="Khám phá hương vị đường phố&#10;ngay trong lòng bàn tay bạn"
                        FontSize="15"
-                       TextColor="#9A8F8F"
+                       TextColor="{StaticResource VKTextMuted}"
                        HorizontalOptions="Center"
                        HorizontalTextAlignment="Center"
                        LineHeight="1.5"
                        Margin="0,18,0,0"/>
 
                 <!-- Divider -->
-                <BoxView Color="#2A1A1A"
+                <BoxView Color="{StaticResource VKStroke}"
                          HeightRequest="1"
                          Margin="20,32,20,32"/>
 
@@ -65,11 +65,11 @@
 
                     <HorizontalStackLayout Spacing="12" HorizontalOptions="Center">
                         <!-- Pill 1 -->
-                        <Border BackgroundColor="#1E1218"
+                        <Border BackgroundColor="#FFF1F2"
                                 StrokeThickness="1"
                                 Padding="12,7">
                             <Border.Stroke>
-                                <SolidColorBrush Color="#3D1515"/>
+                                <SolidColorBrush Color="#FECDD3"/>
                             </Border.Stroke>
                             <Border.StrokeShape>
                                 <RoundRectangle CornerRadius="20"/>
@@ -77,16 +77,16 @@
                             <HorizontalStackLayout Spacing="6">
                                 <Label Text="🗺️" FontSize="13" VerticalOptions="Center"/>
                                 <Label Text="Bản đồ thực tế" FontSize="12"
-                                       TextColor="#C4B5B5" VerticalOptions="Center"/>
+                                       TextColor="{StaticResource VKTextMuted}" VerticalOptions="Center"/>
                             </HorizontalStackLayout>
                         </Border>
 
                         <!-- Pill 2 -->
-                        <Border BackgroundColor="#0F1A18"
+                        <Border BackgroundColor="#ECFDF5"
                                 StrokeThickness="1"
                                 Padding="12,7">
                             <Border.Stroke>
-                                <SolidColorBrush Color="#1A3D2E"/>
+                                <SolidColorBrush Color="#A7F3D0"/>
                             </Border.Stroke>
                             <Border.StrokeShape>
                                 <RoundRectangle CornerRadius="20"/>
@@ -94,18 +94,18 @@
                             <HorizontalStackLayout Spacing="6">
                                 <Label Text="🎙️" FontSize="13" VerticalOptions="Center"/>
                                 <Label Text="Audio thuyết minh" FontSize="12"
-                                       TextColor="#C4B5B5" VerticalOptions="Center"/>
+                                       TextColor="{StaticResource VKTextMuted}" VerticalOptions="Center"/>
                             </HorizontalStackLayout>
                         </Border>
                     </HorizontalStackLayout>
 
                     <HorizontalStackLayout Spacing="12" HorizontalOptions="Center">
                         <!-- Pill 3 -->
-                        <Border BackgroundColor="#18150A"
+                        <Border BackgroundColor="#FFFBEB"
                                 StrokeThickness="1"
                                 Padding="12,7">
                             <Border.Stroke>
-                                <SolidColorBrush Color="#3D3010"/>
+                                <SolidColorBrush Color="#FDE68A"/>
                             </Border.Stroke>
                             <Border.StrokeShape>
                                 <RoundRectangle CornerRadius="20"/>
@@ -113,16 +113,16 @@
                             <HorizontalStackLayout Spacing="6">
                                 <Label Text="📷" FontSize="13" VerticalOptions="Center"/>
                                 <Label Text="Quét QR gian hàng" FontSize="12"
-                                       TextColor="#C4B5B5" VerticalOptions="Center"/>
+                                       TextColor="{StaticResource VKTextMuted}" VerticalOptions="Center"/>
                             </HorizontalStackLayout>
                         </Border>
 
                         <!-- Pill 4 -->
-                        <Border BackgroundColor="#100B1E"
+                        <Border BackgroundColor="#F5F3FF"
                                 StrokeThickness="1"
                                 Padding="12,7">
                             <Border.Stroke>
-                                <SolidColorBrush Color="#2D1B5A"/>
+                                <SolidColorBrush Color="#DDD6FE"/>
                             </Border.Stroke>
                             <Border.StrokeShape>
                                 <RoundRectangle CornerRadius="20"/>
@@ -130,7 +130,7 @@
                             <HorizontalStackLayout Spacing="6">
                                 <Label Text="⭐" FontSize="13" VerticalOptions="Center"/>
                                 <Label Text="Đánh giá món ăn" FontSize="12"
-                                       TextColor="#C4B5B5" VerticalOptions="Center"/>
+                                       TextColor="{StaticResource VKTextMuted}" VerticalOptions="Center"/>
                             </HorizontalStackLayout>
                         </Border>
                     </HorizontalStackLayout>
@@ -152,7 +152,7 @@
                 <!-- Footer note -->
                 <Label Text="Không cần đăng ký  •  Miễn phí hoàn toàn"
                        FontSize="12"
-                       TextColor="#5A5050"
+                       TextColor="{StaticResource VKTextFaint}"
                        HorizontalOptions="Center"
                        HorizontalTextAlignment="Center"
                        Margin="0,14,0,0"/>

@@ -11,20 +11,20 @@
     <Authorized>
 
 <style>
-    .intro-card { border-radius: 18px; background: linear-gradient(135deg, #0d1117 0%, #161b22 100%); border: 1px solid rgba(255,255,255,0.07); }
-    .dash-label { font-size: 11px; letter-spacing: 1.5px; color: #8A8078; font-weight: 600; }
-    .dash-input { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color: #F0EBE3; border-radius: 10px; }
-    .dash-input:focus { background: rgba(255,255,255,0.07); border-color: #E8A020; color: #F0EBE3; box-shadow: 0 0 0 3px rgba(232,160,32,0.15); }
-    .lang-tab { cursor: pointer; border-radius: 8px; padding: 6px 16px; font-size: 13px; transition: all 0.2s; }
-    .lang-tab.active { background: #E8A020; color: #000; font-weight: 600; }
-    .lang-tab:not(.active) { background: rgba(255,255,255,0.05); color: #8A8078; }
-    .lang-tab:not(.active):hover { background: rgba(255,255,255,0.1); color: #F0EBE3; }
+    .intro-card { border-radius: 18px; background: #FFFFFF; border: 1px solid #E2E8F0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
+    .dash-label { font-size: 11px; letter-spacing: 1.5px; color: #64748B; font-weight: 600; }
+    .dash-input { background: #FFFFFF; border: 1px solid #E2E8F0; color: #1E293B; border-radius: 10px; }
+    .dash-input:focus { background: #FFFFFF; border-color: #E8A020; color: #1E293B; box-shadow: 0 0 0 3px rgba(232,160,32,0.15); }
+    .lang-tab { cursor: pointer; border-radius: 8px; padding: 6px 16px; font-size: 13px; transition: all 0.2s; border: 1px solid transparent; }
+    .lang-tab.active { background: #E8A020; color: #FFFFFF; font-weight: 600; border-color: #E8A020; }
+    .lang-tab:not(.active) { background: #F8FAFC; color: #64748B; border-color: #E2E8F0; }
+    .lang-tab:not(.active):hover { background: #F1F5F9; color: #1E293B; }
     .audio-preview { background: rgba(232,160,32,0.05); border: 1px solid rgba(232,160,32,0.2); border-radius: 12px; }
-    .status-ok { color: #4ade80; }
-    .status-err { color: #f87171; }
+    .status-ok { color: var(--vk-success); }
+    .status-err { color: var(--vk-danger); }
 </style>
 
-<div class="container-fluid px-4 py-4" style="color: #F0EBE3;">
+<div class="container-fluid px-4 py-4" style="color: #1E293B;">
 
     <div class="mb-4">
         <h4 class="fw-bold mb-1" style="color:#E8A020;">
@@ -143,7 +143,7 @@
                 else
                 {
                     <div class="text-center py-4">
-                        <i class="bi bi-mic-mute" style="font-size:2.5rem; color:#4a3a2a;"></i>
+                        <i class="bi bi-mic-mute" style="font-size:2.5rem; color:#94A3B8;"></i>
                         <p class="text-muted small mt-2 mb-0">Chưa có audio intro cho ngôn ngữ <strong>@selectedLang</strong></p>
                     </div>
                 }

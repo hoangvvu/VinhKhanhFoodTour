@@ -20,7 +20,7 @@ public class AudioQueueItemDto
     /// <summary>Thời lượng audio ước tính (seconds). 0 nếu chưa biết.</summary>
     public int DurationSeconds { get; set; }
     
-    /// <summary>Thứ tự sắp xếp mặc định từ admin (thấp = ưu tiên cao).</summary>
+    /// <summary>Thứ tự sắp xếp mặc định (tier → khoảng cách).</summary>
     public int SortOrder { get; set; }
     
     /// <summary>Mã ngôn ngữ của audio (vi, en, zh...).</summary>
@@ -37,6 +37,12 @@ public class AudioQueueItemDto
 
     /// <summary>Bán kính geofence của POI (meters).</summary>
     public int PoiRadiusMeters { get; set; } = 20;
+
+    /// <summary>Gói thành viên của vendor (Standard, Silver, Gold, Diamond).</summary>
+    public string MembershipTier { get; set; } = "Standard";
+
+    /// <summary>Bonus bán kính geofence dựa theo gói (meters).</summary>
+    public int TierBonusMeters { get; set; } = 0;
 }
 
 /// <summary>

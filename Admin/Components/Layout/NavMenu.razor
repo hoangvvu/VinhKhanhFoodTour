@@ -1,9 +1,9 @@
 @rendermode InteractiveServer
 
-<div class="sidebar p-4" style="background-color: #121212; min-height: 100vh; display: flex; flex-direction: column;">
+<div class="sidebar p-4" style="background-color: #FFFFFF; min-height: 100vh; display: flex; flex-direction: column; border-right: 1px solid #E2E8F0;">
     <div class="brand-section text-center mb-5 mt-3">
-        <div style="font-size: 24px; color: #E8A020; font-weight: bold; letter-spacing: 1px;">VĨNH KHÁNH</div>
-        <div style="font-size: 10px; color: #8A8078; letter-spacing: 2px;">AUDIO GUIDE ADMIN</div>
+        <div style="font-size: 24px; color: #C8372D; font-weight: bold; letter-spacing: 1px;">VĨNH KHÁNH</div>
+        <div style="font-size: 10px; color: #64748B; letter-spacing: 2px;">AUDIO GUIDE ADMIN</div>
     </div>
 
     <nav class="nav flex-column gap-2">
@@ -14,7 +14,7 @@
         @* ── MENU DÀNH RIÊNG CHO ADMIN ── *@
         <AuthorizeView Roles="Admin">
             <Authorized>
-                <div class="text-muted small fw-bold ms-3 mt-3 mb-1" style="font-size: 10px; letter-spacing: 1px;">QUẢN TRỊ HỆ THỐNG</div>
+                <div class="small fw-bold ms-3 mt-3 mb-1" style="font-size: 10px; letter-spacing: 1px; color: #94A3B8;">QUẢN TRỊ HỆ THỐNG</div>
                 
                 <NavLink class="nav-card" href="admin/pois">
                     <span class="bi bi-shop me-2 fs-5"></span> Quản lý gian hàng
@@ -43,7 +43,7 @@
         @* ── MENU DÀNH RIÊNG CHO VENDOR (CHỦ QUÁN) ── *@
         <AuthorizeView Roles="Vendor">
             <Authorized>
-                <div class="text-muted small fw-bold ms-3 mt-3 mb-1" style="font-size: 10px; letter-spacing: 1px;">QUẢN LÝ QUÁN ĂN</div>
+                <div class="small fw-bold ms-3 mt-3 mb-1" style="font-size: 10px; letter-spacing: 1px; color: #94A3B8;">QUẢN LÝ QUÁN ĂN</div>
                 
                 <NavLink class="nav-card" href="vendor/thong-tin">
                     <span class="bi bi-info-square me-2 fs-5"></span> Mô tả & Hình ảnh
@@ -51,27 +51,27 @@
                 <NavLink class="nav-card" href="vendor/thuc-don">
                     <span class="bi bi-card-list me-2 fs-5"></span> Thực đơn (Menu)
                 </NavLink>
-                <NavLink class="nav-card" href="vendor/thu-nhap">
-                    <span class="bi bi-wallet2 me-2 fs-5"></span> Doanh thu
+                <NavLink class="nav-card" href="">
+                    <span class="bi bi-wallet2 me-2 fs-5"></span> Dashboard tổng hợp
                 </NavLink>
             </Authorized>
         </AuthorizeView>
     </nav>
 
     @* ── Khu vực user info + Logout ở cuối sidebar ── *@
-    <div class="mt-auto pt-4" style="border-top: 1px solid #2E2A2A;">
+    <div class="mt-auto pt-4" style="border-top: 1px solid #E2E8F0;">
         <AuthorizeView>
             <Authorized>
                 <div class="d-flex align-items-center gap-2 px-2 mb-3">
                     <span class="badge rounded-circle p-2 fs-6"
-                          style="background-color: #C8372D; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;">
+                          style="background-color: #C8372D; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; color: white;">
                         @context.User.Identity?.Name?.Substring(0, 1).ToUpper()
                     </span>
                     <div>
-                        <div style="color: #F0EBE3; font-size: 13px; font-weight: 500;">
+                        <div style="color: #1E293B; font-size: 13px; font-weight: 500;">
                             @context.User.Identity?.Name
                         </div>
-                        <div style="color: #8A8078; font-size: 11px;">
+                        <div style="color: #64748B; font-size: 11px;">
                             @context.User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value
                         </div>
                     </div>

@@ -122,7 +122,7 @@ public class GeofenceMonitorService : IAsyncDisposable
         {
             if (_playedPois.Contains(poi.PoiId)) continue;
 
-            var threshold = Math.Clamp(poi.PoiRadiusMeters, 5, 200) + GpsBufferMeters;
+            var threshold = Math.Clamp(poi.PoiRadiusMeters, 5, 200) + poi.TierBonusMeters + GpsBufferMeters;
             var dist = CalculateDistanceMeters(userLat, userLon, poi.Latitude, poi.Longitude);
             var insideZone = dist <= threshold;
 

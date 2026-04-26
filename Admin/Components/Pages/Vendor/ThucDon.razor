@@ -1,4 +1,4 @@
-﻿@page "/vendor/thuc-don"
+@page "/vendor/thuc-don"
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.Authorization
 @using System.Security.Claims
@@ -22,8 +22,8 @@
 <div class="dash-page p-4">
     <div class="d-flex justify-content-between align-items-center mb-5">
         <div>
-            <h2 class="fw-bold mb-1" style="color: #F0EBE3;">QUẢN LÝ THỰC ĐƠN</h2>
-            <span style="color: #4a4a5a; font-size: 13px;"><i class="bi bi-grid me-1"></i>Quản lý các món ăn trong thực đơn</span>
+            <h2 class="fw-bold mb-1" style="color: #1E293B;">QUẢN LÝ THỰC ĐƠN</h2>
+            <span style="color: #64748B; font-size: 13px;"><i class="bi bi-grid me-1"></i>Quản lý các món ăn trong thực đơn</span>
         </div>
         <button class="btn btn-danger rounded-pill px-4 shadow" @onclick="ShowAddModal">
             <i class="bi bi-plus-lg me-2"></i>Thêm món mới
@@ -33,7 +33,7 @@
     @* ── Thông báo lỗi/thành công hiện ngay trên trang ── *@
     @if (!string.IsNullOrEmpty(pageMessage))
     {
-        <div style="@(pageMessageIsError ? "background:rgba(200,55,45,0.08);border:1px solid rgba(200,55,45,0.2);border-radius:12px;color:#f87171;padding:12px 16px;" : "background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.2);border-radius:12px;color:#4ade80;padding:12px 16px;") margin-bottom:16px;"
+        <div style="@(pageMessageIsError ? "background:var(--vk-danger-bg);border:1px solid var(--vk-danger-border);border-radius:12px;color:var(--vk-danger);padding:12px 16px;" : "background:var(--vk-success-bg);border:1px solid var(--vk-success-border);border-radius:12px;color:var(--vk-success);padding:12px 16px;") margin-bottom:16px;"
              class="d-flex justify-content-between align-items-center">
             <span><i class="bi @(pageMessageIsError ? "bi-exclamation-triangle-fill" : "bi-check-circle-fill") me-2"></i>@pageMessage</span>
             <button type="button" style="background:none;border:none;color:inherit;cursor:pointer;font-size:1.1rem;padding:0;" @onclick="() => pageMessage = null"><i class="bi bi-x"></i></button>
@@ -44,12 +44,12 @@
     {
         <div class="text-center py-5">
             <div class="spinner-border text-danger" style="width:2.5rem;height:2.5rem;" role="status"></div>
-            <p style="color:#4a4a5a;font-size:13px;letter-spacing:1px;margin-top:12px;">ĐANG TẢI...</p>
+            <p style="color:#64748B;font-size:13px;letter-spacing:1px;margin-top:12px;">ĐANG TẢI...</p>
         </div>
     }
     else if (currentPoiId == 0)
     {
-        <div style="background:rgba(200,55,45,0.08);border:1px solid rgba(200,55,45,0.2);border-radius:12px;color:#f87171;padding:12px 16px;">
+        <div style="background:var(--vk-danger-bg);border:1px solid var(--vk-danger-border);border-radius:12px;color:var(--vk-danger);padding:12px 16px;">
             <i class="bi bi-exclamation-triangle me-2"></i>
             Tài khoản chưa được gán quán. Vui lòng liên hệ Admin.
         </div>
@@ -75,18 +75,18 @@
                                 <div class="d-flex align-items-center">
                                     @if (!string.IsNullOrEmpty(item.ImageUrl))
                                     {
-                                        <img src="@item.ImageUrl" class="rounded-3 me-3"
+                                        <img src="@item.ImageUrl" class="rounded-3 me-3 border"
                                              style="width: 60px; height: 60px; object-fit: cover;" />
                                     }
                                     else
                                     {
-                                        <div class="rounded-3 me-3 d-flex align-items-center justify-content-center"
-                                             style="width: 60px; height: 60px; background: rgba(255,255,255,0.05);">
-                                            <i class="bi bi-image" style="color:#4a4a5a;"></i>
+                                        <div class="rounded-3 me-3 d-flex align-items-center justify-content-center border"
+                                             style="width: 60px; height: 60px; background: #F8FAFC;">
+                                            <i class="bi bi-image" style="color:#64748B;"></i>
                                         </div>
                                     }
                                     <div>
-                                        <span class="fw-bold text-white @(isHidden ? "text-decoration-line-through" : "")">
+                                        <span class="fw-bold text-dark @(isHidden ? "text-decoration-line-through text-muted" : "")">
                                             @item.Name
                                         </span><br />
                                         <span class="text-muted small">@item.Category</span>
@@ -111,7 +111,7 @@
                                         @onclick="() => ToggleStatus(item)">
                                     <i class="bi @(!isHidden ? "bi-eye-slash" : "bi-eye")"></i>
                                 </button>
-                                <button class="btn btn-sm btn-outline-light" @onclick="() => ShowEditModal(item)">
+                                <button class="btn btn-sm btn-outline-secondary" @onclick="() => ShowEditModal(item)">
                                     <i class="bi bi-pencil"></i>
                                 </button>
                             </td>
@@ -139,19 +139,19 @@
 @if (isShowModal)
 {
     <div class="modal fade show d-block" tabindex="-1"
-         style="background-color: rgba(0,0,0,0.8); backdrop-filter: blur(4px);">
+         style="background-color: rgba(0,0,0,0.4); backdrop-filter: blur(4px);">
         <div class="modal-dialog modal-dialog-centered modal-lg">
-            <div class="modal-content" style="background:#1a1a24;border-radius:20px;border:1px solid rgba(255,255,255,0.08);">
-                <div class="modal-header" style="border-bottom:1px solid rgba(255,255,255,0.06);">
-                    <h5 class="modal-title fw-bold text-white">
+            <div class="modal-content shadow" style="background:#FFFFFF;border-radius:20px;border:1px solid #E2E8F0;">
+                <div class="modal-header" style="border-bottom:1px solid #E2E8F0;">
+                    <h5 class="modal-title fw-bold text-dark">
                         @(isEditing ? "Cập Nhật Món Ăn" : "Thêm Món Ăn Mới")
                     </h5>
-                    <button type="button" class="btn-close btn-close-white" @onclick="HideModal"></button>
+                    <button type="button" class="btn-close" @onclick="HideModal"></button>
                 </div>
                 <div class="modal-body p-4">
                     @if (!string.IsNullOrEmpty(modalError))
                     {
-                        <div style="background:rgba(200,55,45,0.08);border:1px solid rgba(200,55,45,0.2);border-radius:12px;color:#f87171;padding:12px 16px;" class="mb-3 small">
+                        <div style="background:var(--vk-danger-bg);border:1px solid var(--vk-danger-border);border-radius:12px;color:var(--vk-danger);padding:12px 16px;" class="mb-3 small">
                             @modalError
                         </div>
                     }
@@ -160,18 +160,18 @@
                         @* ── Cột trái: Thông tin cơ bản ── *@
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label class="form-label fw-bold" style="color:#8A8078;font-size:11px;letter-spacing:1px;">TÊN MÓN ĂN <span class="text-danger">*</span></label>
+                                <label class="form-label fw-bold" style="color:#64748B;font-size:11px;letter-spacing:1px;">TÊN MÓN ĂN <span class="text-danger">*</span></label>
                                 <input type="text" class="form-control dash-input"
                                        @bind="formName" placeholder="VD: Sò huyết nướng mọi" />
                             </div>
                             <div class="row mb-3">
                                 <div class="col-6">
-                                    <label class="form-label fw-bold" style="color:#8A8078;font-size:11px;letter-spacing:1px;">GIÁ TIỀN (VNĐ) <span class="text-danger">*</span></label>
+                                    <label class="form-label fw-bold" style="color:#64748B;font-size:11px;letter-spacing:1px;">GIÁ TIỀN (VNĐ) <span class="text-danger">*</span></label>
                                     <input type="number" class="form-control dash-input"
                                            @bind="formPrice" placeholder="0" />
                                 </div>
                                 <div class="col-6">
-                                    <label class="form-label fw-bold" style="color:#8A8078;font-size:11px;letter-spacing:1px;">DANH MỤC</label>
+                                    <label class="form-label fw-bold" style="color:#64748B;font-size:11px;letter-spacing:1px;">DANH MỤC</label>
                                     <select class="form-select dash-input"
                                             @bind="formCategory">
                                         <option value="Món nướng">Món nướng</option>
@@ -185,7 +185,7 @@
                             </div>
 
                             <div class="mb-3">
-                                <label class="form-label fw-bold" style="color:#8A8078;font-size:11px;letter-spacing:1px;">MÔ TẢ MÓN ĂN</label>
+                                <label class="form-label fw-bold" style="color:#64748B;font-size:11px;letter-spacing:1px;">MÔ TẢ MÓN ĂN</label>
                                 <textarea class="form-control dash-input" rows="3"
                                           @bind="formDescription"
                                           placeholder="VD: Sò huyết nướng mọi giữ nguyên vị ngọt tự nhiên..."></textarea>
@@ -193,7 +193,7 @@
                         </div>
 
                         @* ── Cột phải: Upload ảnh ── *@
-                        <div class="col-md-6 ps-md-4" style="border-left: 1px solid rgba(255,255,255,0.06);">
+                        <div class="col-md-6 ps-md-4" style="border-left: 1px solid #E2E8F0;">
                             <h6 class="text-info fw-bold mb-3">
                                 <i class="bi bi-image me-2"></i>Hình ảnh món ăn
                             </h6>
@@ -208,9 +208,9 @@
 
                             <label class="w-100 mb-3" style="cursor: pointer;">
                                 <div class="rounded-3 p-3 text-center"
-                                     style="background:rgba(255,255,255,0.03);border:1px dashed rgba(255,255,255,0.1);">
-                                    <i class="bi bi-cloud-upload" style="font-size: 32px; color: #4a4a5a;"></i>
-                                    <p class="small mb-0 mt-1" style="color:#4a4a5a;">Bấm để chọn ảnh (tối đa 5MB)</p>
+                                     style="background:#F8FAFC;border:1px dashed #CBD5E1;">
+                                    <i class="bi bi-cloud-upload" style="font-size: 32px; color: #64748B;"></i>
+                                    <p class="small mb-0 mt-1" style="color:#64748B;">Bấm để chọn ảnh (tối đa 5MB)</p>
                                 </div>
                                 <InputFile OnChange="HandleMenuImageUpload" accept="image/*"
                                            style="display: none;" />
@@ -220,7 +220,7 @@
                             @if (!string.IsNullOrEmpty(formImageUrl))
                             {
                                 <div class="text-center rounded-3 p-2 position-relative"
-                                     style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);">
+                                     style="background:#F8FAFC;border:1px solid #E2E8F0;">
                                     <img src="@formImageUrl"
                                          style="max-height: 180px; border-radius: 8px; object-fit: cover;" />
                                     <button class="btn btn-sm btn-danger position-absolute top-0 end-0 m-1"
@@ -233,8 +233,8 @@
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer" style="border-top:1px solid rgba(255,255,255,0.06);">
-                    <button type="button" class="btn btn-outline-light rounded-pill px-4"
+                <div class="modal-footer" style="border-top:1px solid #E2E8F0;">
+                    <button type="button" class="btn btn-outline-secondary rounded-pill px-4"
                             @onclick="HideModal">
                         Hủy
                     </button>

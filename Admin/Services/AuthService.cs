@@ -107,7 +107,6 @@ public class AuthService
                 Address = null,
                 Latitude = 10.7578m,
                 Longitude = 106.7095m,
-                Priority = 3,
                 Radius = 20, // default
                 IsActive = false,
                 Status = "Pending"
@@ -210,10 +209,20 @@ public class AuthService
             Latitude = 10.7578m,
             Longitude = 106.7095m,
             Radius = 20,
-            Priority = 3,
             IsActive = false,
             Status = "Pending"
         });
+        await _db.SaveChangesAsync();
+    }
+
+    /// <summary>Cập nhật gói thành viên cho vendor.</summary>
+    public async Task UpdateMembershipTierAsync(int userId, string newTier)
+    {
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.UserId == userId);
+        if (user is null) return;
+        
+        user.MembershipTier = newTier;
+        user.UpdatedAt = DateTime.Now;
         await _db.SaveChangesAsync();
     }
 }
