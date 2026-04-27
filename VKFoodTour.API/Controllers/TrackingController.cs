@@ -39,7 +39,7 @@ public class TrackingController : ControllerBase
             Longitude = (decimal)(dto.Longitude ?? 0),
             EventType = NormalizeEventType(dto.EventType),
             ListenedDurationSec = dto.ListenedDurationSec,
-            LanguageCode = dto.LanguageCode
+            LanguageCode = NormalizeLanguageCode(dto.LanguageCode)
         };
 
         _context.TrackingLogs.Add(log);
@@ -145,5 +145,20 @@ public class TrackingController : ControllerBase
             return "listen_end";
 
         return AllowedEventTypes.Contains(normalized) ? normalized : "move";
+    }
+
+    /// <summary>
+    /// Bỏ prefix legacy như "anon:" và chuẩn hoá lower-case để dashboard không
+    /// đếm trùng các giá trị "anon:vi", "VI", "vi" thành 3 ngôn ngữ khác nhau.
+    /// </summary>
+    private static string? NormalizeLanguageCode(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return null;
+        var v = raw.Trim();
+        var colon = v.IndexOf(':');
+        if (colon >= 0 && colon < v.Length - 1)
+            v = v[(colon + 1)..];
+        v = v.Trim().ToLowerInvariant();
+        return string.IsNullOrEmpty(v) ? null : v;
     }
 }

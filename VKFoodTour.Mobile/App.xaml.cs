@@ -1,4 +1,5 @@
 using VKFoodTour.Mobile.Services;
+using VKFoodTour.Mobile.Services.Offline;
 using VKFoodTour.Mobile.Views;
 
 namespace VKFoodTour.Mobile;
@@ -77,6 +78,33 @@ public partial class App : Application
 
         // Bắt đầu heartbeat ngay khi app mở lần đầu.
         StartForegroundHeartbeat();
+
+        // Sync ngầm: lấy POI/ngôn ngữ về SQLite cho offline. Không chặn UI.
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                var sync = _services.GetService<ISyncService>();
+                if (sync is not null) await sync.SyncAsync();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[App] Initial sync failed: {ex.Message}");
+            }
+        });
+
+        window.Resumed += (s, e) =>
+        {
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    var sync = _services.GetService<ISyncService>();
+                    if (sync is not null) await sync.SyncAsync();
+                }
+                catch { }
+            });
+        };
 
         return window;
     }

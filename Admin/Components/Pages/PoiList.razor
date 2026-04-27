@@ -110,8 +110,14 @@
                                     </span>
                                 </td>
                                 <td style="vertical-align:middle;">
-                                    <span class="badge bg-info-subtle text-info border border-info-subtle">
-                                        @item.Radius m
+                                    @{
+                                        var ownerTier = GetOwnerTier(item.OwnerId);
+                                        var bonus = GetTierBonus(ownerTier);
+                                        var effective = DefaultRadius + bonus;
+                                    }
+                                    <span class="badge bg-info-subtle text-info border border-info-subtle"
+                                          title="@DefaultRadius m mặc định + @bonus m theo gói @ownerTier">
+                                        @effective m
                                     </span>
                                 </td>
                                 <td class="text-end pe-4" style="vertical-align:middle;">
@@ -208,13 +214,17 @@
                             <label class="form-label small fw-bold" style="color:#64748B;">TÊN GIAN HÀNG</label>
                             <input type="text" class="form-control p-3" style="background:#F8FAFC; border:1px solid #E2E8F0; color:#1E293B; border-radius:12px;" @bind="editingPoi.Name" />
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-12">
                             <label class="form-label small fw-bold" style="color:#64748B;">SỐ ĐIỆN THOẠI</label>
                             <input type="text" class="form-control p-3" style="background:#F8FAFC; border:1px solid #E2E8F0; color:#1E293B; border-radius:12px;" @bind="editingPoi.Phone" />
                         </div>
-                        <div class="col-md-6">
-                            <label class="form-label small fw-bold" style="color:#64748B;">BÁN KÍNH GEOFENCE (m)</label>
-                            <input type="number" class="form-control p-3" style="background:#F8FAFC; border:1px solid #E2E8F0; color:#1E293B; border-radius:12px;" min="5" max="200" @bind="editingPoi.Radius" />
+                        <div class="col-12">
+                            <div class="alert mb-0" style="background:#F0F9FF;border:1px solid #BAE6FD;color:#075985;border-radius:12px;font-size:13px;">
+                                <i class="bi bi-info-circle me-1"></i>
+                                Bán kính geofence được hệ thống quản lý tự động: dùng giá trị mặc định
+                                <strong>@DefaultRadius m</strong> rồi cộng thêm theo gói thành viên của chủ gian hàng
+                                (Standard +0, Silver +5, Gold +10, Diamond +15).
+                            </div>
                         </div>
                         <div class="col-12">
                             <label class="form-label small fw-bold" style="color:#64748B;">CHỦ GIAN HÀNG</label>
@@ -255,6 +265,16 @@
 }
 
 @code {
+    private const int DefaultRadius = 20;
+
+    private static int GetTierBonus(string tier) => tier switch
+    {
+        "Diamond" => 15,
+        "Gold" => 10,
+        "Silver" => 5,
+        _ => 0
+    };
+
     private List<Poi> pois = new();
     private List<User> vendorUsers = new();
     private bool isLoading = true;
@@ -316,7 +336,8 @@
 
     private async Task SavePoi() {
         if (int.TryParse(editingOwnerIdText, out var oid)) editingPoi.OwnerId = oid; else editingPoi.OwnerId = null;
-        editingPoi.Radius = Math.Clamp(editingPoi.Radius, 5, 200);
+        // Bán kính dùng giá trị mặc định, runtime cộng thêm theo gói thành viên.
+        editingPoi.Radius = DefaultRadius;
         isSaving = true;
         await PoiService.UpdateAsync(editingPoi);
         HideModal(); await LoadData();

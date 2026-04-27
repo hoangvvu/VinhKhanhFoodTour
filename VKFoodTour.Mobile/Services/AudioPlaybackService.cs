@@ -1,4 +1,5 @@
 using Plugin.Maui.Audio;
+using VKFoodTour.Mobile.Services.Offline;
 
 namespace VKFoodTour.Mobile.Services;
 
@@ -7,14 +8,17 @@ public sealed class AudioPlaybackService : IAudioPlaybackService
     private readonly IAudioManager _audioManager;
     private readonly HttpClient _http;
     private readonly ISettingsService _settings;
+    private readonly IMediaCacheService? _mediaCache;
     private IAudioPlayer? _player;
     private MemoryStream? _playbackBuffer;
+    private FileStream? _playbackFile;
 
-    public AudioPlaybackService(IAudioManager audioManager, HttpClient http, ISettingsService settings)
+    public AudioPlaybackService(IAudioManager audioManager, HttpClient http, ISettingsService settings, IMediaCacheService? mediaCache = null)
     {
         _audioManager = audioManager;
         _http = http;
         _settings = settings;
+        _mediaCache = mediaCache;
     }
 
     public bool IsPlaying => _player?.IsPlaying ?? false;
@@ -27,6 +31,26 @@ public sealed class AudioPlaybackService : IAudioPlaybackService
 
         var full = NormalizeUrl(url.Trim());
         System.Diagnostics.Debug.WriteLine($"[Audio] PlayAsync → {full}");
+
+        // 1) Nếu đã có trong media cache, phát thẳng từ file local (offline-friendly).
+        var cachedPath = _mediaCache?.TryGetLocalPath(full);
+        if (cachedPath is not null)
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine($"[Audio] Using cached file: {cachedPath}");
+                _playbackFile = File.OpenRead(cachedPath);
+                _player = _audioManager.CreatePlayer(_playbackFile);
+                _player.Play();
+                return true;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Audio] Cached play failed: {ex.Message}, fallback to network.");
+                Stop();
+            }
+        }
+
         try
         {
             using var request = new HttpRequestMessage(HttpMethod.Get, full);
@@ -74,6 +98,17 @@ public sealed class AudioPlaybackService : IAudioPlaybackService
             _playbackBuffer = ms;
             _player = _audioManager.CreatePlayer(ms);
             _player.Play();
+
+            if (_mediaCache is not null)
+            {
+                var snapshot = bytes;
+                var cacheUrl = full;
+                _ = Task.Run(async () =>
+                {
+                    try { await _mediaCache.SaveBytesAsync(cacheUrl, snapshot); }
+                    catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[Audio] cache save failed: {ex.Message}"); }
+                });
+            }
             return true;
         }
         catch (Exception ex)
@@ -91,6 +126,8 @@ public sealed class AudioPlaybackService : IAudioPlaybackService
         _player = null;
         _playbackBuffer?.Dispose();
         _playbackBuffer = null;
+        _playbackFile?.Dispose();
+        _playbackFile = null;
     }
 
     public double GetProgress()

@@ -189,15 +189,17 @@
                             </div>
                             @if (languageStats.Any())
                             {
+                                var maxDevices = languageStats.Max(l => l.DeviceCount);
                                 @foreach (var lang in languageStats)
                                 {
+                                    var barWidth = maxDevices > 0 ? (int)(lang.DeviceCount * 100.0 / maxDevices) : 0;
                                     <div class="mb-3">
                                         <div class="d-flex justify-content-between mb-1">
                                             <span style="color: #1E293B; font-size: 13px; font-weight: 500;">@lang.Name <span style="color: #64748B; font-weight: normal;">(@lang.Code.ToUpper())</span></span>
-                                            <span class="fw-bold" style="color: #0EA5E9; font-size: 13px;">@lang.Percent%</span>
+                                            <span class="fw-bold" style="color: #0EA5E9; font-size: 13px;">@lang.DeviceCount <span style="color:#64748B;font-weight:400;">thiết bị</span></span>
                                         </div>
                                         <div class="progress-thin">
-                                            <div class="progress-bar" style="background: linear-gradient(90deg, #0EA5E9, #0284c7); width: @lang.Percent%; height: 100%; border-radius: 3px;"></div>
+                                            <div class="progress-bar" style="background: linear-gradient(90deg, #0EA5E9, #0284c7); width: @barWidth%; height: 100%; border-radius: 3px;"></div>
                                         </div>
                                     </div>
                                 }
@@ -314,9 +316,9 @@
                         </a>
                     </div>
                     <div class="col-md-4">
-                        <a class="dash-card p-4 d-block h-100" href="">
-                            <div class="fw-bold mb-2" style="color:#1E293B;"><i class="bi bi-gem me-2 text-warning"></i>Dashboard tổng hợp</div>
-                            <div style="color:#64748B;font-size:13px;">Số liệu doanh thu, đánh giá và gói thành viên đã gộp tại đây.</div>
+                        <a class="dash-card p-4 d-block h-100" href="vendor/goi-thanh-vien">
+                            <div class="fw-bold mb-2" style="color:#1E293B;"><i class="bi bi-gem me-2 text-warning"></i>Gói thành viên</div>
+                            <div style="color:#64748B;font-size:13px;">Nâng cấp gói để mở rộng vùng phát audio và tăng độ ưu tiên.</div>
                         </a>
                     </div>
                 </div>
@@ -448,24 +450,45 @@
         foreach (var item in topAudio)
             item.PoiName = poiNames.GetValueOrDefault(item.PoiId, "N/A");
 
-        // Ngôn ngữ
-        var langCounts = await Db.TrackingLogs
-            .Where(t => t.LanguageCode != null)
-            .GroupBy(t => t.LanguageCode)
-            .Select(g => new { Code = g.Key!, Count = g.Count() })
+        // Ngôn ngữ — đếm số THIẾT BỊ duy nhất theo NGÔN NGỮ MỚI NHẤT của thiết bị đó,
+        // trong cửa sổ 30 ngày gần nhất. Cách này phản ánh đúng số người dùng đang
+        // dùng từng ngôn ngữ:
+        //   * không đếm trùng theo số event (heartbeat 'move' rất nhiều).
+        //   * không đếm trùng khi 1 thiết bị từng đổi ngôn ngữ nhiều lần
+        //     (chỉ tính ngôn ngữ hiện tại của họ).
+        //   * không bị nhiễu bởi log cũ "anon:vi" / null trước khi fix.
+        var langWindow = DateTime.Now.AddDays(-30);
+        var perDeviceLatest = await Db.TrackingLogs
+            .AsNoTracking()
+            .Where(t => t.LanguageCode != null && t.DeviceId != null && t.CreatedAt >= langWindow)
+            .GroupBy(t => t.DeviceId!)
+            .Select(g => new
+            {
+                DeviceId = g.Key,
+                LanguageCode = g.OrderByDescending(x => x.CreatedAt).First().LanguageCode
+            })
             .ToListAsync();
 
-        var total = langCounts.Sum(l => l.Count);
-        var langNames = await Db.Languages.ToDictionaryAsync(l => l.Code, l => l.Name);
+        var langNames = await Db.Languages
+            .AsNoTracking()
+            .ToDictionaryAsync(l => l.Code.ToLower(), l => l.Name);
 
-        languageStats = langCounts
-            .OrderByDescending(l => l.Count)
-            .Select(l => new LangStat
+        var langDeviceCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        foreach (var row in perDeviceLatest)
+        {
+            var code = NormalizeLangCode(row.LanguageCode);
+            if (code is null) continue;
+            langDeviceCounts[code] = langDeviceCounts.GetValueOrDefault(code, 0) + 1;
+        }
+
+        languageStats = langDeviceCounts
+            .Select(kvp => new LangStat
             {
-                Code = l.Code,
-                Name = langNames.GetValueOrDefault(l.Code, l.Code),
-                Percent = total > 0 ? (int)(l.Count * 100.0 / total) : 0
+                Code = kvp.Key,
+                Name = langNames.GetValueOrDefault(kvp.Key, FallbackLanguageName(kvp.Key)),
+                DeviceCount = kvp.Value
             })
+            .OrderByDescending(l => l.DeviceCount)
             .ToList();
 
         // Reviews
@@ -516,7 +539,43 @@
         public int TotalMinutes { get; set; }
     }
 
-    private class LangStat { public string Code = ""; public string Name = ""; public int Percent; }
+    private class LangStat { public string Code = ""; public string Name = ""; public int DeviceCount; }
+
+    /// <summary>
+    /// Chuẩn hoá language code lưu trong tracking log:
+    /// - bỏ prefix legacy như "anon:vi" → "vi"
+    /// - lower-case, trim
+    /// - rỗng/null → null
+    /// </summary>
+    private static string? NormalizeLangCode(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return null;
+        var v = raw.Trim();
+        var colon = v.IndexOf(':');
+        if (colon >= 0 && colon < v.Length - 1)
+            v = v[(colon + 1)..];
+        // Cắt region: "zh-CN" -> "zh", "en-US" -> "en"
+        var dash = v.IndexOf('-');
+        if (dash > 0) v = v[..dash];
+        v = v.Trim().ToLowerInvariant();
+        return string.IsNullOrEmpty(v) ? null : v;
+    }
+
+    /// <summary>Tên hiển thị fallback khi code không có trong bảng Languages.</summary>
+    private static string FallbackLanguageName(string code) => code switch
+    {
+        "vi" => "Tiếng Việt",
+        "en" => "English",
+        "ja" => "日本語",
+        "ko" => "한국어",
+        "zh" => "中文",
+        "fr" => "Français",
+        "de" => "Deutsch",
+        "es" => "Español",
+        "ru" => "Русский",
+        "th" => "ไทย",
+        _ => code.ToUpperInvariant()
+    };
 
     private sealed record AdminStatCardConfig(
         string Key,

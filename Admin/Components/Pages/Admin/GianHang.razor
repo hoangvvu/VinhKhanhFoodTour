@@ -70,7 +70,12 @@
                                     </td>
                                     <td>@(string.IsNullOrEmpty(row.Address) ? "—" : row.Address)</td>
                                     <td>
-                                        <span class="badge bg-info-subtle text-info">@row.Radius m</span>
+                                        <span class="badge bg-info-subtle text-info" title="Bán kính mặc định + bonus theo gói thành viên">
+                                            @row.EffectiveRadius m
+                                        </span>
+                                        <div class="text-muted" style="font-size:11px;margin-top:2px;">
+                                            @DefaultRadius m + @row.TierBonus m (@row.MembershipTier)
+                                        </div>
                                     </td>
                                     <td>
                                         @foreach (var langCode in row.LangCodes)
@@ -126,7 +131,7 @@
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0" style="background:#FFFFFF;border-radius:18px;border:1px solid #E2E8F0;">
                 <div class="modal-header border-0">
-                    <h5 class="modal-title text-dark">Sửa ưu tiên & geofence</h5>
+                    <h5 class="modal-title text-dark">Sửa ưu tiên hiển thị</h5>
                     <button type="button" class="btn-close" @onclick="CloseQuickEdit"></button>
                 </div>
                 <div class="modal-body">
@@ -137,11 +142,12 @@
                                style="background:#F8FAFC;color:#1E293B;border-color:#E2E8F0;"
                                @bind="editPriority" />
                     </div>
-                    <div>
-                        <label class="form-label text-muted small">BÁN KÍNH GEOFENCE (m)</label>
-                        <input type="number" min="5" max="200" class="form-control"
-                               style="background:#F8FAFC;color:#1E293B;border-color:#E2E8F0;"
-                               @bind="editRadius" />
+                    <div class="alert alert-info small mb-0" style="background:#F0F9FF;border:1px solid #BAE6FD;color:#075985;">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Bán kính geofence dùng giá trị mặc định <strong>@DefaultRadius m</strong>
+                        và được tự cộng thêm theo gói thành viên của gian hàng
+                        (Standard +0, Silver +5, Gold +10, Diamond +15).
+                        Hiện tại: <strong>@editRow.EffectiveRadius m</strong> (@editRow.MembershipTier).
                     </div>
                 </div>
                 <div class="modal-footer border-0">
@@ -163,12 +169,21 @@
 }
 
 @code {
+    private const int DefaultRadius = 20;
+
     private List<GianHangRow> rows = new();
     private bool isLoading = true;
     private GianHangRow? editRow;
     private int editPriority;
-    private int editRadius;
     private bool isSavingQuickEdit;
+
+    private static int TierBonusMeters(string? tier) => (tier ?? "Standard") switch
+    {
+        "Diamond" => 15,
+        "Gold" => 10,
+        "Silver" => 5,
+        _ => 0
+    };
 
     protected override async Task OnInitializedAsync()
     {
@@ -213,12 +228,13 @@
                 users.TryGetValue(p.OwnerId ?? 0, out var u);
                 langsByPoi.TryGetValue(p.PoiId, out var lc);
                 images.TryGetValue(p.PoiId, out var gal);
+                var tier = u?.MembershipTier ?? "Standard";
+                var bonus = TierBonusMeters(tier);
                 return new GianHangRow
                 {
                     PoiId = p.PoiId,
                     PoiName = p.Name,
                     Priority = p.Priority,
-                    Radius = p.Radius,
                     Address = p.Address,
                     IsActive = p.IsActive,
                     OwnerName = u?.Name ?? "—",
@@ -226,7 +242,10 @@
                     CoverUrl = p.ImageUrl ?? "",
                     GalleryUrls = gal ?? new List<string>(),
                     LangCodes = lc ?? new List<string>(),
-                    FoodCount = foodCounts.GetValueOrDefault(p.PoiId, 0)
+                    FoodCount = foodCounts.GetValueOrDefault(p.PoiId, 0),
+                    MembershipTier = tier,
+                    TierBonus = bonus,
+                    EffectiveRadius = DefaultRadius + bonus
                 };
             }).ToList();
         }
@@ -244,7 +263,6 @@
     {
         editRow = row;
         editPriority = row.Priority;
-        editRadius = row.Radius;
     }
 
     private void CloseQuickEdit()
@@ -257,7 +275,6 @@
         if (editRow is null) return;
         var currentRow = editRow;
         var priority = Math.Clamp(editPriority, 1, 5);
-        var radius = Math.Clamp(editRadius, 5, 200);
         isSavingQuickEdit = true;
         currentRow.IsSaving = true;
         try
@@ -265,11 +282,11 @@
             var poi = await Db.Pois.FirstOrDefaultAsync(p => p.PoiId == currentRow.PoiId);
             if (poi is null) return;
             poi.Priority = priority;
-            poi.Radius = radius;
+            // Bán kính luôn dùng giá trị mặc định, runtime sẽ cộng thêm theo gói thành viên.
+            poi.Radius = DefaultRadius;
             poi.UpdatedAt = DateTime.Now;
             await Db.SaveChangesAsync();
             currentRow.Priority = priority;
-            currentRow.Radius = radius;
             CloseQuickEdit();
         }
         finally
@@ -284,7 +301,6 @@
         public int PoiId { get; set; }
         public string PoiName { get; set; } = "";
         public int Priority { get; set; }
-        public int Radius { get; set; }
         public string? Address { get; set; }
         public bool IsActive { get; set; }
         public bool IsSaving { get; set; }
@@ -294,5 +310,8 @@
         public List<string> GalleryUrls { get; set; } = new();
         public List<string> LangCodes { get; set; } = new();
         public int FoodCount { get; set; }
+        public string MembershipTier { get; set; } = "Standard";
+        public int TierBonus { get; set; }
+        public int EffectiveRadius { get; set; }
     }
 }

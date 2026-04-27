@@ -1,0 +1,285 @@
+@page "/vendor/goi-thanh-vien"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
+@using global::Admin.Services
+@attribute [Authorize(Roles = "Vendor")]
+@rendermode InteractiveServer
+
+@inject AuthenticationStateProvider AuthStateProvider
+@inject AuthService AuthService
+
+<div class="dash-page p-4">
+    <div class="d-flex justify-content-between align-items-center mb-5">
+        <div>
+            <h2 class="fw-bold mb-1" style="color:#1E293B;">GÓI THÀNH VIÊN</h2>
+            <span style="color:#64748B;font-size:13px;">
+                <i class="bi bi-gem me-1"></i>Nâng cấp gói để mở rộng vùng phát audio và độ ưu tiên hiển thị
+            </span>
+        </div>
+        @if (!string.IsNullOrEmpty(currentTier))
+        {
+            <span class="badge rounded-pill px-3 py-2"
+                  style="@TierBadgeStyle(currentTier); font-size:13px;">
+                @TierEmoji(currentTier) Đang dùng: @TierLabel(currentTier)
+            </span>
+        }
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-danger" style="width:2.5rem;height:2.5rem;" role="status"></div>
+            <p style="color:#64748B;font-size:13px;letter-spacing:1px;margin-top:12px;">ĐANG TẢI...</p>
+        </div>
+    }
+    else
+    {
+        @if (!string.IsNullOrEmpty(statusMessage))
+        {
+            <div class="alert @(isError ? "alert-danger" : "alert-success") border-0 rounded-4 shadow-sm mb-4">
+                <i class="bi @(isError ? "bi-exclamation-triangle-fill" : "bi-check-circle-fill") me-2"></i>
+                @statusMessage
+            </div>
+        }
+
+        <div class="row g-4">
+            @foreach (var plan in plans)
+            {
+                var isCurrent = string.Equals(plan.Code, currentTier, StringComparison.OrdinalIgnoreCase);
+                <div class="col-md-6 col-xl-3">
+                    <div class="dash-card p-4 h-100 d-flex flex-column"
+                         style="border-top:4px solid @plan.Accent;@(isCurrent ? "box-shadow:0 0 0 2px " + plan.Accent + " inset;" : "")">
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <div>
+                                <div style="font-size:28px;line-height:1;">@plan.Emoji</div>
+                                <h4 class="fw-bold mt-2 mb-0" style="color:#1E293B;">@plan.Label</h4>
+                            </div>
+                            @if (isCurrent)
+                            {
+                                <span class="badge rounded-pill" style="background:@plan.Accent;color:#fff;">Hiện tại</span>
+                            }
+                        </div>
+
+                        <div class="mb-3">
+                            <span class="fw-bold" style="font-size:24px;color:@plan.Accent;">@plan.Price</span>
+                            <span class="text-muted" style="font-size:12px;">@plan.PriceSuffix</span>
+                        </div>
+
+                        <ul class="list-unstyled small mb-4" style="color:#475569;flex:1;">
+                            @foreach (var feat in plan.Features)
+                            {
+                                <li class="mb-2 d-flex align-items-start gap-2">
+                                    <i class="bi bi-check-circle-fill" style="color:@plan.Accent;margin-top:2px;"></i>
+                                    <span>@feat</span>
+                                </li>
+                            }
+                        </ul>
+
+                        @if (isCurrent)
+                        {
+                            <button class="btn btn-outline-secondary rounded-pill" disabled>
+                                <i class="bi bi-check2 me-1"></i>Đang sử dụng
+                            </button>
+                        }
+                        else
+                        {
+                            <button class="btn rounded-pill text-white fw-bold"
+                                    style="background:@plan.Accent;"
+                                    disabled="@isSaving"
+                                    @onclick="() => RegisterTierAsync(plan.Code)">
+                                @if (isSaving && pendingTier == plan.Code)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-1"></span>
+                                }
+                                <i class="bi bi-arrow-up-right-circle me-1"></i>Đăng ký
+                            </button>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+
+        <div class="dash-card p-4 mt-4">
+            <div class="d-flex align-items-center gap-2 mb-3">
+                <div class="icon-box-info"><i class="bi bi-info-circle"></i></div>
+                <span class="fw-bold" style="color:#1E293B;letter-spacing:0.5px;">SO SÁNH GÓI</span>
+            </div>
+            <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                    <thead style="background:#F8FAFC;">
+                        <tr style="color:#64748B;font-size:11px;letter-spacing:1px;">
+                            <th class="ps-4">QUYỀN LỢI</th>
+                            <th class="text-center">⬜ Standard</th>
+                            <th class="text-center">🥈 Silver</th>
+                            <th class="text-center">🥇 Gold</th>
+                            <th class="text-center">💎 Diamond</th>
+                        </tr>
+                    </thead>
+                    <tbody style="color:#1E293B;font-size:13px;">
+                        <tr>
+                            <td class="ps-4">Bonus bán kính geofence (mét)</td>
+                            <td class="text-center">+0</td>
+                            <td class="text-center">+5</td>
+                            <td class="text-center">+10</td>
+                            <td class="text-center">+15</td>
+                        </tr>
+                        <tr>
+                            <td class="ps-4">Bán kính phát audio thực tế</td>
+                            <td class="text-center">30 m</td>
+                            <td class="text-center">35 m</td>
+                            <td class="text-center">40 m</td>
+                            <td class="text-center">45 m</td>
+                        </tr>
+                        <tr>
+                            <td class="ps-4">Thứ tự ưu tiên trong hàng đợi audio</td>
+                            <td class="text-center">Thấp</td>
+                            <td class="text-center">Trung bình</td>
+                            <td class="text-center">Cao</td>
+                            <td class="text-center">Cao nhất</td>
+                        </tr>
+                        <tr>
+                            <td class="ps-4">Huy hiệu nổi bật trên bản đồ</td>
+                            <td class="text-center text-muted">—</td>
+                            <td class="text-center">🥈</td>
+                            <td class="text-center">🥇</td>
+                            <td class="text-center">💎</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="text-muted small mt-3">
+                <i class="bi bi-shield-check me-1"></i>
+                Phiên bản hiện tại đăng ký gói trực tiếp không qua thanh toán (môi trường demo).
+                Hệ thống thanh toán sẽ được tích hợp ở phiên bản tiếp theo.
+            </div>
+        </div>
+    }
+</div>
+
+<style>
+    .icon-box-info {
+        width:32px;height:32px;background:rgba(14,165,233,0.12);color:#0EA5E9;
+        border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;
+    }
+</style>
+
+@code {
+    private bool isLoading = true;
+    private bool isSaving;
+    private string? pendingTier;
+    private string currentTier = "Standard";
+    private string? statusMessage;
+    private bool isError;
+    private int currentUserId;
+
+    private record PlanCard(
+        string Code,
+        string Label,
+        string Emoji,
+        string Accent,
+        string Price,
+        string PriceSuffix,
+        string[] Features);
+
+    private readonly List<PlanCard> plans =
+    [
+        new("Standard", "Thường", "⬜", "#94A3B8", "Miễn phí", "/ tháng", new[]
+        {
+            "Bán kính geofence mặc định (~30 m)",
+            "Hiển thị quán trên bản đồ",
+            "Tự động sinh audio TTS đa ngôn ngữ"
+        }),
+        new("Silver", "Bạc", "🥈", "#64748B", "199.000đ", "/ tháng", new[]
+        {
+            "Bán kính geofence +5 m (~35 m)",
+            "Huy hiệu 🥈 nổi bật trên bản đồ",
+            "Ưu tiên hàng đợi audio mức trung bình"
+        }),
+        new("Gold", "Vàng", "🥇", "#CA8A04", "499.000đ", "/ tháng", new[]
+        {
+            "Bán kính geofence +10 m (~40 m)",
+            "Huy hiệu 🥇 trên bản đồ",
+            "Ưu tiên hàng đợi audio mức cao",
+            "Hiển thị nổi bật ở Top quán quan tâm"
+        }),
+        new("Diamond", "Kim Cương", "💎", "#7C3AED", "999.000đ", "/ tháng", new[]
+        {
+            "Bán kính geofence +15 m (~45 m)",
+            "Huy hiệu 💎 đặc biệt",
+            "Ưu tiên hàng đợi audio cao nhất",
+            "Hỗ trợ riêng từ đội Vĩnh Khánh"
+        })
+    ];
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var auth = await AuthStateProvider.GetAuthenticationStateAsync();
+            var userIdStr = auth.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (int.TryParse(userIdStr, out var uid))
+            {
+                currentUserId = uid;
+                var user = await AuthService.GetUserByIdAsync(uid);
+                if (user is not null)
+                    currentTier = string.IsNullOrWhiteSpace(user.MembershipTier) ? "Standard" : user.MembershipTier;
+            }
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task RegisterTierAsync(string newTier)
+    {
+        if (currentUserId == 0) return;
+        if (string.Equals(newTier, currentTier, StringComparison.OrdinalIgnoreCase)) return;
+
+        pendingTier = newTier;
+        isSaving = true;
+        statusMessage = null;
+        try
+        {
+            await AuthService.UpdateMembershipTierAsync(currentUserId, newTier);
+            currentTier = newTier;
+            statusMessage = $"Đăng ký gói {TierLabel(newTier)} thành công! Quyền lợi mới có hiệu lực ngay.";
+            isError = false;
+        }
+        catch (Exception ex)
+        {
+            statusMessage = $"Không thể đăng ký gói: {ex.Message}";
+            isError = true;
+        }
+        finally
+        {
+            isSaving = false;
+            pendingTier = null;
+        }
+    }
+
+    private static string TierLabel(string tier) => tier switch
+    {
+        "Diamond" => "Kim Cương",
+        "Gold" => "Vàng",
+        "Silver" => "Bạc",
+        _ => "Thường"
+    };
+
+    private static string TierEmoji(string tier) => tier switch
+    {
+        "Diamond" => "💎",
+        "Gold" => "🥇",
+        "Silver" => "🥈",
+        _ => "⬜"
+    };
+
+    private static string TierBadgeStyle(string tier) => tier switch
+    {
+        "Diamond" => "background:rgba(124,58,237,0.12);color:#7C3AED;border:1px solid rgba(124,58,237,0.3);",
+        "Gold" => "background:rgba(202,138,4,0.12);color:#CA8A04;border:1px solid rgba(202,138,4,0.3);",
+        "Silver" => "background:rgba(100,116,139,0.12);color:#475569;border:1px solid rgba(100,116,139,0.3);",
+        _ => "background:rgba(148,163,184,0.12);color:#64748B;border:1px solid rgba(148,163,184,0.3);"
+    };
+}

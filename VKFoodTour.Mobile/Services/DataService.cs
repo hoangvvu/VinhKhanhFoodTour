@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using VKFoodTour.Mobile.Models;
+using VKFoodTour.Mobile.Services.Offline;
 using VKFoodTour.Shared.DTOs;
 
 namespace VKFoodTour.Mobile.Services;
@@ -11,8 +12,10 @@ public class DataService : IDataService
     private const int MaxFallbackCandidates = 1;
     private readonly HttpClient _http;
     private readonly ISettingsService _settings;
+    private readonly ILocalStore _store;
     private readonly string _deviceId;
     private readonly SemaphoreSlim _apiDetectLock = new(1, 1);
+    private readonly SemaphoreSlim _flushLock = new(1, 1);
     private bool _isApiBaseResolved;
     private string _resolvedApiBase = string.Empty;
     private static readonly HashSet<string> AllowedEventTypes = new(StringComparer.OrdinalIgnoreCase)
@@ -20,11 +23,16 @@ public class DataService : IDataService
         "move", "enter", "exit", "qr_scan", "listen_start", "listen_end"
     };
 
-    public DataService(HttpClient http, ISettingsService settings)
+    public DataService(HttpClient http, ISettingsService settings, ILocalStore store)
     {
         _http = http;
         _settings = settings;
+        _store = store;
         _deviceId = GetOrCreateDeviceId();
+        _ = Task.Run(async () =>
+        {
+            try { await _store.InitAsync(); } catch (Exception ex) { LogApi($"LocalStore init failed: {ex.Message}"); }
+        });
     }
 
     public string DeviceId => _deviceId;
@@ -143,26 +151,49 @@ public class DataService : IDataService
 
     public async Task<List<Poi>> GetPoisAsync(CancellationToken cancellationToken = default)
     {
+        var lang = _settings.SelectedLanguageCode;
         await EnsureApiBaseResolvedAsync(cancellationToken);
         try
         {
-            var langQuery = $"?lang={Uri.EscapeDataString(_settings.SelectedLanguageCode)}";
+            var langQuery = $"?lang={Uri.EscapeDataString(lang)}";
             var response = await GetWithReconnectAsync($"/api/Poi{langQuery}", cancellationToken);
             if (response is null || !response.IsSuccessStatusCode)
-                return FallbackDemo();
+                return await GetCachedPoisOrDemoAsync(lang);
 
             var dtos = await response.Content.ReadFromJsonAsync<List<PoiDto>>(cancellationToken: cancellationToken);
             if (dtos is null)
-                return new List<Poi>();
+                return await GetCachedPoisOrDemoAsync(lang);
 
+            try { await _store.UpsertPoisAsync(lang, dtos, MapToMobileFromDto); }
+            catch (Exception cacheEx) { LogApi($"Cache POI failed: {cacheEx.Message}"); }
+
+            _ = Task.Run(() => FlushPendingEventsAsync(CancellationToken.None));
             return dtos.Select(MapToMobile).ToList();
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"API GetPois: {ex.Message}");
-            return FallbackDemo();
+            return await GetCachedPoisOrDemoAsync(lang);
         }
     }
+
+    private async Task<List<Poi>> GetCachedPoisOrDemoAsync(string lang)
+    {
+        try
+        {
+            var cached = await _store.GetPoisAsync(lang);
+            if (cached.Count > 0)
+            {
+                LogApi($"Using cached POIs ({cached.Count}) for lang={lang}");
+                foreach (var p in cached) p.CoverEmoji = StallEmoji(p.Name);
+                return cached;
+            }
+        }
+        catch (Exception ex) { LogApi($"Read POI cache failed: {ex.Message}"); }
+        return FallbackDemo();
+    }
+
+    private Poi MapToMobileFromDto(PoiDto d) => MapToMobile(d);
 
     public async Task<Poi?> GetPoiByIdAsync(int poiId, CancellationToken cancellationToken = default)
     {
@@ -185,17 +216,18 @@ public class DataService : IDataService
 
     public async Task<PoiDetailDto?> GetPoiDetailAsync(int poiId, CancellationToken cancellationToken = default)
     {
+        var lang = _settings.SelectedLanguageCode;
         await EnsureApiBaseResolvedAsync(cancellationToken);
         try
         {
-            var langQuery = $"?lang={Uri.EscapeDataString(_settings.SelectedLanguageCode)}";
+            var langQuery = $"?lang={Uri.EscapeDataString(lang)}";
             var response = await _http.GetAsync($"{ApiRoot}/api/Poi/{poiId}/detail{langQuery}", cancellationToken);
             if (!response.IsSuccessStatusCode)
-                return null;
+                return await TryGetCachedPoiDetailAsync(poiId, lang);
 
             var dto = await response.Content.ReadFromJsonAsync<PoiDetailDto>(cancellationToken: cancellationToken);
             if (dto is null)
-                return null;
+                return await TryGetCachedPoiDetailAsync(poiId, lang);
 
             dto.CoverImageUrl = NormalizeMediaUrl(dto.CoverImageUrl);
             foreach (var g in dto.GalleryImages)
@@ -208,12 +240,21 @@ public class DataService : IDataService
             foreach (var a in dto.AudioItems)
                 a.Url = NormalizeMediaUrl(a.Url) ?? a.Url;
 
+            try { await _store.UpsertPoiDetailAsync(poiId, lang, dto); }
+            catch (Exception ex) { LogApi($"Cache POI detail failed: {ex.Message}"); }
+
             return dto;
         }
         catch
         {
-            return null;
+            return await TryGetCachedPoiDetailAsync(poiId, lang);
         }
+    }
+
+    private async Task<PoiDetailDto?> TryGetCachedPoiDetailAsync(int poiId, string lang)
+    {
+        try { return await _store.GetPoiDetailAsync(poiId, lang); }
+        catch (Exception ex) { LogApi($"Read POI detail cache failed: {ex.Message}"); return null; }
     }
 
     public async Task<AuthResponseDto?> LoginAsync(string email, string password, CancellationToken cancellationToken = default)
@@ -315,25 +356,96 @@ public class DataService : IDataService
     {
         await EnsureApiBaseResolvedAsync(cancellationToken);
         var normalizedEventType = NormalizeEventType(eventType);
+        // Mặc định lấy ngôn ngữ UI hiện tại của user nếu caller không truyền vào,
+        // để dashboard admin thống kê đúng ngôn ngữ đang dùng (kể cả heartbeat move/exit).
+        var resolvedLanguage = NormalizeLanguageCode(
+            string.IsNullOrWhiteSpace(languageCode) ? _settings.SelectedLanguageCode : languageCode);
+        var dto = new TrackingLogRequestDto
+        {
+            DeviceId = _deviceId,
+            PoiId = poiId,
+            EventType = normalizedEventType,
+            ListenedDurationSec = listenedDurationSec,
+            LanguageCode = resolvedLanguage,
+            Latitude = latitude,
+            Longitude = longitude
+        };
 
         try
         {
-            await _http.PostAsJsonAsync($"{ApiRoot}/api/Tracking/log",
-                new TrackingLogRequestDto
-                {
-                    DeviceId = _deviceId,
-                    PoiId = poiId,
-                    EventType = normalizedEventType,
-                    ListenedDurationSec = listenedDurationSec,
-                    LanguageCode = languageCode,
-                    Latitude = latitude,
-                    Longitude = longitude
-                }, cancellationToken);
+            var resp = await _http.PostAsJsonAsync($"{ApiRoot}/api/Tracking/log", dto, cancellationToken);
+            if (!resp.IsSuccessStatusCode)
+                await EnqueueTrackingAsync(dto);
+            else
+                _ = Task.Run(() => FlushPendingEventsAsync(CancellationToken.None));
         }
         catch
         {
-            // Tracking should not block UX flows
+            await EnqueueTrackingAsync(dto);
         }
+    }
+
+    private async Task EnqueueTrackingAsync(TrackingLogRequestDto dto)
+    {
+        try
+        {
+            await _store.EnqueueEventAsync(new PendingEventRow
+            {
+                DeviceId = dto.DeviceId,
+                PoiId = dto.PoiId,
+                EventType = dto.EventType,
+                ListenedDurationSec = dto.ListenedDurationSec,
+                LanguageCode = dto.LanguageCode,
+                Latitude = dto.Latitude,
+                Longitude = dto.Longitude
+            });
+        }
+        catch (Exception ex) { LogApi($"Enqueue event failed: {ex.Message}"); }
+    }
+
+    private async Task FlushPendingEventsAsync(CancellationToken cancellationToken)
+    {
+        if (!await _flushLock.WaitAsync(0, cancellationToken)) return;
+        try
+        {
+            var pending = await _store.GetPendingEventsAsync(50);
+            if (pending.Count == 0) return;
+            LogApi($"Flushing {pending.Count} pending tracking events");
+            foreach (var row in pending)
+            {
+                try
+                {
+                    var resp = await _http.PostAsJsonAsync($"{ApiRoot}/api/Tracking/log",
+                        new TrackingLogRequestDto
+                        {
+                            DeviceId = row.DeviceId,
+                            PoiId = row.PoiId,
+                            EventType = row.EventType,
+                            ListenedDurationSec = row.ListenedDurationSec,
+                            LanguageCode = row.LanguageCode,
+                            Latitude = row.Latitude,
+                            Longitude = row.Longitude
+                        }, cancellationToken);
+                    if (resp.IsSuccessStatusCode)
+                    {
+                        await _store.DeleteEventAsync(row.Id);
+                    }
+                    else
+                    {
+                        await _store.IncrementAttemptAsync(row.Id);
+                        if (row.Attempts >= 8) await _store.DeleteEventAsync(row.Id);
+                        break;
+                    }
+                }
+                catch
+                {
+                    await _store.IncrementAttemptAsync(row.Id);
+                    break;
+                }
+            }
+        }
+        catch (Exception ex) { LogApi($"Flush pending events failed: {ex.Message}"); }
+        finally { _flushLock.Release(); }
     }
 
     public async Task<List<LanguageListItemDto>> GetLanguagesAsync(CancellationToken cancellationToken = default)
@@ -343,16 +455,33 @@ public class DataService : IDataService
         {
             var response = await GetWithReconnectAsync("/api/Languages", cancellationToken);
             if (response is null || !response.IsSuccessStatusCode)
-                return FallbackLanguages();
+                return await GetCachedLanguagesOrFallbackAsync();
 
             var list = await response.Content.ReadFromJsonAsync<List<LanguageListItemDto>>(cancellationToken: cancellationToken);
-            return list is { Count: > 0 } ? list : FallbackLanguages();
+            if (list is { Count: > 0 })
+            {
+                try { await _store.UpsertLanguagesAsync(list); }
+                catch (Exception ex) { LogApi($"Cache languages failed: {ex.Message}"); }
+                return list;
+            }
+            return await GetCachedLanguagesOrFallbackAsync();
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"API GetLanguages: {ex.Message}");
-            return FallbackLanguages();
+            return await GetCachedLanguagesOrFallbackAsync();
         }
+    }
+
+    private async Task<List<LanguageListItemDto>> GetCachedLanguagesOrFallbackAsync()
+    {
+        try
+        {
+            var cached = await _store.GetLanguagesAsync();
+            if (cached.Count > 0) return cached;
+        }
+        catch (Exception ex) { LogApi($"Read language cache failed: {ex.Message}"); }
+        return FallbackLanguages();
     }
 
     public async Task<bool> PostAppFeedbackAsync(CreateAppFeedbackDto dto, CancellationToken cancellationToken = default)
@@ -532,6 +661,21 @@ public class DataService : IDataService
             return "listen_end";
 
         return AllowedEventTypes.Contains(normalized) ? normalized : "move";
+    }
+
+    /// <summary>
+    /// Chuẩn hoá language code: bỏ prefix legacy như "anon:", trim, lower-case.
+    /// Trả về null nếu không hợp lệ để dashboard không phải đếm các giá trị rác.
+    /// </summary>
+    private static string? NormalizeLanguageCode(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return null;
+        var v = raw.Trim();
+        var colon = v.IndexOf(':');
+        if (colon >= 0 && colon < v.Length - 1)
+            v = v[(colon + 1)..];
+        v = v.Trim().ToLowerInvariant();
+        return string.IsNullOrEmpty(v) ? null : v;
     }
 
     private Poi MapToMobile(PoiDto d) =>

@@ -179,7 +179,8 @@ public partial class FullMapPage : ContentPage
         }
         catch { /* bỏ qua */ }
 
-        var geofenceRadius = Math.Clamp(poi.Radius > 0 ? poi.Radius : 20, 5, 200) + 10;
+        var popupTierBonus = poi.MembershipTier switch { "Diamond" => 15, "Gold" => 10, "Silver" => 5, _ => 0 };
+        var geofenceRadius = Math.Clamp(poi.Radius > 0 ? poi.Radius : 20, 5, 200) + popupTierBonus + 10;
 
         // Header info
         var info = new System.Text.StringBuilder();

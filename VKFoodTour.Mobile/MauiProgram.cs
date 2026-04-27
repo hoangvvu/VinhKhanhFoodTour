@@ -2,6 +2,7 @@ using CommunityToolkit.Maui;
 using Microsoft.Extensions.Logging;
 using Plugin.Maui.Audio;
 using VKFoodTour.Mobile.Services;
+using VKFoodTour.Mobile.Services.Offline;
 using VKFoodTour.Mobile.ViewModels;
 using VKFoodTour.Mobile.Views;
 using ZXing.Net.Maui.Controls;
@@ -32,6 +33,7 @@ public static class MauiProgram
             });
 
         // Đăng ký Services cơ bản
+        builder.Services.AddSingleton<ILocalStore, LocalStore>();
         builder.Services.AddSingleton<ISettingsService, SettingsService>();
         builder.Services.AddSingleton<ILocalizationService, LocalizationService>();
         builder.Services.AddSingleton<IStallNarrationState, StallNarrationState>();
@@ -39,12 +41,14 @@ public static class MauiProgram
         builder.Services.AddSingleton<IFavoriteService, FavoriteService>();
         builder.Services.AddHttpClient<IHttpImageService, HttpImageService>((_, client) => client.ConfigureVkMediaClient());
         builder.Services.AddHttpClient<IDataService, DataService>((_, client) => client.ConfigureVkApiClient());
+        builder.Services.AddHttpClient<ISyncService, SyncService>((_, client) => client.ConfigureVkApiClient());
 
         // Tour Service - gọi API tour
         builder.Services.AddHttpClient<ITourService, TourService>((_, client) => client.ConfigureVkApiClient());
 
         // Audio Services
         builder.Services.AddHttpClient("VkAudio", (_, client) => client.ConfigureVkMediaClient());
+        builder.Services.AddHttpClient<IMediaCacheService, MediaCacheService>((_, client) => client.ConfigureVkMediaClient());
         builder.Services.AddSingleton<IAudioPlaybackService>(sp =>
         {
             var factory = sp.GetRequiredService<IHttpClientFactory>();
@@ -52,7 +56,8 @@ public static class MauiProgram
             return new AudioPlaybackService(
                 sp.GetRequiredService<IAudioManager>(),
                 http,
-                sp.GetRequiredService<ISettingsService>());
+                sp.GetRequiredService<ISettingsService>(),
+                sp.GetRequiredService<IMediaCacheService>());
         });
 
         // Audio Queue Service - quản lý hàng đợi audio (Geofence-Trigger model)

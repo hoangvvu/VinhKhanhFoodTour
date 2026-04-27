@@ -154,36 +154,9 @@ a {
     color: inherit;
 }
 
-/* --- SIDECAR (NAV MENU) STYLE --- */
-.nav-card {
-    display: flex;
-    align-items: center;
-    padding: 12px 20px;
-    border-radius: 12px;
-    margin-bottom: 2px;
-    transition: all 0.3s ease;
-    background-color: transparent;
-    border: none;
-    cursor: pointer;
-    font-size: 14px;
-    color: #64748B;
-}
-
-    .nav-card span.bi {
-        margin-right: 15px;
-        font-size: 1.1rem;
-    }
-
-    .nav-card:hover {
-        background-color: #F8FAFC;
-        color: #1E293B;
-    }
-
-    .active-nav, .nav-card.active {
-        background-color: #FEF2F2;
-        color: #C8372D !important;
-        border-left: 3px solid #C8372D;
-    }
+/* --- SIDECAR (NAV MENU) STYLE ---
+   Style chính của sidebar được khai báo trong Components/Layout/NavMenu.razor.css
+   (scoped). Phần ở đây cố ý để trống tránh override `gap`/`margin` của scoped CSS. */
 
 /* --- STATISTICS CARDS & CONTENT CARDS STYLE --- */
 .stats-card, .content-card {

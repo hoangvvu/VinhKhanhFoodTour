@@ -118,7 +118,7 @@ public partial class LoginPage : ContentPage
             await _dataService.TrackEventAsync(
                 poiId: null,
                 eventType: "move",
-                languageCode: $"anon:{_localization.CurrentLanguageCode}");
+                languageCode: _localization.CurrentLanguageCode);
             Application.Current!.Windows[0].Page = _shell;
         }
         finally
