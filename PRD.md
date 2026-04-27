@@ -169,7 +169,7 @@ flowchart LR
 #### A1 — Dashboard tổng quan `/` (`Pages/Home.razor`)
 | Khu vực | Mô tả | Phương thức / nguồn dữ liệu |
 |---|---|---|
-| Realtime thiết bị | Đếm device đang dùng app trong cửa sổ vài chục giây | `ActiveDevicesWidget.LoadAsync()` → đọc `Db.TrackingLogs` (poll mỗi 3s) |
+| Realtime thiết bị | Đếm device đang dùng app trong cửa sổ vài chục giây | `Components/Shared/ActiveDevicesWidget.RefreshAsync()` → đọc `Db.TrackingLogs` (poll mỗi 3s); đếm device có **event mới nhất ≠ `exit`** trong cửa sổ `WindowSeconds=45` |
 | Thống kê hệ thống | Tổng POI / POI đang hoạt động / tổng thuyết minh / số ngôn ngữ active / tổng user / số vendor / lượt QR hôm nay | `Home.LoadAdminStats()` |
 | Hành vi người dùng | Tổng tương tác hôm nay (loại trừ heartbeat `move`), thời gian nghe TB, tổng đánh giá | `Home.LoadAdminStats()` |
 | Top gian hàng | Top 5 POI có nhiều lượt `enter` + `qr_scan` | Group `TrackingLogs` theo `PoiId` |
@@ -331,8 +331,11 @@ Trang chỉ điều hướng về Home Dashboard tổng hợp (đã merge số l
 #### M5 — Phát audio
 - `Services/AudioPlaybackService.cs` (Plugin.Maui.Audio): `PlayAsync(url)`, `Pause()`, `Resume()`, `Stop()`, `SeekTo(sec)`, sự kiện `PlaybackEnded`.
 - `Services/AudioQueueService.cs` — orchestrator chính:
-  - `EnqueueAsync(item)`, `HandlePoiEnteredAsync(poi)`, `PlayNextFromQueueAsync()`, `InsertNext(item)`, `InterruptAndPlay(item)`.
-  - Quy tắc 60% (`TierValue` so sánh gói + tiến độ `_player.PositionRatio`) để quyết định `InsertNext` vs `InterruptAndPlay`.
+  - `InitializeQueueAsync(items)`, `StartAsync()`, `HandlePoiEnteredAsync(poiId)`, `PlayNextFromQueueAsync()`, `InsertNext(item)`, `InterruptAndPlayAsync(item)`.
+  - Quyết định khi đứng giữa 2 vùng geofence dựa trên **MembershipTier** (Diamond=4 > Gold=3 > Silver=2 > Standard=1) qua helper `TierValue(tier)`:
+    - `newTier > currentTier` → `InterruptAndPlayAsync` (ngắt POI đang phát, đẩy nó lên đầu queue để phát lại sau).
+    - `newTier ≤ currentTier` → `InsertNext` (không ngắt, chèn POI mới vào đầu queue, phát kế tiếp).
+  - `_enterGate` (`SemaphoreSlim(1,1)`) tuần tự hoá 2 event Enter sát nhau để tránh race.
   - `MarkPoiPlayed(poi)` báo cho `GeofenceMonitorService` không re-trigger.
 
 #### M6 — Geofence
@@ -379,7 +382,7 @@ Trang chỉ điều hướng về Home Dashboard tổng hợp (đã merge số l
 ### 3.4. Điểm nổi bật của đồ án
 - **Location-based audio guide**: audio thuyết minh tự động phát theo GPS/geofence, khác biệt với các app du lịch bấm-mới-nghe.
 - **Pipeline dịch + TTS khép kín trên Web Admin**: admin nhập tiếng Việt → Google Translate sang ngôn ngữ đích → Edge TTS sinh audio → lưu vào `UploadsData` và liên kết với POI.
-- **Smart Audio Queue** (`AudioQueueService`): xử lý hàng đợi audio khi đi qua nhiều POI hoặc đứng giữa các vùng geofence chồng lấn – ưu tiên theo **tiến độ track (60%)** thay vì khoảng cách, kết hợp **dwell 8s + exit debounce 10s** ở `GeofenceMonitorService` để tránh "nháy" do GPS nhiễu.
+- **Smart Audio Queue** (`AudioQueueService`): xử lý hàng đợi audio khi đi qua nhiều POI hoặc đứng giữa các vùng geofence chồng lấn – ưu tiên theo **MembershipTier của POI** (Diamond > Gold > Silver > Standard) thay vì khoảng cách hay tiến độ track, kết hợp **dwell 8s + exit debounce 10s** ở `GeofenceMonitorService` để tránh "nháy" do GPS nhiễu. Vendor trả phí gói cao hơn → audio của họ được ưu tiên phát trước, đồng bộ với chính sách gói thành viên.
 - **QR-first onboarding**: một QR đầu phố đủ để khởi tạo toàn bộ tour, không cần đăng ký trước.
 - **Tracking đầy đủ hành vi** (`Tracking/log`) phục vụ heatmap, đếm thiết bị online, thống kê tỉ lệ hoàn thành tour.
 
@@ -445,7 +448,7 @@ sequenceDiagram
 
     loop Mỗi 3 giây
         GPS-->>Geo: GetLastKnownLocation / GetLocation
-        Geo->>Geo: Tính distance đến từng POI<br/>threshold = radiusM + 10m
+        Geo->>Geo: Tính distance đến từng POI<br/>threshold = clamp(radiusM,5,200) + TierBonus + 10m
     end
 
     Note over Geo: Lần đầu vào vùng POI A
@@ -632,11 +635,11 @@ sequenceDiagram
 **Ghi chú:**
 
 - **Heatmap** trên bản đồ tổng quan nằm ở `/admin/ban-do` (`BanDoPoi.razor`): cũng đọc `TrackingLogs` qua EF + đẩy JSON sang JS (`updateOverviewHeatmap`), không đi qua `GET /api/Tracking/heatmap` từ Blazor.
-- Component **`OnlineUsersWidget`** cùng pattern (Timer + `IDbContextFactory`) nhưng **chưa được nhúng** vào `Home.razor`; trang chủ admin hiện dùng **`ActiveDevicesWidget`** (`WindowSeconds=45`, `RefreshSeconds=3`).
+- Trang chủ admin chỉ dùng duy nhất **`Components/Shared/ActiveDevicesWidget.razor`** (`WindowSeconds=45`, `RefreshSeconds=3`). Các bản widget cũ trùng tên (`Pages/Admin/ActiveDevicesWidget.razor`, `Pages/Admin/OnlineUsersWidget.razor`) đã được dọn dẹp khỏi repo.
 
 #### 4.5.1. SEQ-05a – Admin Dashboard: phương thức trong `Home.razor` & `ActiveDevicesWidget`
 
-**Mô tả:** Chuỗi gọi **theo code thực tế** khi user role **Admin** mở `/`. File: `Admin/Components/Pages/Home.razor`, widget: `Admin/Components/Pages/Admin/ActiveDevicesWidget.razor`.
+**Mô tả:** Chuỗi gọi **theo code thực tế** khi user role **Admin** mở `/`. File: `Admin/Components/Pages/Home.razor`, widget thực sự render: `Admin/Components/Shared/ActiveDevicesWidget.razor`.
 
 **A) `Home.razor` — `OnInitializedAsync` → `LoadAdminStats` (inject `ApplicationDbContext Db`)**
 
@@ -700,50 +703,182 @@ sequenceDiagram
     H-->>Ad: Render dashboard (KPI + bảng + phân tích)
 ```
 
-**B) `ActiveDevicesWidget` — inject `IDbContextFactory<ApplicationDbContext> DbFactory`**
+**B) `Components/Shared/ActiveDevicesWidget.razor` — inject `IDbContextFactory<ApplicationDbContext> DbFactory`**
 
-| Thứ tự | Phương thức |
-|--------|-------------|
+| Thứ tự | Phương thức / Logic |
+|--------|---------------------|
 | 1 | `OnInitializedAsync()` |
-| 2 | `Math.Clamp(WindowSeconds, 15, 300)` |
-| 3 | `LoadAsync()` |
+| 2 | Quy đổi cửa sổ thời gian: `WindowMinutes ?? WindowSeconds`, `Math.Clamp(_, 15, 300)` |
+| 3 | `RefreshAsync()` |
 | 4 | `DbFactory.CreateDbContextAsync()` |
-| 5 | `db.TrackingLogs.AsNoTracking()…GroupBy(DeviceId)…ToListAsync()` |
-| 6 | `db.Pois.AsNoTracking()…ToDictionaryAsync(PoiId, Name)` (nếu có `poiIds`) |
-| 7 | Gán `activeDevices` (LINQ trên bộ nhớ) |
-| 8 | `new Timer(...)` — refresh mỗi `RefreshSeconds` (3s): gọi lại `LoadAsync()` + `InvokeAsync(StateHasChanged)` |
-| 9 | `new Timer(...)` — mỗi 1s: cập nhật `secondsAgo` + `StateHasChanged` |
-| 10 | `DisposeAsync()` — hủy hai timer |
+| 5 | `db.TrackingLogs.AsNoTracking().Where(CreatedAt ≥ threshold).Select(DeviceId, EventType, CreatedAt, PoiId).OrderByDescending(CreatedAt).Take(2000).ToListAsync()` |
+| 6 | `logs.GroupBy(DeviceId).Select(g => g.OrderByDescending(CreatedAt).First().EventType)` — lấy event MỚI NHẤT của từng thiết bị |
+| 7 | `Count(latestEvent => latestEvent != "exit")` → gán `OnlineCount` (con số to ở giữa card) |
+| 8 | Gán `lastRefreshed = DateTime.Now`; nếu lỗi → set `lastError`, log `Debug.WriteLine` |
+| 9 | `new Timer(...)` — gọi lại `RefreshAsync()` + `InvokeAsync(StateHasChanged)` mỗi `RefreshSeconds` (3s) |
+| 10 | Nút "Refresh" (`@onclick="RefreshAsync"`) — bấm tay để load lại |
+| 11 | `DisposeAsync()` — `_timer?.Dispose()` |
 
 ```mermaid
 sequenceDiagram
     autonumber
     participant H as Home.razor
-    participant W as ActiveDevicesWidget
+    participant W as Shared/ActiveDevicesWidget
     participant F as IDbContextFactory
     participant Db as ApplicationDbContext<br/>(instance mới mỗi lần)
 
     H->>W: Render child (WindowSeconds=45, RefreshSeconds=3)
     W->>W: OnInitializedAsync()
-    W->>W: Math.Clamp(WindowSeconds, 15, 300)
-    W->>W: LoadAsync()
+    W->>W: Clamp window (15..300s)
+    W->>W: RefreshAsync()
     W->>F: CreateDbContextAsync()
     F-->>Db: factory tạo context
-    W->>Db: TrackingLogs AsNoTracking GroupBy DeviceId ToListAsync
-    W->>Db: Pois AsNoTracking ToDictionaryAsync (join tên quán)
-    W-->>H: Hiển thị danh sách thiết bị
+    W->>Db: TrackingLogs.Where(CreatedAt ≥ now-window)<br/>Select(DeviceId, EventType, CreatedAt, PoiId)<br/>OrderByDescending.Take(2000).ToListAsync()
+    Db-->>W: logs (≤2000 dòng)
+    W->>W: GroupBy(DeviceId) → lấy EventType mới nhất
+    W->>W: OnlineCount = Count(latest != "exit")
+    W-->>H: Render số thiết bị online + lastRefreshed
 
     loop Mỗi RefreshSeconds (3s)
-        W->>W: LoadAsync() (lặp bước CreateDbContext + query)
+        W->>W: RefreshAsync() (lặp lại bước 5–7)
         W->>W: InvokeAsync(StateHasChanged)
     end
 
-    loop Mỗi 1 giây (_tickTimer)
-        W->>W: cập nhật secondsAgo, StateHasChanged
-    end
+    Note over W: Nếu DB lỗi:<br/>lastError = ex.Message,<br/>badge "Lỗi DB" hiển thị
 ```
 
+**Điểm quan trọng (khớp code):**
+- Đếm dựa trên **event mới nhất ≠ `exit`** chứ không đơn thuần đếm distinct `DeviceId` — đảm bảo người vừa rời geofence không bị tính online.
+- Chỉ load tối đa **2000 log gần nhất** để bound query khi traffic lớn.
+- Toàn bộ con số to giữa card = field `OnlineCount`. Mọi thay đổi cách đếm/hiển thị (vd. nhân hệ số demo) phải sửa trong block tính `OnlineCount` ở `RefreshAsync()`.
+
 **Ghi chú thứ tự Blazor:** `Home.OnInitializedAsync` (gồm `LoadAdminStats`) chạy trước khi subtree render xong; `ActiveDevicesWidget` khởi tạo sau (lifecycle con), nên block **A** hoàn tất trước **B** trong cùng lần tải trang đầu.
+
+#### 4.5.2. SEQ-05b – Vendor Dashboard: phương thức hiển thị các KPI gian hàng
+
+**Mô tả:** Khi user role **Vendor** mở `/`, `Home.razor` rẽ nhánh `LoadVendorStats(user)` rồi gọi service `DashboardMetricsService.GetVendorMetricsAsync(userId)`. Tất cả các con số trên 4 thẻ KPI (QR scan hôm nay, lượt phát audio, đánh giá TB, gói thành viên) + checklist vận hành (5 ô tròn xanh/đỏ) đều bind từ object `VendorDashboardMetrics` trả về.
+
+**Bảng phương thức (theo code thực tế, file `Admin/Services/DashboardMetricsService.cs`)**
+
+| Thứ tự | Phương thức / truy vấn | Con số trên UI |
+|--------|------------------------|----------------|
+| 1 | `_db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.UserId == userId)` | lấy `MembershipTier` cho card "Gói thành viên" |
+| 2 | `_db.Pois.Include(Images).Include(Narrations).FirstOrDefaultAsync(OwnerId == userId)` | xác định POI của vendor |
+| 3 | `_db.TrackingLogs.CountAsync(PoiId & qr_scan & today)` | thẻ "QR scan hôm nay" |
+| 4 | `_db.TrackingLogs.CountAsync(PoiId & listen_start & today)` | thẻ "Lượt phát audio" |
+| 5 | `reviewQuery.CountAsync()` | `TotalReviews` (số lượt đánh giá) |
+| 6 | `reviewQuery.AverageAsync(r => (double)r.Rating)` (chỉ chạy khi `TotalReviews > 0`) | `AverageRating` — sao trung bình hiện trên thẻ "Đánh giá" |
+| 7 | `_db.Foods.CountAsync(PoiId & IsAvailable)` | `MenuCount` — đếm món đang bán |
+| 8 | Flag `HasDescription` = `!string.IsNullOrWhiteSpace(poi.Description)` | tick checklist "Mô tả" |
+| 9 | `HasAddress` = `!string.IsNullOrWhiteSpace(poi.Address)` | tick "Địa chỉ" |
+| 10 | `HasValidMap` = `poi.Latitude != 0 && poi.Longitude != 0` | tick "Toạ độ trên bản đồ" |
+| 11 | `HasCover` = có `ImageUrl` HOẶC `Images.Any(i => i.IsCover)` | tick "Ảnh bìa" |
+| 12 | `HasAudio` = `Narrations.Any(IsActive && (AudioUrlAuto‖AudioUrlQr))` | tick "Audio thuyết minh" |
+| 13 | Build `VendorDashboardMetrics` (DTO) → trả về `Home.razor` | bind toàn bộ thẻ + checklist |
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor V as Vendor
+    participant H as Home.razor
+    participant Auth as AuthenticationStateProvider
+    participant S as DashboardMetricsService
+    participant Db as ApplicationDbContext
+
+    V->>H: GET / (cookie auth, Role = Vendor)
+    H->>H: OnInitializedAsync()
+    H->>Auth: GetAuthenticationStateAsync()
+    Auth-->>H: ClaimsPrincipal (userId)
+    H->>H: LoadVendorStats(user)
+    H->>S: GetVendorMetricsAsync(userId)
+
+    S->>Db: Users.FirstOrDefaultAsync(UserId)
+    Db-->>S: MembershipTier
+    S->>Db: Pois.Include(Images, Narrations).FirstOrDefaultAsync(OwnerId)
+    Db-->>S: poi + collections
+
+    S->>Db: TrackingLogs.CountAsync(qr_scan, today)
+    S->>Db: TrackingLogs.CountAsync(listen_start, today)
+    S->>Db: Reviews.CountAsync(PoiId)
+    alt TotalReviews > 0
+        S->>Db: Reviews.AverageAsync(Rating)
+    end
+    S->>Db: Foods.CountAsync(IsAvailable)
+
+    Note over S: Tính các flag HasDescription / HasAddress /<br/>HasValidMap / HasCover / HasAudio (LINQ trên bộ nhớ)
+
+    S-->>H: VendorDashboardMetrics
+    H-->>V: Render 4 KPI cards + 5 checklist + nút quick-action
+```
+
+**Điểm quan trọng:**
+- Tất cả các con số trên dashboard Vendor đều **lấy 1 lần** lúc render trang (không poll). Vendor F5 trang để cập nhật.
+- `AverageRating` được làm tròn ở UI (`F1`); nếu `TotalReviews == 0` field này = 0 và UI hiển thị "Chưa có đánh giá".
+- Card "Gói thành viên" hiển thị giá trị từ `User.MembershipTier`; rỗng → fallback `"Standard"` ở dòng `MembershipTier = string.IsNullOrWhiteSpace(...) ? "Standard" : user!.MembershipTier!`.
+- Logic checklist là client-side (LINQ trên object đã load) → không tốn round-trip thêm.
+
+#### 4.5.3. SEQ-05c – Mobile `FullMapPage`: phương thức hiển thị bán kính geofence + khoảng cách
+
+**Mô tả:** Trên mobile, khi du khách mở tab "Bản đồ", các con số hiển thị (vòng tròn geofence, badge gói, khoảng cách hiện trong popup khi tap pin, đánh giá) đều được tính lại tại client từ `PoiDto` (đã localize) trả về bởi `GET /api/Poi`. File: `VKFoodTour.Mobile/Views/FullMapPage.xaml.cs`.
+
+**Bảng phương thức**
+
+| Thứ tự | Phương thức | Con số / UI element |
+|--------|-------------|---------------------|
+| 1 | `OnAppearing()` → bind `HomeViewModel.Pois` | trigger `RefreshMapFromPois()` |
+| 2 | `RefreshMapFromPois()` → `ApplyPinsAndCircles()` + `FitMapToPois()` | (orchestrator) |
+| 3 | `tierBadge = MembershipTier switch { Diamond=💎, Gold=🥇, Silver=🥈, _ => "" }` | huy hiệu trên Pin label |
+| 4 | `tierBonus  = MembershipTier switch { Diamond=15, Gold=10, Silver=5, _ => 0 }` | bonus mét theo gói |
+| 5 | `baseRadius = Math.Clamp(p.Radius > 0 ? p.Radius : 20, 5, 200)` | bán kính cơ sở (clamp 5–200m) |
+| 6 | `geofenceRadius = baseRadius + tierBonus + 10` | mét — khớp với `GeofenceMonitorService` |
+| 7 | `bigMap.MapElements.Add(new Circle { Radius = Distance.FromMeters(geofenceRadius) })` | vẽ vòng cam đậm trên map |
+| 8 | `OnPinClicked(pin)` → `Geolocation.GetLastKnownLocationAsync()` | lấy vị trí user |
+| 9 | `CalculateDistanceMeters(uLat, uLng, pLat, pLng)` (Haversine) | tính khoảng cách thực |
+| 10 | `distStr = dist < 1000 ? "{m:F0}m" : "{km:F1}km"` | chuỗi "📏 Cách bạn: 240m" |
+| 11 | `popupTierBonus + 10` áp dụng lại trong popup | "🔔 Vùng geofence: 35m" trong ActionSheet |
+| 12 | `poi.Rating:F1`, `poi.ReviewCount` | "⭐ 4.5 (12 lượt)" |
+| 13 | `FitMapToPois()` → `MapSpan.FromCenterAndRadius(...)` | auto-zoom bản đồ vừa khít |
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as Du khách
+    participant Page as FullMapPage
+    participant VM as HomeViewModel
+    participant API as PoiController
+    participant Geo as Geolocation (MAUI)
+
+    U->>Page: Mở tab Bản đồ (OnAppearing)
+    Page->>VM: bind HomeViewModel.Pois
+    VM->>API: GET /api/Poi?lang=...
+    API-->>VM: List<PoiDto> (kèm Radius, MembershipTier, Rating, ReviewCount)
+
+    Page->>Page: RefreshMapFromPois()
+    Page->>Page: ApplyPinsAndCircles()
+    loop Mỗi POI
+        Page->>Page: tierBadge = switch(MembershipTier)
+        Page->>Page: tierBonus  = switch(MembershipTier)
+        Page->>Page: baseRadius = Clamp(Radius, 5, 200)
+        Page->>Page: geofenceRadius = baseRadius + tierBonus + 10
+        Page->>Page: Pins.Add(Pin{tierBadge + name})
+        Page->>Page: MapElements.Add(Circle{Distance.FromMeters(geofenceRadius)})
+    end
+    Page->>Page: FitMapToPois()
+
+    Note over U,Page: Khi du khách tap 1 Pin
+    U->>Page: OnPinClicked
+    Page->>Geo: GetLastKnownLocationAsync()
+    Geo-->>Page: Location(lat,lng)
+    Page->>Page: dist = CalculateDistanceMeters(...)
+    Page->>Page: distStr (m or km)
+    Page->>Page: popupTierBonus + radius + 10
+    Page-->>U: ActionSheet hiển thị<br/>📍 địa chỉ<br/>📏 cách bạn: distStr<br/>⭐ rating (reviewCount lượt)<br/>🔔 vùng geofence: Xm
+```
+
+**Điểm quan trọng (đảm bảo tính nhất quán giữa các con số):**
+- **3 nơi** dùng cùng công thức `radius + tierBonus + 10m`: vòng tròn trên map (`ApplyPinsAndCircles`), popup (`OnPinClicked`), và `GeofenceMonitorService.EvaluateAsync` (server-side trigger). Sửa hệ số tier ở 1 nơi phải sửa cả 3 — đây là điểm cần refactor thành `TierBonusHelper` chung trong tương lai.
+- Khoảng cách "Cách bạn" chỉ tính khi `GetLastKnownLocationAsync()` thành công — fail (no GPS / từ chối quyền) thì dòng đó **bị ẩn** chứ không hiện "0m" gây hiểu nhầm.
+- `tierBadge` đứng trước tên trên Pin label; nếu gói = `Standard` thì badge rỗng và `Trim()` bỏ khoảng trắng đầu.
 
 ---
 
@@ -782,9 +917,27 @@ sequenceDiagram
 
 ---
 
-### 4.7. SEQ-07 – Ưu tiên audio khi đứng giữa 2 geofence chồng lấn
+### 4.7. SEQ-07 – Ưu tiên audio khi đứng giữa 2 geofence chồng lấn (Tier-based)
 
-**Mô tả:** Kịch bản du khách đang nghe audio của POI A thì bước vào vùng geofence của POI B (2 vùng chồng lấn, hoặc 2 quán cạnh nhau). `AudioQueueService` quyết định xử lý dựa trên **tiến độ track A đang phát** so với ngưỡng **60%**.
+**Mô tả:** Kịch bản du khách đang nghe audio của POI A thì bước vào vùng geofence của POI B (2 vùng chồng lấn, hoặc 2 quán cạnh nhau). `AudioQueueService.HandlePoiEnteredAsync(B)` quyết định **dựa trên `MembershipTier` của B so với A** thông qua helper `TierValue(tier)`. Đây là phương pháp đang dùng trong code (không còn sử dụng ngưỡng tiến độ % của bản đồ án trước đó).
+
+**Bảng phương thức quyết định** (file `VKFoodTour.Mobile/Services/AudioQueueService.cs`)
+
+| Thứ tự | Phương thức / kiểm tra | Hành vi |
+|--------|------------------------|---------|
+| 1 | `_started` flag | nếu chưa start tour → bỏ qua |
+| 2 | `_enterGate.WaitAsync()` | tuần tự hoá 2 event Enter sát nhau |
+| 3 | `_playedPois.Contains(B)` | nếu B đã phát xong → return |
+| 4 | `CurrentlyPlaying?.PoiId == B` | đang phát chính B → return |
+| 5 | `_queue.FirstOrDefault(q => q.PoiId == B)` | tìm `item` của B trong queue (`null` → bỏ qua) |
+| 6 | `CurrentlyPlaying == null` | không có gì đang phát → `PlayItemAsync(B)` ngay |
+| 7 | `currentTier = TierValue(CurrentlyPlaying.MembershipTier)` | lấy hạng A |
+| 8 | `newTier = TierValue(item.MembershipTier)` | lấy hạng B |
+| 9a | `newTier > currentTier` | gọi `InterruptAndPlayAsync(B)` |
+| 9b | `newTier ≤ currentTier` | gọi `InsertNext(B)` |
+| 10 | `_enterGate.Release()` | mở khoá cho event tiếp theo |
+
+**Giá trị `TierValue`:** `Diamond=4`, `Gold=3`, `Silver=2`, `Standard=1` (`null` → 1).
 
 ```mermaid
 sequenceDiagram
@@ -794,49 +947,56 @@ sequenceDiagram
     participant Play as AudioPlaybackService
     participant Track as TrackingController
 
-    Note over Play: Đang phát audio POI A
+    Note over Play: Đang phát audio POI A (tier currentTier)
     Geo->>Q: PoiEntered(B)
     Q->>Q: HandlePoiEnteredAsync(B)
+    Q->>Q: _enterGate.WaitAsync()
     Q->>Q: _playedPois.Contains(B)? Không
     Q->>Q: CurrentlyPlaying.PoiId == B? Không
-    Q->>Play: GetProgress() - tiến độ track A
+    Q->>Q: item = _queue.FirstOrDefault(PoiId == B)
+    Q->>Q: currentTier = TierValue(A.MembershipTier)
+    Q->>Q: newTier = TierValue(B.MembershipTier)
 
-    alt Progress ≥ 60% (track A gần xong)
-        Note over Q: InsertNext(B)<br/>để nghe hết A trước
-        Q->>Q: _queue.Insert(0, B)
-        Note over Play: A tiếp tục phát tới hết
-        Play-->>Q: A kết thúc tự nhiên
-        Q->>Track: listen_end, A (full duration)
-        Q->>Q: PlayNextFromQueueAsync() → lấy B
-        Q->>Play: PlayAsync(B.Url)
-        Q->>Track: listen_start, B
-    else Progress < 60% (track A còn dài)
-        Note over Q: InterruptAndPlay(B)<br/>ngắt A ngay
-        Q->>Play: Stop()
+    alt newTier > currentTier (B "cao gói" hơn A)
+        Note over Q: InterruptAndPlayAsync(B)
+        Q->>Play: Stop() + Cancel CTS
         Q->>Track: listen_end, A (partial duration)
-        Q->>Q: _queue.Insert(0, A)<br/>chèn A vào đầu queue
-        Q->>Play: PlayAsync(B.Url)
-        Q->>Track: listen_start, B
-
+        Q->>Q: _queue.Insert(0, A)<br/>(đẩy A lên đầu queue để phát lại sau)
+        Q->>Q: _queue.Remove(B)
+        Q->>Play: PlayAsync(B.AudioUrl)
+        Q->>Track: enter + listen_start, B
         Note over Play: B phát xong
-        Play-->>Q: B kết thúc
+        Play-->>Q: B kết thúc tự nhiên
         Q->>Track: listen_end, B
         Q->>Q: _playedPois.Add(B)
         Q->>Q: PlayNextFromQueueAsync() → lấy A lại
-        Q->>Play: PlayAsync(A.Url) - phát lại A
-        Q->>Track: listen_start, A (replay)
+        Q->>Play: PlayAsync(A.AudioUrl)
+        Q->>Track: enter + listen_start, A (replay)
+    else newTier ≤ currentTier (B cùng/thấp gói hơn A)
+        Note over Q: InsertNext(B) — KHÔNG ngắt A
+        Q->>Q: _queue.Remove(B)
+        Q->>Q: _queue.Insert(0, B)<br/>(B sẽ phát ngay sau khi A kết thúc)
+        Note over Play: A tiếp tục phát tới hết
+        Play-->>Q: A kết thúc tự nhiên
+        Q->>Track: listen_end, A (full duration)
+        Q->>Q: _playedPois.Add(A)
+        Q->>Q: PlayNextFromQueueAsync() → lấy B
+        Q->>Play: PlayAsync(B.AudioUrl)
+        Q->>Track: enter + listen_start, B
     end
+
+    Q->>Q: _enterGate.Release()
 ```
 
-**Giải thích ý nghĩa ngưỡng 60%:**
-- Với ngưỡng **≥ 60%**: track đang phát đã gần xong → cho nghe trọn vẹn để giữ trải nghiệm liền mạch, POI mới xếp kế tiếp.
-- Với ngưỡng **< 60%**: du khách vừa mới bước vào quán cũ và chưa nghe được bao nhiêu, giờ đã ở gần quán mới – ưu tiên thông tin về **vị trí hiện tại**, ngắt track cũ, phát track mới, và phát lại track cũ sau khi track mới kết thúc.
-- Hằng số `InterruptThreshold = 0.60` được định nghĩa trong `AudioQueueService.cs` – có thể tune để thay đổi hành vi.
+**Giải thích lý do thiết kế tier-based:**
+- Vendor đăng ký gói thành viên cao hơn (Silver/Gold/Diamond) trả phí để được **ưu tiên trải nghiệm**: bán kính geofence rộng hơn (+5/+10/+15m) và **audio được ưu tiên cắt vào** khi du khách vừa bước tới. Điều này thống nhất chính sách kinh doanh của hệ thống.
+- Khi 2 POI cùng hạng (vd. cả hai là Standard), POI mới chỉ được **xếp hàng kế tiếp** — bảo toàn trải nghiệm nghe liền mạch của POI đang phát.
+- Tier-based đơn giản, **không phụ thuộc tiến độ track** (vốn khó đo chính xác trên Plugin.Maui.Audio nếu user pause/seek), tránh được race condition của bản 60% cũ.
 
 **Các nhánh an toàn khác (code thực tế):**
-- Nếu POI B đã có trong `_playedPois` → **bỏ qua** (không phát lại).
-- Nếu POI B chính là track đang phát (`CurrentlyPlaying.PoiId == B`) → **bỏ qua** (tránh double-trigger do GPS jitter).
-- Nếu `CurrentlyPlaying != null` nhưng `IsPlaying == false` (bootstrap/loading) → **InsertNext** để tránh race condition.
+- POI B đã có trong `_playedPois` → **bỏ qua** (không phát lại). Cờ này được set khi audio kết thúc tự nhiên trong `WaitForCompletionAsync` và còn được forward sang `GeofenceMonitorService.MarkPoiPlayed(B)` để monitor cũng không re-trigger.
+- POI B chính là track đang phát → **bỏ qua** (tránh double-trigger do GPS jitter / dwell tick).
+- `_enterGate` (`SemaphoreSlim(1, 1)`) đảm bảo nếu A và B cùng dwell xong gần như đồng thời, hai event được xử lý **tuần tự** chứ không cùng lúc → tránh được tình huống cả hai cùng cố ngắt nhau.
 
 ---
 
@@ -1142,53 +1302,62 @@ flowchart TD
 
 ---
 
-### 5.5. ACT-05 – Logic Audio Queue với ngưỡng ưu tiên 60%
+### 5.5. ACT-05 – Logic Audio Queue ưu tiên theo MembershipTier
 
-**Mô tả:** Logic thật của `HandlePoiEnteredAsync` trong `AudioQueueService.cs` khi nhận sự kiện `PoiEntered` từ `GeofenceMonitorService`.
+**Mô tả:** Logic thật của `HandlePoiEnteredAsync(poiId)` trong `AudioQueueService.cs` khi nhận sự kiện `PoiEntered` từ `GeofenceMonitorService`. Quyết định cắt/chèn dựa trên so sánh **`TierValue`** giữa POI mới và POI đang phát (Diamond=4 > Gold=3 > Silver=2 > Standard=1).
 
 ```mermaid
 flowchart TD
-    A([PoiEntered poiId từ Geofence]) --> B{poiId đã<br/>_playedPois?}
+    A([PoiEntered poiId từ Geofence]) --> A1[await _enterGate.WaitAsync<br/>tuần tự hoá]
+    A1 --> B{poiId đã<br/>_playedPois?}
     B -- Có --> Z1([Bỏ qua - không phát lại])
     B -- Không --> C{CurrentlyPlaying.PoiId<br/>== poiId?}
     C -- Có --> Z2([Bỏ qua - đang phát chính nó])
-    C -- Không --> D[Tìm item trong _queue]
+    C -- Không --> D[Tìm item trong _queue<br/>FirstOrDefault PoiId == poiId]
     D --> E{Tìm thấy?}
     E -- Không --> Z3([Bỏ qua - không có audio])
     E -- Có --> F{CurrentlyPlaying<br/>== null?}
-    F -- Có --> G[Remove item khỏi queue]
+
+    F -- Có --> G[_queue.Remove item]
     G --> H[PlayItemAsync item]
     H --> H1[Track: enter + listen_start]
     H1 --> H2[AudioPlayer.PlayAsync]
-    H2 --> H3[Chờ phát xong]
+    H2 --> H3[WaitForCompletionAsync]
     H3 --> H4[Track: listen_end]
     H4 --> H5[_playedPois.Add]
     H5 --> H6[Geofence.MarkPoiPlayed]
     H6 --> H7[PlayNextFromQueueAsync]
     H7 --> End([Hết])
 
-    F -- Không --> I{AudioPlayer.IsPlaying?}
-    I -- Không --> J[InsertNext - bootstrap<br/>tránh race condition]
-    J --> End
-    I -- Có --> K[GetProgress - % track hiện tại]
-    K --> L{progress >= 0.60?}
-    L -- Có --> M[InsertNext item<br/>vào đầu _queue]
-    M --> N[Để track hiện tại<br/>phát hết tự nhiên]
+    F -- Không --> K1[currentTier = TierValue<br/>CurrentlyPlaying.MembershipTier]
+    K1 --> K2[newTier = TierValue<br/>item.MembershipTier]
+    K2 --> L{newTier > currentTier?}
+
+    L -- Không<br/>cùng/thấp gói --> M[InsertNext item:<br/>_queue.Remove + Insert at 0]
+    M --> N[Track hiện tại<br/>phát tới hết tự nhiên]
     N --> End
-    L -- Không --> O[InterruptAndPlayAsync item]
-    O --> O1[Stop track hiện tại]
-    O1 --> O2[Track: listen_end<br/>duration partial]
-    O2 --> O3[Insert track cũ<br/>vào đầu queue]
-    O3 --> O4[PlayItemAsync item mới]
-    O4 --> End
+
+    L -- Có<br/>POI mới gói cao hơn --> O[InterruptAndPlayAsync item]
+    O --> O1[Cancel CTS + AudioPlayer.Stop]
+    O1 --> O2[Track: listen_end<br/>partial duration cho POI cũ]
+    O2 --> O3[Push POI cũ về đầu queue<br/>_queue.Insert 0, interrupted]
+    O3 --> O4[_queue.Remove item mới]
+    O4 --> O5[PlayItemAsync item mới]
+    O5 --> End
+
+    Z1 --> R[_enterGate.Release]
+    Z2 --> R
+    Z3 --> R
+    End --> R
 ```
 
 **Các hằng số tham chiếu trong code:**
-- `GeofenceMonitorService.DwellThresholdSec = 8` – phải ở trong zone 8 giây mới trigger.
+- `GeofenceMonitorService.DwellThresholdSec = 8` – phải ở trong zone 8 giây mới trigger `PoiEntered`.
 - `GeofenceMonitorService.ExitDebounceMs = 10_000` – 10 giây ngoài zone mới confirm exit.
 - `GeofenceMonitorService.GpsBufferMeters = 10` – nới bán kính thêm 10m để bù GPS drift.
 - `GeofenceMonitorService.PollIntervalMs = 3_000` – polling 3 giây.
-- `AudioQueueService.InterruptThreshold = 0.60` – ngưỡng quyết định InsertNext vs Interrupt.
+- `AudioQueueService.TierValue(tier)` – ánh xạ `Diamond=4, Gold=3, Silver=2, Standard=1` (giá trị `null` xem như Standard).
+- `AudioQueueService._enterGate = new SemaphoreSlim(1, 1)` – tuần tự hoá nhiều event Enter sát nhau.
 
 ---
 

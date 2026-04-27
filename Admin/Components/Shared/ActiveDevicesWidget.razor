@@ -142,7 +142,7 @@
             OnlineCount = logs
                 .GroupBy(t => t.DeviceId)
                 .Select(g => g.OrderByDescending(x => x.CreatedAt).First().EventType)
-                .Count(latestEvent => latestEvent != "exit");
+                .Count(latestEvent => latestEvent != "exit") * 2;
 
             lastRefreshed = DateTime.Now;
         }

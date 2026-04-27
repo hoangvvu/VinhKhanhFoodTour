@@ -74,7 +74,7 @@
                                             @row.EffectiveRadius m
                                         </span>
                                         <div class="text-muted" style="font-size:11px;margin-top:2px;">
-                                            @DefaultRadius m + @row.TierBonus m (@row.MembershipTier)
+                                            @DefaultRadius m + @row.TierBonus m (@row.MembershipTier) + @GpsBuffer m GPS
                                         </div>
                                     </td>
                                     <td>
@@ -144,9 +144,9 @@
                     </div>
                     <div class="alert alert-info small mb-0" style="background:#F0F9FF;border:1px solid #BAE6FD;color:#075985;">
                         <i class="bi bi-info-circle me-1"></i>
-                        Bán kính geofence dùng giá trị mặc định <strong>@DefaultRadius m</strong>
-                        và được tự cộng thêm theo gói thành viên của gian hàng
-                        (Standard +0, Silver +5, Gold +10, Diamond +15).
+                        Bán kính geofence dùng giá trị mặc định <strong>@DefaultRadius m</strong>,
+                        được cộng thêm theo gói thành viên (Standard +0, Silver +5, Gold +10, Diamond +15)
+                        và <strong>+@GpsBuffer m GPS buffer</strong> để bù sai số định vị.
                         Hiện tại: <strong>@editRow.EffectiveRadius m</strong> (@editRow.MembershipTier).
                     </div>
                 </div>
@@ -170,6 +170,7 @@
 
 @code {
     private const int DefaultRadius = 20;
+    private const int GpsBuffer = 10;
 
     private List<GianHangRow> rows = new();
     private bool isLoading = true;
@@ -245,7 +246,7 @@
                     FoodCount = foodCounts.GetValueOrDefault(p.PoiId, 0),
                     MembershipTier = tier,
                     TierBonus = bonus,
-                    EffectiveRadius = DefaultRadius + bonus
+                    EffectiveRadius = DefaultRadius + bonus + GpsBuffer
                 };
             }).ToList();
         }

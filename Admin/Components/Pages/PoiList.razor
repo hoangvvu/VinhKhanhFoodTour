@@ -113,10 +113,10 @@
                                     @{
                                         var ownerTier = GetOwnerTier(item.OwnerId);
                                         var bonus = GetTierBonus(ownerTier);
-                                        var effective = DefaultRadius + bonus;
+                                        var effective = DefaultRadius + bonus + GpsBuffer;
                                     }
                                     <span class="badge bg-info-subtle text-info border border-info-subtle"
-                                          title="@DefaultRadius m mặc định + @bonus m theo gói @ownerTier">
+                                          title="@DefaultRadius m mặc định + @bonus m theo gói @ownerTier + @GpsBuffer m GPS buffer">
                                         @effective m
                                     </span>
                                 </td>
@@ -222,8 +222,9 @@
                             <div class="alert mb-0" style="background:#F0F9FF;border:1px solid #BAE6FD;color:#075985;border-radius:12px;font-size:13px;">
                                 <i class="bi bi-info-circle me-1"></i>
                                 Bán kính geofence được hệ thống quản lý tự động: dùng giá trị mặc định
-                                <strong>@DefaultRadius m</strong> rồi cộng thêm theo gói thành viên của chủ gian hàng
-                                (Standard +0, Silver +5, Gold +10, Diamond +15).
+                                <strong>@DefaultRadius m</strong>, cộng thêm theo gói thành viên của chủ gian hàng
+                                (Standard +0, Silver +5, Gold +10, Diamond +15)
+                                và <strong>+@GpsBuffer m GPS buffer</strong> để bù sai số định vị.
                             </div>
                         </div>
                         <div class="col-12">
@@ -266,6 +267,7 @@
 
 @code {
     private const int DefaultRadius = 20;
+    private const int GpsBuffer = 10;
 
     private static int GetTierBonus(string tier) => tier switch
     {
