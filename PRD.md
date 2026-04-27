@@ -2,8 +2,8 @@
 
 > **Product Requirements Document**
 > Dự án: Nền tảng Food Tour thông minh với audio guide đa ngôn ngữ cho phố ẩm thực
-> Phiên bản: 1.0
-> Ngày cập nhật: 21/04/2026
+> Phiên bản: 1.1
+> Ngày cập nhật: 27/04/2026
 
 > **Phiên bản có ảnh sơ đồ đã render:** xem `docs/diagrams/PRD.Rendered.md` (đã thay tất cả khối Mermaid bằng PNG/SVG).
 > **Render lại khi sửa file này:** chạy `pwsh -File docs/render-prd.ps1` từ thư mục gốc.
@@ -162,54 +162,219 @@ flowchart LR
 
 ## 3. Chức năng nổi bật
 
-### 3.1. Web Admin
-(Các trang Blazor tương ứng ghi chú trong cột **Route**)
+> Mỗi mục dưới đây liệt kê **route**, **file Razor / Service**, và **danh sách phương thức** thực sự được gọi khi vận hành tab. Phục vụ tra cứu nhanh khi maintain.
 
-| # | Chức năng | Route / File | Mô tả ngắn |
-|---|---|---|---|
-| A1 | **Đăng nhập / Đăng xuất** | `/login`, `/logout` | Xác thực bằng cookie, hỗ trợ Google OAuth. |
-| A2 | **Dashboard thống kê** | `/` (`Home.razor`) | Tổng hợp QR scan, tương tác hôm nay, top POI, ngôn ngữ, đánh giá; realtime thiết bị qua `ActiveDevicesWidget` (poll EF). Component `OnlineUsersWidget` có trong codebase nhưng chưa gắn trang chủ. |
-| A3 | **Quản lý POI / gian hàng** | `/admin/pois` (`PoiList.razor` + `PoiService`) | Tìm kiếm, lọc trạng thái, duyệt/ từ chối, chỉnh sửa thông tin, tọa độ, bán kính geofence. |
-| A4 | **Bản đồ POI** | `/admin/ban-do` (`BanDoPoi.razor`) | Hiển thị toàn bộ POI trên bản đồ kèm vị trí & vùng geofence. |
-| A5 | **Quản lý ngôn ngữ** | `/quan-ly-ngon-ngu` (`QuanLyNgonNgu.razor`) | Thêm/xóa/bật-tắt ngôn ngữ, cấu hình mã ngôn ngữ và TTS voice tương ứng. |
-| A6 | **Dịch tự động nội dung POI** | `PoiList` + `GoogleTranslateService` | Dịch nội dung POI sang ngôn ngữ đích qua Google Cloud Translation API. |
-| A7 | **Quản lý audio intro tour** | `/admin/intro-audio` (`IntroAudio.razor`) | Soạn nội dung intro phố ẩm thực, sinh audio theo từng ngôn ngữ bằng Edge TTS. |
-| A8 | **Quản lý thuyết minh POI** | `/thuyet-minh` (`ThuyetMinh.razor`) | Soạn nội dung thuyết minh cho mỗi POI theo ngôn ngữ, sinh audio, theo dõi trạng thái đã có audio hay chưa. |
-| A9 | **Quản lý audio tổng** | `/admin/audio-management` (`AudioManagement.razor`) | Danh sách tất cả audio (intro + POI), trạng thái, tái tạo / xóa. |
-| A10 | **Quản lý QR** | `/ma-qr` (`MaQR.razor`) | Tạo & quản lý QR tour tổng (đầu phố) và QR từng POI; resolve qua API `Qr/resolve/{token}`. |
-| A11 | **Quản lý nhân sự & Vendor** | `/nguoi-dung` (`NguoiDung.razor`) | Tạo/khóa tài khoản Admin, Vendor; gán Vendor với POI. |
-| A12 | **Gian hàng (nội bộ)** | `/gian-hang` (`GianHang.razor`) | Trang thao tác gian hàng phía admin. |
-| A13 | **Phản hồi từ app** | `/admin/phan-hoi-app` (`AppFeedback.razor`) | Xem feedback du khách gửi từ Mobile (API `Feedback/app`). |
-| A14 | **Heatmap & Tracking log** | `/admin/ban-do` (`BanDoPoi.razor`) + Mobile → API `Tracking` | Heatmap: Blazor đọc `TrackingLogs` qua EF (bucket tọa độ), không qua HTTP nội bộ. Log vẫn do Mobile POST `/api/Tracking/log`. |
+### 3.1. Web Admin (role `Admin`)
 
-### 3.2. Web Vendor
-(Cùng app Blazor `Admin/`, hiển thị theo role `Vendor`)
+#### A1 — Dashboard tổng quan `/` (`Pages/Home.razor`)
+| Khu vực | Mô tả | Phương thức / nguồn dữ liệu |
+|---|---|---|
+| Realtime thiết bị | Đếm device đang dùng app trong cửa sổ vài chục giây | `ActiveDevicesWidget.LoadAsync()` → đọc `Db.TrackingLogs` (poll mỗi 3s) |
+| Thống kê hệ thống | Tổng POI / POI đang hoạt động / tổng thuyết minh / số ngôn ngữ active / tổng user / số vendor / lượt QR hôm nay | `Home.LoadAdminStats()` |
+| Hành vi người dùng | Tổng tương tác hôm nay (loại trừ heartbeat `move`), thời gian nghe TB, tổng đánh giá | `Home.LoadAdminStats()` |
+| Top gian hàng | Top 5 POI có nhiều lượt `enter` + `qr_scan` | Group `TrackingLogs` theo `PoiId` |
+| Top thuyết minh | Top 5 POI có tổng phút nghe lớn nhất (`listen_end`) | Sum `ListenedDurationSec` |
+| Ngôn ngữ sử dụng | Đếm **số thiết bị duy nhất** theo ngôn ngữ MỚI NHẤT của họ trong 30 ngày, chuẩn hoá bỏ `anon:` / region | `Home.LoadAdminStats()` + `NormalizeLangCode()` |
+| Phân bổ đánh giá | Histogram 1-5 sao | `Db.Reviews.GroupBy(Rating)` |
 
-| # | Chức năng | Route / File | Mô tả ngắn |
-|---|---|---|---|
-| V1 | **Cập nhật thông tin quán** | `/vendor/thong-tin` (`Vendor/ThongTinQuan.razor`) | Sửa tên, mô tả, địa chỉ, tọa độ, ảnh đại diện / gallery. Sau khi lưu, trạng thái POI chuyển Pending chờ admin duyệt. |
-| V2 | **Quản lý thực đơn** | `/vendor/thuc-don` (`Vendor/ThucDon.razor` + `MenuService`) | CRUD món ăn: tên, mô tả, giá, ảnh, danh mục (`MenuItem.Category`). |
-| V3 | **Thống kê tương tác** | `/vendor/thu-nhap` (`Vendor/ThuNhap.razor`) | Xem lượt quét QR, lượt tương tác của quán (không có doanh thu do chưa tích hợp thanh toán). |
+#### A2 — Quản lý gian hàng `/admin/pois` (`Pages/PoiList.razor` + `Services/PoiService.cs`)
+| Tác vụ | Phương thức |
+|---|---|
+| Tìm kiếm theo tên + lọc trạng thái + lọc phê duyệt | `FilteredPois` (LINQ in-memory) |
+| Tải danh sách POI và Vendor | `PoiService.GetAllAsync()`, `AuthService.GetAllUsersAsync()` |
+| Mở modal sửa / lưu | `ShowEditModal()`, `SavePoi()` → `PoiService.UpdateAsync(Poi)` (radius bị ép về `DefaultRadius=20` mặc định, runtime cộng theo gói) |
+| Duyệt POI | `ApprovePoiAction()` → `PoiService.ApprovePoiAsync(poiId)` |
+| Từ chối POI | `RejectPoiAction()` → `PoiService.RejectPoiAsync(poiId, note)` |
+| Khoá / mở khoá gian hàng | `HidePoiAsync()` → `PoiService.HideStallAsync(id)` ; `ToggleActive()` → `ToggleActiveAsync(id)` |
+| Hiển thị geofence hiệu dụng theo gói | `GetOwnerTier(ownerId)` + `GetTierBonus(tier)` (`+0/+5/+10/+15`) |
 
-### 3.3. Mobile App (.NET MAUI)
+#### A3 — Bản đồ POI + Heatmap `/admin/ban-do` (`Pages/Admin/BanDoPoi.razor`)
+| Tác vụ | Phương thức |
+|---|---|
+| Khởi tạo Leaflet + render markers | `InitMapAsync()` → JS interop `initAdminMap` |
+| Bật/tắt heatmap | `OnToggleHeatmap()`, `ReloadHeatmapAsync()` |
+| Heatmap data | API `GET /api/Tracking/heatmap?hours=...` |
 
-| # | Chức năng | Trang / Service | Mô tả ngắn |
-|---|---|---|---|
-| M1 | **Onboarding & chọn ngôn ngữ** | `WelcomePage`, `LanguagePickerPage`, `SettingsService` | Màn chào + chọn ngôn ngữ giao diện/audio, lưu vào `SettingsService`. |
-| M2 | **Đăng nhập / đăng ký du khách** | `LoginPage`, `AuthSessionService`, API `Auth/login`, `Auth/register` | Tài khoản `User` để gửi đánh giá/feedback. |
-| M3 | **Quét QR đầu phố & QR quán** | `QrScanPage` (ZXing) → API `Qr/resolve/{token}` | Khởi động tour hoặc mở trực tiếp chi tiết quán. |
-| M4 | **Bắt đầu tour & tải audio queue** | `TourPlayerPage` → API `Tour/start`, `Tour/audio-queue` | Tải intro + danh sách audio POI theo ngôn ngữ đã chọn. |
-| M5 | **Phát audio** | `PlayerPage`, `AudioPlaybackService` (Plugin.Maui.Audio) | Play/Pause/Seek audio intro và thuyết minh POI. |
-| M6 | **Geofence tự động (có dwell/exit debounce)** | `GeofenceMonitorService` | Poll GPS mỗi 3s, chỉ fire `PoiEntered` khi du khách **ở trong vùng liên tục 8s** (dwell), xác nhận `PoiExited` sau **10s ngoài vùng** (debounce). Bán kính tính từ `PoiRadiusMeters` + buffer 10m GPS. |
-| M7 | **Audio queue thông minh với ngưỡng ưu tiên 60%** | `AudioQueueService` | Khi đang phát 1 POI mà đi vào vùng POI mới:<br>• track hiện tại **≥ 60%** → `InsertNext` (chèn POI mới phát kế tiếp).<br>• track hiện tại **< 60%** → `InterruptAndPlay` (ngắt ngay, phát POI mới, xếp track cũ phát lại sau).<br>Đảm bảo không phát đè, xử lý được cả trường hợp đứng giữa 2 geofence. |
-| M8 | **Danh sách & chi tiết gian hàng** | Tab `Gian hàng`, `StallDetailPage` → API `Poi`, `Poi/{id}/detail` | Hiển thị thông tin quán (đã localize), menu, ảnh. |
-| M9 | **Bản đồ toàn tour** | `FullMapPage` (Maui Maps) | Hiển thị vị trí người dùng + toàn bộ POI. |
-| M10 | **Đánh giá quán** | `StallDetailPage` → API `Reviews` | Gửi rating + nội dung review cho POI. |
-| M11 | **Yêu thích** | `FavoriteService` | Lưu danh sách POI yêu thích (lưu cục bộ). |
-| M12 | **Tracking log** | `DataService.TrackEventAsync` → API `Tracking/log` | Gửi event `qr_scan`, `enter`, `exit`, `listen_start`, `listen_end`. |
-| M13 | **Đa ngôn ngữ giao diện** | `LocalizationService`, `TranslationStrings` | Đổi ngôn ngữ UI tại runtime. |
-| M14 | **Gửi phản hồi ứng dụng** | API `Feedback/app` | Người dùng gửi feedback tổng thể cho admin. |
-| M15 | **Cache ảnh** | `HttpImageService` | Cache ảnh trong bộ nhớ với TTL, giảm tải mạng. |
+#### A4 — Quản lý ngôn ngữ & dịch `/quan-ly-ngon-ngu` (`Pages/Admin/QuanLyNgonNgu.razor` + `LanguageProvisionJobService`, `GoogleTranslateService`, `EdgeTtsService`)
+| Tác vụ | Phương thức |
+|---|---|
+| Tải danh sách ngôn ngữ + voice gợi ý | `LoadData()` |
+| Kiểm tra mã ngôn ngữ Google hỗ trợ | `CheckLanguageCode()` → `GoogleTranslateService.IsLanguageSupportedAsync()` |
+| Thêm ngôn ngữ + chạy auto-provision audio cho mọi POI Approved | `AddLanguage()` → `LanguageProvisionJobService.StartAsync()` (job nền) |
+| Theo dõi tiến độ job | `RefreshCurrentJob()`, `StartJobPolling()` |
+| Audit dịch — phát hiện POI thiếu hoặc lệch nội dung | `RunTranslationAudit()` → so sánh `Narrations` theo `LanguageId` |
+| Sửa lỗi từng POI | `RetryIssue(issue)` → `PoiService.SyncPoiLanguageAsync(poiId, languageId)` |
+| Đồng bộ lại toàn ngôn ngữ | `StartResyncForLanguage(id)` |
+| Bật/tắt ngôn ngữ | `ToggleLanguage(row)` |
+
+#### A5 — Audio Intro Phố `/admin/intro-audio` (`Pages/Admin/IntroAudio.razor`)
+| Tác vụ | Phương thức |
+|---|---|
+| Tải nội dung intro hiện tại theo ngôn ngữ | `LoadCurrentSettingAsync()` (đọc bảng `APP_SETTINGS`) |
+| Đổi ngôn ngữ đang sửa | `SelectLang(code)` |
+| Tự động dịch intro từ tiếng Việt | `AutoTranslateIntroAsync()` → `GoogleTranslateService.TranslateAsync()` |
+| Sinh audio Edge TTS | `GenerateIntroTtsAsync()` → `EdgeTtsService.SynthesizeAsync(text, voice)` (output `UploadsData/intro/intro_{lang}.mp3`) |
+| Xoá audio intro | `DeleteIntroAudioAsync()` |
+| Lưu setting | `UpsertSettingAsync(key, value)` |
+
+#### A6 — Quản lý thuyết minh POI `/thuyet-minh` (`Pages/Admin/ThuyetMinh.razor`) và Audio tổng `/admin/audio-management` (`Pages/Admin/AudioManagement.razor`)
+| Tác vụ | Phương thức |
+|---|---|
+| Tải POI + tình trạng audio đa ngôn ngữ | `LoadDataAsync()` (group `Narrations` theo `LanguageId` & `IsActive`) |
+| Sinh audio Edge TTS cho 1 POI | `GenerateTtsForPoiAsync(poi)` → `PoiService.UpdateMultilingualNarrationsAsync(poiId, forceRefresh)` |
+| Sinh audio cho **toàn bộ** POI | `GenerateAllTtsAsync()` |
+| Tạo QR cho POI | `CreateQrForPoiAsync(poi)` → `PoiService.EnsurePrimaryQrForVendorAsync()` |
+| Nghe thử audio trên trình duyệt | `PlayAudio(url)` / `StopAudio()` (JS interop `<audio>`) |
+
+#### A7 — Quản lý QR `/ma-qr` (`Pages/Admin/MaQR.razor`)
+| Tác vụ | Phương thức |
+|---|---|
+| Tải danh sách QR (POI + master tour) | `LoadData()` |
+| Tạo/đảm bảo QR master cho phố | `CreateMasterQrAsync()` → `PoiService.EnsureMasterTourQrAsync()` |
+| Bật/tắt 1 QR | `ToggleQr(qrId)` |
+| Tái tạo QR theo nội dung quán | `RegenerateByDescription(qr)` → `PoiService.RegenerateQrFromDescriptionAsync()` |
+| Tải PNG QR | `DownloadQr(token)` → JS endpoint sinh PNG |
+| Xoá tất cả QR | `DeleteAllQrAsync()` → `PoiService.DeleteAllQrAsync()` |
+| Resolve token (mobile) | API `GET /api/Qr/resolve/{token}` |
+
+#### A8 — Quản lý gian hàng (nội bộ) `/gian-hang` (`Pages/Admin/GianHang.razor`)
+| Tác vụ | Phương thức |
+|---|---|
+| Tổng hợp POI + chủ + email + ảnh + ngôn ngữ TM + số món | `OnInitializedAsync()` (join `Pois`, `Users`, `Narrations`, `Foods`, `Images`) |
+| Mở quick-edit (chỉ priority — radius lấy mặc định + bonus theo gói) | `OpenQuickEdit(row)` |
+| Lưu priority | `SaveQuickEditAsync()` (ép `poi.Radius = DefaultRadius`) |
+
+#### A9 — Quản lý nhân sự & vendor `/nguoi-dung` (`Pages/Admin/NguoiDung.razor`)
+| Tác vụ | Phương thức |
+|---|---|
+| Tải danh sách user (Admin + Vendor) | `LoadUsers()` → `AuthService.GetAllUsersAsync()` |
+| Bật/khoá tài khoản | `ToggleUserAsync(user)` → `AuthService.ToggleActiveAsync(userId)` |
+| Tạo / sửa user (mở modal) | `ShowModal()`, `SaveUser()` → `AuthService.RegisterAdminAsync()` / `RegisterVendorAsync()` (auto-tạo POI placeholder cho vendor) |
+
+#### A10 — Phản hồi App `/admin/phan-hoi-app` (`Pages/Admin/AppFeedback.razor`)
+| Tác vụ | Phương thức |
+|---|---|
+| Tải feedback + lọc / phân trang | `LoadDataAsync()`, `SetRatingFilter(star)`, `ApplyFilter()`, `PrevPage()`, `NextPage()` |
+| Xoá phản hồi | `DeleteFeedbackAsync(id)` |
+
+#### A11 — Auth `/login`, `/logout`
+| Tác vụ | Phương thức |
+|---|---|
+| Đăng nhập | `Login.HandleLogin()` → `AuthService.AuthenticateAsync(email, password)` (BCrypt verify) → `SignInAsync` cookie scheme |
+| Đăng xuất | `Logout.OnInitializedAsync()` → `SignOutAsync` |
+
+---
+
+### 3.2. Web Vendor (cùng app Blazor, role `Vendor`)
+
+#### V1 — Dashboard quán `/` (`Pages/Home.razor` — branch Vendor)
+| Khu vực | Phương thức |
+|---|---|
+| Tổng quan KPI (QR scan hôm nay, audio play hôm nay, đánh giá TB, gói thành viên) | `Home.LoadVendorStats()` → `DashboardMetricsService.GetVendorMetricsAsync(userId)` |
+| Checklist vận hành (mô tả / địa chỉ-bản đồ / ảnh bìa / audio / món) | flag từ `VendorMetrics` (`HasDescription`, `HasAddress`, `HasValidMap`, `HasCover`, `HasAudio`, `MenuCount`) |
+| Quick action | link sang `/vendor/thong-tin`, `/vendor/thuc-don`, `/vendor/goi-thanh-vien` |
+
+#### V2 — Thông tin gian hàng `/vendor/thong-tin` (`Pages/Vendor/ThongTinQuan.razor`)
+| Tác vụ | Phương thức |
+|---|---|
+| Tải POI của vendor (auto-tạo nếu chưa có) | `LoadDataAsync()` → `PoiService.GetPoiByOwnerIdAsync(userId)` / `EnsureVendorPoiAsync()` |
+| Khởi tạo bản đồ tương tác + ô tìm địa chỉ | JS `initMapPicker(...)` (callback `OnMapLocationChanged`, `OnAddressSearchSelected`) |
+| Tìm kiếm địa chỉ | `HandleSearchClick()` / `HandleSearchKeyUp(e)` → JS `triggerMapSearch` |
+| Lưu thông tin chung (tên / mô tả / địa chỉ / toạ độ / ảnh) | `SaveChanges()` → `PoiService.UpdateStallInfoAsync(...)` + sau đó `UpdateMultilingualNarrationsAsync` để re-sinh audio |
+| Gửi yêu cầu duyệt | `RequestApproval()` → `PoiService.RequestApprovalAsync(poiId)` |
+| Upload ảnh bìa / gallery | `HandleCoverUpload(e)`, `HandleGalleryUpload(e)` → ghi `UploadsData/poi/...` + `PoiService.AddStallGalleryImageAsync` |
+| Xoá ảnh gallery | `RemoveGalleryAsync(id)` → `PoiService.RemoveStallGalleryImageAsync` |
+| Làm mới audio đa ngôn ngữ | `SyncAudioAsync()` → `PoiService.UpdateMultilingualNarrationsAsync(poiId, forceRefresh: true)` |
+
+#### V3 — Thực đơn `/vendor/thuc-don` (`Pages/Vendor/ThucDon.razor` + `MenuService`)
+| Tác vụ | Phương thức |
+|---|---|
+| Tải món của POI | `OnInitializedAsync()` → `MenuService.GetByPoiAsync(poiId)` |
+| Mở modal thêm / sửa món | `ShowAddModal()`, `ShowEditModal(item)`, `HideModal()` |
+| Upload ảnh món | `HandleMenuImageUpload(e)` (lưu vào `UploadsData/menu/...`) |
+| Lưu món (insert/update) | `SaveItem()` → `MenuService.UpsertAsync(MenuItem)` |
+| Bật/tắt món (sold-out / available) | `ToggleStatus(item)` → `MenuService.ToggleAvailabilityAsync(id)` |
+
+#### V4 — Gói thành viên `/vendor/goi-thanh-vien` (`Pages/Vendor/GoiThanhVien.razor`) ⭐ mới khôi phục
+| Tác vụ | Phương thức |
+|---|---|
+| Tải gói hiện tại | `OnInitializedAsync()` → `AuthService.GetUserByIdAsync(userId)` đọc `User.MembershipTier` |
+| Đăng ký gói (Standard / Silver / Gold / Diamond) | `RegisterTierAsync(newTier)` → `AuthService.UpdateMembershipTierAsync(userId, newTier)` |
+| Quyền lợi theo gói | bonus geofence `+0/+5/+10/+15`, ưu tiên audio trong queue, huy hiệu trên map mobile (gắn vào `Poi.MembershipTier` qua join `Owner`) |
+
+#### V5 — Trang doanh thu redirect `/vendor/thu-nhap` (`Pages/Vendor/ThuNhap.razor`)
+Trang chỉ điều hướng về Home Dashboard tổng hợp (đã merge số liệu doanh thu/đánh giá vào Home Vendor để gọn UI).
+
+---
+
+### 3.3. Mobile App (.NET MAUI) — `VKFoodTour.Mobile/`
+
+#### M1 — Onboarding & chọn ngôn ngữ
+- `Views/WelcomePage.xaml.cs` — landing có nút "Bắt đầu", ghi event `move` lúc khởi động qua `IDataService.TrackEventAsync()`.
+- `Views/LanguagePickerPage.xaml.cs` — `OnLanguageSelected()` → `ILocalizationService.SetLanguageCode(code)` → ghi `ISettingsService.SelectedLanguageCode` + `HasPickedLanguage = true`.
+
+#### M2 — Đăng nhập / đăng ký / khách vãng lai
+- `Views/LoginPage.xaml.cs`:
+  - `OnSubmit()` → `IDataService.LoginAsync(email,pwd)` hoặc `RegisterAsync(name,email,pwd)` → `IAuthSessionService.SetUser(...)`.
+  - `OnContinueAsGuest()` → `IAuthSessionService.EnterAnonymous()` + log event `move` kèm `languageCode` thuần (không còn prefix `anon:`).
+
+#### M3 — Quét QR
+- `Views/QrScanPage.xaml.cs` (ZXing) → `OnQrDetected(token)` → `IDataService.ResolveQrAsync(token, lang)` (`GET /api/Qr/resolve/{token}`).
+- Nếu kết quả type = `tour` → mở `TourPlayerPage`. Nếu `poi` → mở `StallDetailPage(poiId)`.
+
+#### M4 — Tour player / audio queue
+- `Views/TourPlayerPage.xaml.cs` + `ViewModels/TourPlayerViewModel`:
+  - `StartAsync()` → `TourService.StartTourAsync(tourId, lang)` (`POST /api/Tour/start`).
+  - `LoadQueueAsync()` → `TourService.GetAudioQueueAsync(tourId, lang)` (`GET /api/Tour/audio-queue`).
+  - Push từng item vào `AudioQueueService`.
+
+#### M5 — Phát audio
+- `Services/AudioPlaybackService.cs` (Plugin.Maui.Audio): `PlayAsync(url)`, `Pause()`, `Resume()`, `Stop()`, `SeekTo(sec)`, sự kiện `PlaybackEnded`.
+- `Services/AudioQueueService.cs` — orchestrator chính:
+  - `EnqueueAsync(item)`, `HandlePoiEnteredAsync(poi)`, `PlayNextFromQueueAsync()`, `InsertNext(item)`, `InterruptAndPlay(item)`.
+  - Quy tắc 60% (`TierValue` so sánh gói + tiến độ `_player.PositionRatio`) để quyết định `InsertNext` vs `InterruptAndPlay`.
+  - `MarkPoiPlayed(poi)` báo cho `GeofenceMonitorService` không re-trigger.
+
+#### M6 — Geofence
+- `Services/GeofenceMonitorService.cs`:
+  - `StartAsync()` poll `Geolocation.Default.GetLastKnownLocationAsync()` mỗi 3s.
+  - `EvaluateAsync(lat,lng)` tính khoảng cách tới mọi POI: `threshold = clamp(PoiRadiusMeters,5,200) + TierBonusMeters + GpsBufferMeters(10m)`.
+  - **Dwell 8s**: `_pendingEnter[poiId] = now`, sau 8s ở trong vùng → `_confirmedIn.Add(poiId)` + bắn event `PoiEntered`.
+  - **Exit debounce 10s**: phải ngoài vùng đủ 10s mới `PoiExited`.
+  - Heartbeat `move` mỗi `MoveHeartbeatSeconds` qua `IDataService.TrackEventAsync(eventType:"move", lat, lng)`.
+
+#### M7 — Danh sách / chi tiết quán
+- `Views/StallListPage.xaml.cs` + `ViewModels/HomeViewModel.cs`: `LoadAsync()` → `IDataService.GetPoisAsync(lang)` (`GET /api/Poi`). Sort theo `MembershipTier` rồi `Name`.
+- `Views/StallDetailPage.xaml.cs` + `ViewModels/StallDetailViewModel`: `LoadAsync(poiId)` → `IDataService.GetPoiDetailAsync(poiId, lang)` (`GET /api/Poi/{id}/detail`).
+- `Views/FullMapPage.xaml.cs` `LoadPoisAsync()` — vẽ pin + vòng tròn geofence (`base + tierBonus + 10m`) + popup chi tiết khi tap pin.
+
+#### M8 — Đánh giá quán
+- `ViewModels/StallDetailViewModel.SubmitReviewAsync()` → `IDataService.PostReviewAsync(CreateReviewDto { PoiId, Rating, Comment, LanguageCode })` (`POST /api/Reviews`).
+
+#### M9 — Yêu thích (offline-only)
+- `Services/FavoriteService.cs`: `Toggle(poiId)`, `IsFavorite(poiId)`, `GetAll()` lưu trong `Preferences` của MAUI.
+
+#### M10 — Tracking log + offline queue
+- `Services/DataService.TrackEventAsync(poiId, eventType, listenedDurationSec?, languageCode?, lat?, lng?)`:
+  - Tự gắn `LanguageCode` từ `SettingsService.SelectedLanguageCode` nếu caller không truyền.
+  - `NormalizeLanguageCode()` bỏ prefix `xxx:`, lower-case.
+  - Nếu API lỗi → `EnqueueTrackingAsync()` lưu vào SQLite (`ILocalStore.EnqueueEventAsync`).
+  - `FlushPendingEventsAsync()` xả queue khi mạng quay lại.
+
+#### M11 — Đồng bộ offline (mới thêm)
+- `Services/Offline/SyncService.cs`: `SyncAsync()` gọi `GET /api/Sync/bootstrap` → ghi `LocalStore` (POI, ảnh, audio URL, ngôn ngữ).
+- `Services/Offline/MediaCacheService.cs`: `EnsureCachedAsync(url)` tải ảnh/audio về `FileSystem.AppDataDirectory` → trả `file://` cho UI.
+- Chạy mỗi lần `App.Resumed` để cập nhật ngầm.
+
+#### M12 — Đa ngôn ngữ giao diện
+- `Services/LocalizationService.cs`: `SetLanguageCode(code)`, sự kiện `LanguageChanged`.
+- `Localization/TranslationStrings.cs` chứa map vi/en/ja/ko/zh + helper `NormalizeCultureCode(code)` (cắt region: `zh-CN → zh`).
+
+#### M13 — Gửi feedback app
+- `IDataService.SendAppFeedbackAsync(rating, comment)` → `POST /api/Feedback/app`.
+
+#### M14 — Cache ảnh
+- `Services/HttpImageService.cs`: `GetImageStreamAsync(url)` cache trong `MemoryCache` với TTL 10 phút, fallback nguồn gốc khi miss.
 
 ### 3.4. Điểm nổi bật của đồ án
 - **Location-based audio guide**: audio thuyết minh tự động phát theo GPS/geofence, khác biệt với các app du lịch bấm-mới-nghe.
@@ -1084,22 +1249,23 @@ stateDiagram-v2
 
 ### 7.1. Danh sách event tracking (Mobile → `Tracking/log`)
 - `qr_scan` – quét QR đầu phố hoặc QR quán.
-- `enter` / `exit` – vào / rời vùng geofence POI.
-- `listen_start` / `listen_end` – bắt đầu / kết thúc phát audio.
-- `move` – cập nhật vị trí di chuyển (phục vụ heatmap).
+- `enter` / `exit` – vào / rời vùng geofence POI (sau dwell 8s / debounce 10s).
+- `listen_start` / `listen_end` – bắt đầu / kết thúc phát audio (kèm `ListenedDurationSec`).
+- `move` – heartbeat vị trí (phục vụ heatmap & đếm thiết bị online); luôn kèm `LanguageCode` đã chuẩn hoá.
 
 ### 7.2. Danh sách API chính
 
 | Controller | Endpoint | Mục đích |
 |---|---|---|
-| `AuthController` | `POST /api/Auth/login`, `/register` | Đăng nhập/đăng ký du khách (role User) |
-| `PoiController` | `GET /api/Poi`, `GET /api/Poi/{id}`, `GET /api/Poi/{id}/detail` | Lấy danh sách / chi tiết POI đã localize |
-| `LanguagesController` | `GET /api/Languages` | Danh sách ngôn ngữ có audio thuyết minh |
-| `QrController` | `GET /api/Qr/resolve/{token}` | Resolve QR sang tour hoặc POI |
-| `TourController` | `POST /api/Tour/start`, `GET /api/Tour/audio-queue`, `POST /api/Tour/track-listen` | Bắt đầu tour, tải audio queue, log nghe audio |
-| `TrackingController` | `POST /api/Tracking/log`, `GET /api/Tracking/online-count`, `GET /api/Tracking/heatmap` | Ghi log + số thiết bị online + dữ liệu heatmap |
-| `ReviewsController` | `GET /api/Reviews/recent`, `GET /api/Reviews/poi/{poiId}`, `POST /api/Reviews` | Danh sách review + gửi review |
-| `FeedbackController` | `POST /api/Feedback/app` | Gửi feedback app từ du khách |
+| `AuthController` | `POST /api/Auth/login`, `/register` | Đăng nhập/đăng ký du khách (role User), trả token + user info |
+| `PoiController` | `GET /api/Poi?lang=`, `GET /api/Poi/{id}?lang=`, `GET /api/Poi/{id}/detail?lang=` | Danh sách / chi tiết POI đã localize theo ngôn ngữ; chi tiết kèm menu, ảnh, narration, audio URL |
+| `LanguagesController` | `GET /api/Languages` | Danh sách ngôn ngữ active đã có TTS voice |
+| `QrController` | `GET /api/Qr/resolve/{token}?lang=` | Resolve token QR sang tour hoặc POI |
+| `TourController` | `POST /api/Tour/start`, `GET /api/Tour/audio-queue?tourId&lang`, `POST /api/Tour/track-listen` | Bắt đầu tour, tải audio queue, log start/end nghe audio |
+| `TrackingController` | `POST /api/Tracking/log`, `GET /api/Tracking/online-count?minutes=`, `GET /api/Tracking/heatmap?hours=` | Ghi log (server normalize `LanguageCode`), đếm thiết bị online, heatmap dạng bucket toạ độ |
+| `ReviewsController` | `GET /api/Reviews/recent?take=`, `GET /api/Reviews/poi/{poiId}`, `POST /api/Reviews` | Danh sách review + tạo review |
+| `FeedbackController` | `POST /api/Feedback/app` | Gửi feedback ứng dụng |
+| `SyncController` ⭐ | `GET /api/Sync/bootstrap?since=` | Snapshot offline: ngôn ngữ active + POI Approved + ảnh + audio URL cho mobile cache |
 
 ### 7.3. Thành phần dự án
 - `Admin/` – **Web Admin + Vendor** (ASP.NET Core **Blazor Server**), phân quyền theo role `Admin` / `Vendor`.
