@@ -6,6 +6,8 @@
 @rendermode InteractiveServer
 
 @inject ApplicationDbContext Db
+@using global::Admin.Services
+@inject PoiService PoiService
 
 <div class="dash-page p-4">
     <div class="d-flex justify-content-between align-items-center mb-5">
@@ -17,6 +19,14 @@
             <i class="bi bi-pencil-square me-2"></i>Chỉnh sửa / ẩn gian hàng
         </a>
     </div>
+
+    @if (!string.IsNullOrEmpty(pageMessage))
+    {
+        <div class="alert @(pageMessageIsError ? "alert-danger" : "alert-success") alert-dismissible fade show" role="alert">
+            @pageMessage
+            <button type="button" class="btn-close" @onclick="() => pageMessage = null"></button>
+        </div>
+    }
 
     @if (isLoading)
     {
@@ -107,6 +117,11 @@
                                                     @onclick="() => OpenQuickEdit(row)">
                                                 <i class="bi bi-pencil-square me-1"></i>Sửa
                                             </button>
+                                            <button class="btn btn-sm btn-outline-danger rounded-pill"
+                                                    disabled="@row.IsSaving"
+                                                    @onclick="() => OpenDeleteConfirm(row)">
+                                                <i class="bi bi-trash me-1"></i>Xóa
+                                            </button>
                                         </div>
                                     </td>
                                 </tr>
@@ -168,6 +183,43 @@
     </div>
 }
 
+@if (deleteRow is not null)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background:rgba(0,0,0,0.4); backdrop-filter: blur(4px);">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0" style="background:#FFFFFF;border-radius:18px;border:1px solid #FECACA;">
+                <div class="modal-header border-0">
+                    <h5 class="modal-title text-danger"><i class="bi bi-exclamation-triangle me-2"></i>Xóa gian hàng</h5>
+                    <button type="button" class="btn-close" @onclick="CloseDeleteConfirm"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-2">Bạn có chắc chắn muốn xóa gian hàng <strong>@deleteRow.PoiName</strong>?</p>
+                    <div class="alert alert-danger small mb-0" style="background:#FEF2F2;border:1px solid #FECACA;color:#991B1B;">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Hành động này sẽ xóa <strong>vĩnh viễn</strong> gian hàng cùng toàn bộ dữ liệu liên quan:
+                        thuyết minh đa ngôn ngữ, mã QR, ảnh bìa &amp; thư viện, món ăn (kèm bản dịch và ảnh),
+                        đánh giá và lịch sử theo dõi của khách. Không thể khôi phục.
+                    </div>
+                </div>
+                <div class="modal-footer border-0">
+                    <button class="btn btn-outline-secondary rounded-pill" @onclick="CloseDeleteConfirm" disabled="@isDeleting">Hủy</button>
+                    <button class="btn btn-danger rounded-pill" disabled="@isDeleting" @onclick="ConfirmDeleteAsync">
+                        @if (isDeleting)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1"></span>
+                            <span>Đang xóa...</span>
+                        }
+                        else
+                        {
+                            <span><i class="bi bi-trash me-1"></i>Xóa vĩnh viễn</span>
+                        }
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     private const int DefaultRadius = 20;
     private const int GpsBuffer = 10;
@@ -177,6 +229,10 @@
     private GianHangRow? editRow;
     private int editPriority;
     private bool isSavingQuickEdit;
+    private GianHangRow? deleteRow;
+    private bool isDeleting;
+    private string? pageMessage;
+    private bool pageMessageIsError;
 
     private static int TierBonusMeters(string? tier) => (tier ?? "Standard") switch
     {
@@ -294,6 +350,51 @@
         {
             isSavingQuickEdit = false;
             currentRow.IsSaving = false;
+        }
+    }
+
+    private void OpenDeleteConfirm(GianHangRow row)
+    {
+        deleteRow = row;
+    }
+
+    private void CloseDeleteConfirm()
+    {
+        if (isDeleting) return;
+        deleteRow = null;
+    }
+
+    private async Task ConfirmDeleteAsync()
+    {
+        if (deleteRow is null) return;
+        var target = deleteRow;
+        isDeleting = true;
+        target.IsSaving = true;
+        try
+        {
+            var (ok, err) = await PoiService.DeletePoiCascadeAsync(target.PoiId);
+            if (ok)
+            {
+                rows.Remove(target);
+                pageMessage = $"Đã xóa gian hàng \"{target.PoiName}\" cùng toàn bộ dữ liệu liên quan.";
+                pageMessageIsError = false;
+                deleteRow = null;
+            }
+            else
+            {
+                pageMessage = $"Không thể xóa gian hàng: {err}";
+                pageMessageIsError = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            pageMessage = $"Lỗi khi xóa: {ex.Message}";
+            pageMessageIsError = true;
+        }
+        finally
+        {
+            isDeleting = false;
+            target.IsSaving = false;
         }
     }
 

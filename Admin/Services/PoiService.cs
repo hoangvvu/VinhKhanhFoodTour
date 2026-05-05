@@ -511,6 +511,66 @@ public class PoiService
         return true;
     }
 
+    /// <summary>
+    /// Xoá hoàn toàn 1 POI cùng tất cả dữ liệu liên quan: Narrations, QrCodes,
+    /// Images (cover + gallery), Foods (kèm FoodTranslations + ảnh món),
+    /// MenuItems, Reviews và TrackingLogs. Dùng cho admin trang Quản lý gian hàng.
+    /// </summary>
+    public async Task<(bool Success, string? Error)> DeletePoiCascadeAsync(int poiId)
+    {
+        var poi = await _db.Pois.FirstOrDefaultAsync(p => p.PoiId == poiId);
+        if (poi is null)
+            return (false, "Không tìm thấy gian hàng.");
+
+        await using var tx = await _db.Database.BeginTransactionAsync();
+        try
+        {
+            var narrations = await _db.Narrations.Where(n => n.PoiId == poiId).ToListAsync();
+            if (narrations.Count > 0) _db.Narrations.RemoveRange(narrations);
+
+            var qrCodes = await _db.QrCodes.Where(q => q.PoiId == poiId).ToListAsync();
+            if (qrCodes.Count > 0) _db.QrCodes.RemoveRange(qrCodes);
+
+            var foodIds = await _db.Foods.Where(f => f.PoiId == poiId).Select(f => f.FoodId).ToListAsync();
+            if (foodIds.Count > 0)
+            {
+                var foodTranslations = await _db.FoodTranslations.Where(ft => foodIds.Contains(ft.FoodId)).ToListAsync();
+                if (foodTranslations.Count > 0) _db.FoodTranslations.RemoveRange(foodTranslations);
+
+                var foodImages = await _db.Images.Where(i => i.FoodId != null && foodIds.Contains(i.FoodId!.Value)).ToListAsync();
+                if (foodImages.Count > 0) _db.Images.RemoveRange(foodImages);
+
+                var foods = await _db.Foods.Where(f => f.PoiId == poiId).ToListAsync();
+                _db.Foods.RemoveRange(foods);
+            }
+
+            var poiImages = await _db.Images.Where(i => i.PoiId == poiId).ToListAsync();
+            if (poiImages.Count > 0) _db.Images.RemoveRange(poiImages);
+
+            var menuItems = await _db.MenuItems.Where(m => m.PoiId == poiId).ToListAsync();
+            if (menuItems.Count > 0) _db.MenuItems.RemoveRange(menuItems);
+
+            var reviews = await _db.Reviews.Where(r => r.PoiId == poiId).ToListAsync();
+            if (reviews.Count > 0) _db.Reviews.RemoveRange(reviews);
+
+            var trackingLogs = await _db.TrackingLogs.Where(t => t.PoiId == poiId).ToListAsync();
+            if (trackingLogs.Count > 0) _db.TrackingLogs.RemoveRange(trackingLogs);
+
+            await _db.SaveChangesAsync();
+
+            _db.Pois.Remove(poi);
+            await _db.SaveChangesAsync();
+
+            await tx.CommitAsync();
+            return (true, null);
+        }
+        catch (Exception ex)
+        {
+            await tx.RollbackAsync();
+            return (false, ex.Message);
+        }
+    }
+
     public async Task<bool> ToggleActiveAsync(int id)
     {
         var poi = await _db.Pois.FindAsync(id);

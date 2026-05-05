@@ -334,7 +334,7 @@
     private readonly List<AdminStatCardConfig> adminSystemCards =
     [
         new("totalPois", "TỔNG GIAN HÀNG", "bi-shop", "rgba(245,158,11,0.12)", "#F59E0B", "{activePois} hoạt động", "rgba(245,158,11,0.1)", "#F59E0B"),
-        new("totalNarrations", "THUYẾT MINH", "bi-mic-fill", "rgba(14,165,233,0.12)", "#0EA5E9", "{totalLanguages} ngôn ngữ", "rgba(14,165,233,0.1)", "#0EA5E9"),
+        new("totalLanguages", "NGÔN NGỮ", "bi-translate", "rgba(14,165,233,0.12)", "#0EA5E9", null, "rgba(14,165,233,0.1)", "#0EA5E9"),
         new("totalUsers", "NGƯỜI DÙNG", "bi-people-fill", "rgba(200,55,45,0.12)", "#C8372D", "{totalVendors} vendor", "rgba(200,55,45,0.1)", "#C8372D"),
         new("todayQrScans", "LƯỢT QUÉT QR", "bi-qr-code-scan", "rgba(16,185,129,0.12)", "#10B981", "hôm nay", "rgba(16,185,129,0.1)", "#10B981")
     ];
@@ -591,6 +591,7 @@
     {
         "totalPois" => totalPois.ToString(),
         "totalNarrations" => totalNarrations.ToString(),
+        "totalLanguages" => totalLanguages.ToString(),
         "totalUsers" => totalUsers.ToString(),
         "todayQrScans" => todayQrScans.ToString(),
         "totalEvents" => totalEvents.ToString(),
@@ -607,6 +608,7 @@
         return card.BadgeTemplate
             .Replace("{activePois}", activePois.ToString())
             .Replace("{totalLanguages}", totalLanguages.ToString())
+            .Replace("{totalNarrations}", totalNarrations.ToString())
             .Replace("{totalVendors}", totalVendors.ToString());
     }
 

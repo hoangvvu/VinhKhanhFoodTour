@@ -91,6 +91,7 @@ Mục tiêu cốt lõi:
 | Duyệt POI | `ApprovePoiAction()` → `PoiService.ApprovePoiAsync(poiId)` |
 | Từ chối POI | `RejectPoiAction()` → `PoiService.RejectPoiAsync(poiId, note)` |
 | Khoá / mở khoá gian hàng | `HidePoiAsync()` → `PoiService.HideStallAsync(id)` ; `ToggleActive()` → `ToggleActiveAsync(id)` |
+| **Xóa vĩnh viễn gian hàng** (cascade tất cả dữ liệu liên quan) | `ShowDeleteConfirm()` → `DeletePoiAsync()` → `PoiService.DeletePoiCascadeAsync(poiId)` |
 | Hiển thị geofence hiệu dụng theo gói | `GetOwnerTier(ownerId)` + `GetTierBonus(tier)` (`+0/+5/+10/+15`) |
 
 #### A3 — Bản đồ POI + Heatmap `/admin/ban-do` (`Pages/Admin/BanDoPoi.razor`)
@@ -148,6 +149,7 @@ Mục tiêu cốt lõi:
 | Tổng hợp POI + chủ + email + ảnh + ngôn ngữ TM + số món | `OnInitializedAsync()` (join `Pois`, `Users`, `Narrations`, `Foods`, `Images`) |
 | Mở quick-edit (chỉ priority — radius lấy mặc định + bonus theo gói) | `OpenQuickEdit(row)` |
 | Lưu priority | `SaveQuickEditAsync()` (ép `poi.Radius = DefaultRadius`) |
+| **Xóa vĩnh viễn gian hàng** (cascade tất cả dữ liệu liên quan) | `OpenDeleteConfirm(row)` → `ConfirmDeleteAsync()` → `PoiService.DeletePoiCascadeAsync(poiId)` |
 
 #### A9 — Quản lý nhân sự & vendor `/nguoi-dung` (`Pages/Admin/NguoiDung.razor`)
 | Tác vụ | Phương thức |
@@ -351,8 +353,7 @@ Trang chỉ điều hướng về Home Dashboard tổng hợp (đã merge số l
 **Ghi chú:**
 
 - **Heatmap** trên bản đồ tổng quan nằm ở `/admin/ban-do` (`BanDoPoi.razor`): cũng đọc `TrackingLogs` qua EF + đẩy JSON sang JS (`updateOverviewHeatmap`), không đi qua `GET /api/Tracking/heatmap` từ Blazor.
-- Component **`OnlineUsersWidget`** cùng pattern (Timer + `IDbContextFactory`) nhưng **chưa được nhúng** vào `Home.razor`; trang chủ admin hiện dùng **`Components/Shared/ActiveDevicesWidget.razor`** (`WindowSeconds=45`, `RefreshSeconds=3`).
-- ⚠️ Lưu ý: trong repo có **2 file trùng tên** `ActiveDevicesWidget.razor` (một ở `Components/Shared/`, một ở `Components/Pages/Admin/`). Razor resolver ưu tiên bản trong `Shared/` nên file ở `Pages/Admin/` là dead-code, mọi sửa đổi về cách hiển thị số online phải làm trên bản `Shared/`.
+- Trang chủ admin chỉ dùng duy nhất **`Components/Shared/ActiveDevicesWidget.razor`** (`WindowSeconds=45`, `RefreshSeconds=3`). Các bản widget cũ trùng tên (`Pages/Admin/ActiveDevicesWidget.razor`, `Pages/Admin/OnlineUsersWidget.razor`) đã được dọn dẹp khỏi repo.
 
 #### 4.5.1. SEQ-05a – Admin Dashboard: phương thức trong `Home.razor` & `ActiveDevicesWidget`
 
@@ -563,19 +564,35 @@ Trang chỉ điều hướng về Home Dashboard tổng hợp (đã merge số l
 
 ---
 
+### 4.11. SEQ-11 – Admin xóa vĩnh viễn gian hàng (cascade)
+
+**Mô tả:** Trên Web Admin, từ trang `/admin/pois` (`PoiList.razor`) hoặc `/gian-hang` (`GianHang.razor`), Admin xóa hẳn 1 gian hàng khỏi hệ thống. Khác với "Khóa" (chỉ set `IsActive=false`), thao tác này gọi `PoiService.DeletePoiCascadeAsync(poiId)` chạy trong **transaction** để xóa POI cùng toàn bộ dữ liệu liên quan theo đúng thứ tự ràng buộc khóa ngoại: `Narrations` → `QrCodes` → `FoodTranslations` → ảnh món → `Foods` → ảnh POI → `MenuItems` → `Reviews` → `TrackingLogs` → cuối cùng là bản ghi `Poi`. Mọi bước thất bại sẽ rollback toàn bộ; không để DB ở trạng thái nửa vời.
+
+![diagram](./PRD.Rendered-17.svg)
+
+**Điểm kỹ thuật chính:**
+- **Transaction bắt buộc:** `await _db.Database.BeginTransactionAsync()` + `Commit/Rollback`. Tránh tình trạng xóa được Narrations nhưng FK còn dính khiến record POI không xóa được.
+- **Thứ tự xóa theo phụ thuộc FK:** dù `Image`/`Narration`/`QrCode` đã có `OnDelete(Cascade)` ở `ApplicationDbContext`, các bảng `Foods`, `Reviews`, `MenuItems`, `TrackingLogs` không bật cascade nên phải xóa thủ công trước khi xóa POI.
+- **Ảnh món ăn (`FoodId != null`):** xử lý theo `FoodId IN foodIds` thay vì PoiId trực tiếp (do bảng `IMAGES` cho phép `PoiId` nullable khi gắn vào món).
+- **`OwnerId` ở USERS:** dùng `OnDelete(SetNull)` nên xóa POI không động chạm tài khoản vendor.
+- **UI an toàn:** modal cảnh báo rõ ràng các bảng bị xóa, nút Hủy bị disable trong khi đang xóa để tránh đóng modal giữa transaction. Toast hiển thị thông điệp thành công/lỗi để Admin biết kết quả.
+- **Mobile/khách:** không cần thông báo realtime — lần sync POI kế tiếp `Marker` sẽ tự biến mất; audio queue chỉ chứa POI còn sống nên không phát nhầm.
+
+---
+
 ## 5. Sơ đồ Activity & State
 
 ### 5.1. ACT-01 – Hành trình du khách end-to-end trên Mobile App
 
 **Mô tả:** Toàn bộ luồng của Mobile App từ khi mở app (WelcomePage) đến khi kết thúc tour.
 
-![diagram](./PRD.Rendered-17.svg)
+![diagram](./PRD.Rendered-18.svg)
 
 ---
 
 ### 5.2. ACT-02 – Duyệt POI của Admin trong `PoiList.razor`
 
-![diagram](./PRD.Rendered-18.svg)
+![diagram](./PRD.Rendered-19.svg)
 
 ---
 
@@ -583,13 +600,13 @@ Trang chỉ điều hướng về Home Dashboard tổng hợp (đã merge số l
 
 **Mô tả:** Vendor dùng chung Blazor app, chỉ thấy các trang `/vendor/*` theo role.
 
-![diagram](./PRD.Rendered-19.svg)
+![diagram](./PRD.Rendered-20.svg)
 
 ---
 
 ### 5.4. ACT-04 – Dịch & sinh audio thuyết minh trong `ThuyetMinh.razor`
 
-![diagram](./PRD.Rendered-20.svg)
+![diagram](./PRD.Rendered-21.svg)
 
 ---
 
@@ -597,7 +614,7 @@ Trang chỉ điều hướng về Home Dashboard tổng hợp (đã merge số l
 
 **Mô tả:** Logic thật của `HandlePoiEnteredAsync(poiId)` trong `AudioQueueService.cs` khi nhận sự kiện `PoiEntered` từ `GeofenceMonitorService`. Quyết định cắt/chèn dựa trên so sánh **`TierValue`** giữa POI mới và POI đang phát (Diamond=4 > Gold=3 > Silver=2 > Standard=1).
 
-![diagram](./PRD.Rendered-21.svg)
+![diagram](./PRD.Rendered-22.svg)
 
 **Các hằng số tham chiếu trong code:**
 - `GeofenceMonitorService.DwellThresholdSec = 8` – phải ở trong zone 8 giây mới trigger `PoiEntered`.
@@ -613,7 +630,7 @@ Trang chỉ điều hướng về Home Dashboard tổng hợp (đã merge số l
 
 **Mô tả:** Sơ đồ state diagram thể hiện các trạng thái và chuyển đổi của một POI từ lúc Vendor tạo đến khi xuất hiện trên Mobile App.
 
-![diagram](./PRD.Rendered-22.svg)
+![diagram](./PRD.Rendered-23.svg)
 
 **Ràng buộc chuyển trạng thái:**
 - Mọi thay đổi nội dung quan trọng của Vendor đều **reset về `Pending`** để Admin xem lại.

@@ -142,6 +142,9 @@
                                                 <i class="bi bi-unlock-fill me-1"></i>Mở
                                             </button>
                                         }
+                                        <button class="btn btn-sm btn-danger rounded-pill px-3" title="Xóa vĩnh viễn" @onclick="() => ShowDeleteConfirm(item)">
+                                            <i class="bi bi-trash me-1"></i>Xóa
+                                        </button>
                                     </div>
                                 </td>
                             </tr>
@@ -245,6 +248,55 @@
     </div>
 }
 
+@* Banner thông báo kết quả xóa *@
+@if (!string.IsNullOrEmpty(deleteMessage))
+{
+    <div class="position-fixed bottom-0 end-0 m-4" style="z-index:1080;">
+        <div class="alert @(deleteMessageIsError ? "alert-danger" : "alert-success") alert-dismissible fade show shadow" role="alert">
+            @deleteMessage
+            <button type="button" class="btn-close" @onclick="() => deleteMessage = null"></button>
+        </div>
+    </div>
+}
+
+@* Modal Xác nhận Xóa vĩnh viễn *@
+@if (isDeleteConfirmVisible && deletingPoi is not null)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background:rgba(0,0,0,0.4); backdrop-filter: blur(4px);">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg" style="border-radius:20px;">
+                <div class="modal-body p-5">
+                    <div class="text-center">
+                        <i class="bi bi-trash text-danger display-4 mb-3 d-block"></i>
+                        <h4 class="fw-bold mb-2" style="color:#1E293B;">Xóa vĩnh viễn gian hàng?</h4>
+                        <p class="text-muted mb-3">Gian hàng <strong>@deletingPoi.Name</strong> sẽ bị xóa khỏi hệ thống.</p>
+                    </div>
+                    <div class="alert alert-danger small" style="background:#FEF2F2;border:1px solid #FECACA;color:#991B1B;">
+                        <i class="bi bi-exclamation-triangle me-1"></i>
+                        Hành động này sẽ xóa <strong>vĩnh viễn</strong> cùng toàn bộ:
+                        thuyết minh đa ngôn ngữ, mã QR, ảnh bìa &amp; thư viện, món ăn (kèm bản dịch và ảnh),
+                        đánh giá và lịch sử theo dõi của khách. <strong>Không thể khôi phục.</strong>
+                    </div>
+                    <div class="d-flex justify-content-center gap-3 mt-4">
+                        <button class="btn btn-outline-secondary rounded-pill px-4" @onclick="HideDeleteConfirm" disabled="@isDeleting">Hủy</button>
+                        <button class="btn btn-danger rounded-pill px-4 fw-bold" @onclick="DeletePoiAsync" disabled="@isDeleting">
+                            @if (isDeleting)
+                            {
+                                <span class="spinner-border spinner-border-sm me-1"></span>
+                                <span>Đang xóa...</span>
+                            }
+                            else
+                            {
+                                <span><i class="bi bi-trash me-1"></i>Xóa vĩnh viễn</span>
+                            }
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 @* Modal Xác nhận Khóa *@
 @if (isHideConfirmVisible)
 {
@@ -293,6 +345,12 @@
 
     private bool isHideConfirmVisible = false;
     private Poi? hidingPoi;
+
+    private bool isDeleteConfirmVisible = false;
+    private Poi? deletingPoi;
+    private bool isDeleting = false;
+    private string? deleteMessage;
+    private bool deleteMessageIsError;
 
     private bool isApproveModalVisible = false;
     private bool isRejectModalVisible = false;
@@ -365,6 +423,52 @@
     private async Task HidePoiAsync() { if (hidingPoi != null) await PoiService.HideStallAsync(hidingPoi.PoiId); HideHideConfirm(); await LoadData(); }
 
     private async Task ToggleActive(int id) { await PoiService.ToggleActiveAsync(id); await LoadData(); }
+
+    private void ShowDeleteConfirm(Poi poi)
+    {
+        deletingPoi = poi;
+        isDeleteConfirmVisible = true;
+    }
+
+    private void HideDeleteConfirm()
+    {
+        if (isDeleting) return;
+        isDeleteConfirmVisible = false;
+        deletingPoi = null;
+    }
+
+    private async Task DeletePoiAsync()
+    {
+        if (deletingPoi is null) return;
+        var target = deletingPoi;
+        isDeleting = true;
+        try
+        {
+            var (ok, err) = await PoiService.DeletePoiCascadeAsync(target.PoiId);
+            if (ok)
+            {
+                deleteMessage = $"Đã xóa gian hàng \"{target.Name}\" cùng toàn bộ dữ liệu liên quan.";
+                deleteMessageIsError = false;
+                isDeleteConfirmVisible = false;
+                deletingPoi = null;
+                await LoadData();
+            }
+            else
+            {
+                deleteMessage = $"Không thể xóa: {err}";
+                deleteMessageIsError = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            deleteMessage = $"Lỗi khi xóa: {ex.Message}";
+            deleteMessageIsError = true;
+        }
+        finally
+        {
+            isDeleting = false;
+        }
+    }
 
     private string GetOwnerLabel(int? ownerId) {
         if (ownerId == null) return "Chưa gán";

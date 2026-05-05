@@ -186,6 +186,7 @@ flowchart LR
 | Duyệt POI | `ApprovePoiAction()` → `PoiService.ApprovePoiAsync(poiId)` |
 | Từ chối POI | `RejectPoiAction()` → `PoiService.RejectPoiAsync(poiId, note)` |
 | Khoá / mở khoá gian hàng | `HidePoiAsync()` → `PoiService.HideStallAsync(id)` ; `ToggleActive()` → `ToggleActiveAsync(id)` |
+| **Xóa vĩnh viễn gian hàng** (cascade tất cả dữ liệu liên quan) | `ShowDeleteConfirm()` → `DeletePoiAsync()` → `PoiService.DeletePoiCascadeAsync(poiId)` |
 | Hiển thị geofence hiệu dụng theo gói | `GetOwnerTier(ownerId)` + `GetTierBonus(tier)` (`+0/+5/+10/+15`) |
 
 #### A3 — Bản đồ POI + Heatmap `/admin/ban-do` (`Pages/Admin/BanDoPoi.razor`)
@@ -243,6 +244,7 @@ flowchart LR
 | Tổng hợp POI + chủ + email + ảnh + ngôn ngữ TM + số món | `OnInitializedAsync()` (join `Pois`, `Users`, `Narrations`, `Foods`, `Images`) |
 | Mở quick-edit (chỉ priority — radius lấy mặc định + bonus theo gói) | `OpenQuickEdit(row)` |
 | Lưu priority | `SaveQuickEditAsync()` (ép `poi.Radius = DefaultRadius`) |
+| **Xóa vĩnh viễn gian hàng** (cascade tất cả dữ liệu liên quan) | `OpenDeleteConfirm(row)` → `ConfirmDeleteAsync()` → `PoiService.DeletePoiCascadeAsync(poiId)` |
 
 #### A9 — Quản lý nhân sự & vendor `/nguoi-dung` (`Pages/Admin/NguoiDung.razor`)
 | Tác vụ | Phương thức |
@@ -1167,6 +1169,81 @@ sequenceDiagram
 - Trang quản lý: `QuanLyNgonNgu.razor`.
 - Ngôn ngữ bật (`isEnabled=true`) là nguồn dữ liệu cho luồng dịch/sinh audio ở `ThuyetMinh.razor`.
 - TTS sử dụng `voice` đã ánh xạ theo từng ngôn ngữ để đảm bảo phát âm đúng.
+
+---
+
+### 4.11. SEQ-11 – Admin xóa vĩnh viễn gian hàng (cascade)
+
+**Mô tả:** Trên Web Admin, từ trang `/admin/pois` (`PoiList.razor`) hoặc `/gian-hang` (`GianHang.razor`), Admin xóa hẳn 1 gian hàng khỏi hệ thống. Khác với "Khóa" (chỉ set `IsActive=false`), thao tác này gọi `PoiService.DeletePoiCascadeAsync(poiId)` chạy trong **transaction** để xóa POI cùng toàn bộ dữ liệu liên quan theo đúng thứ tự ràng buộc khóa ngoại: `Narrations` → `QrCodes` → `FoodTranslations` → ảnh món → `Foods` → ảnh POI → `MenuItems` → `Reviews` → `TrackingLogs` → cuối cùng là bản ghi `Poi`. Mọi bước thất bại sẽ rollback toàn bộ; không để DB ở trạng thái nửa vời.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Ad as Admin
+    participant UI as PoiList.razor /<br/>GianHang.razor
+    participant PS as PoiService
+    participant DB as EF Core<br/>(SQL Server)
+    participant Mob as Mobile App
+
+    Ad->>UI: Bấm nút "Xóa" trên 1 gian hàng
+    UI->>UI: ShowDeleteConfirm(item)<br/>(mở modal cảnh báo)
+    Ad->>UI: Bấm "Xóa vĩnh viễn"
+    UI->>UI: isDeleting = true (disable nút,<br/>hiện spinner)
+    UI->>PS: DeletePoiCascadeAsync(poiId)
+
+    PS->>DB: BEGIN TRANSACTION
+    PS->>DB: SELECT Poi WHERE PoiId = @id
+    DB-->>PS: Poi (hoặc null)
+
+    alt Không tìm thấy POI
+        PS-->>UI: (false, "Không tìm thấy gian hàng.")
+    else Có POI - tiến hành xóa cascade
+        PS->>DB: DELETE Narrations WHERE PoiId=@id
+        PS->>DB: DELETE QrCodes WHERE PoiId=@id
+        PS->>DB: SELECT FoodId FROM Foods WHERE PoiId=@id
+        DB-->>PS: List<int> foodIds
+
+        opt Có món ăn
+            PS->>DB: DELETE FoodTranslations WHERE FoodId IN foodIds
+            PS->>DB: DELETE Images WHERE FoodId IN foodIds
+            PS->>DB: DELETE Foods WHERE PoiId=@id
+        end
+
+        PS->>DB: DELETE Images WHERE PoiId=@id<br/>(cover + gallery quán)
+        PS->>DB: DELETE MenuItems WHERE PoiId=@id
+        PS->>DB: DELETE Reviews WHERE PoiId=@id
+        PS->>DB: DELETE TrackingLogs WHERE PoiId=@id
+        PS->>DB: SaveChangesAsync (flush)
+
+        PS->>DB: DELETE Poi WHERE PoiId=@id
+        PS->>DB: SaveChangesAsync
+
+        alt Toàn bộ thành công
+            PS->>DB: COMMIT
+            PS-->>UI: (true, null)
+            UI->>UI: Xóa item khỏi list,<br/>hiện toast thành công
+        else Có lỗi giữa chừng
+            PS->>DB: ROLLBACK
+            PS-->>UI: (false, errorMessage)
+            UI->>UI: Hiện toast lỗi
+        end
+    end
+
+    UI->>UI: isDeleting = false
+    UI-->>Ad: Đóng modal / hiển thị kết quả
+
+    Note over Mob: Lần đồng bộ kế tiếp<br/>(GET /api/Poi)
+    Mob->>DB: Sync POI list
+    DB-->>Mob: Không còn POI đã xóa<br/>→ marker biến mất khỏi bản đồ
+```
+
+**Điểm kỹ thuật chính:**
+- **Transaction bắt buộc:** `await _db.Database.BeginTransactionAsync()` + `Commit/Rollback`. Tránh tình trạng xóa được Narrations nhưng FK còn dính khiến record POI không xóa được.
+- **Thứ tự xóa theo phụ thuộc FK:** dù `Image`/`Narration`/`QrCode` đã có `OnDelete(Cascade)` ở `ApplicationDbContext`, các bảng `Foods`, `Reviews`, `MenuItems`, `TrackingLogs` không bật cascade nên phải xóa thủ công trước khi xóa POI.
+- **Ảnh món ăn (`FoodId != null`):** xử lý theo `FoodId IN foodIds` thay vì PoiId trực tiếp (do bảng `IMAGES` cho phép `PoiId` nullable khi gắn vào món).
+- **`OwnerId` ở USERS:** dùng `OnDelete(SetNull)` nên xóa POI không động chạm tài khoản vendor.
+- **UI an toàn:** modal cảnh báo rõ ràng các bảng bị xóa, nút Hủy bị disable trong khi đang xóa để tránh đóng modal giữa transaction. Toast hiển thị thông điệp thành công/lỗi để Admin biết kết quả.
+- **Mobile/khách:** không cần thông báo realtime — lần sync POI kế tiếp `Marker` sẽ tự biến mất; audio queue chỉ chứa POI còn sống nên không phát nhầm.
 
 ---
 
