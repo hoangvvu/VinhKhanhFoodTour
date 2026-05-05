@@ -1288,6 +1288,75 @@ sequenceDiagram
 
 ---
 
+### 4.12. SEQ-12 – Admin xóa vĩnh viễn tài khoản người dùng (cascade)
+
+**Mô tả:** Thao tác xóa một người dùng (Vendor hoặc Admin) khỏi hệ thống thông qua `NguoiDung.razor`. Khi Admin bấm "Xóa vĩnh viễn", một transaction được mở ra để xóa toàn bộ các POI thuộc sở hữu của người dùng đó. Thao tác xóa các POI này cũng phải dọn dẹp các dữ liệu phụ thuộc như `Foods`, `Reviews`, `MenuItems`, `TrackingLogs` bằng tay trước (do EF Core thiếu cascade ở tầng DB cho các bảng này), sau đó xóa các POI. Cuối cùng, bản ghi `User` mới được xóa, đảm bảo không vi phạm ràng buộc khóa ngoại và bảo toàn dữ liệu.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Ad as Admin
+    participant UI as NguoiDung.razor
+    participant AS as AuthService
+    participant DB as EF Core<br/>(SQL Server)
+
+    Ad->>UI: Bấm nút "Thùng rác" trên 1 User
+    UI->>UI: ConfirmDeleteUser(user)<br/>(hiện Modal cảnh báo)
+    Ad->>UI: Xác nhận "Xóa vĩnh viễn"
+    UI->>UI: isDeleting = true (chặn UI)
+    UI->>AS: DeleteUserAsync(userId)
+
+    AS->>DB: BEGIN TRANSACTION
+    AS->>DB: SELECT PoiId FROM Pois WHERE OwnerId = @userId
+    DB-->>AS: List<int> poiIds
+
+    opt Người dùng sở hữu POI (Vendor)
+        AS->>DB: DELETE Narrations WHERE PoiId IN poiIds
+        AS->>DB: DELETE QrCodes WHERE PoiId IN poiIds
+        
+        AS->>DB: SELECT FoodId FROM Foods WHERE PoiId IN poiIds
+        DB-->>AS: List<int> foodIds
+        
+        opt Có món ăn
+            AS->>DB: DELETE FoodTranslations WHERE FoodId IN foodIds
+            AS->>DB: DELETE Images WHERE FoodId IN foodIds
+            AS->>DB: DELETE Foods WHERE PoiId IN poiIds
+        end
+        
+        AS->>DB: DELETE Images WHERE PoiId IN poiIds
+        AS->>DB: DELETE MenuItems WHERE PoiId IN poiIds
+        AS->>DB: DELETE Reviews WHERE PoiId IN poiIds
+        AS->>DB: DELETE TrackingLogs WHERE PoiId IN poiIds
+        
+        AS->>DB: DELETE Pois WHERE PoiId IN poiIds
+        AS->>DB: SaveChangesAsync (flush POI deletes)
+    end
+
+    AS->>DB: SELECT User WHERE UserId = @userId
+    DB-->>AS: User record
+    AS->>DB: DELETE User
+    AS->>DB: SaveChangesAsync
+    
+    alt Toàn bộ thành công
+        AS->>DB: COMMIT
+        AS-->>UI: Success
+        UI->>UI: LoadUsers() (làm mới ds)
+        UI-->>Ad: Tắt Modal, danh sách cập nhật
+    else Có lỗi CSDL
+        AS->>DB: ROLLBACK
+        AS-->>UI: throw Exception
+        UI->>UI: Hiển thị lỗi deleteErrorMessage
+    end
+    UI->>UI: isDeleting = false
+```
+
+**Điểm kỹ thuật chính:**
+- **Transaction bao trùm:** Xóa user bao hàm việc xóa nhiều POI, mỗi POI lại có nhiều bảng con. `BeginTransactionAsync` đảm bảo nếu bất kỳ thao tác xóa nào thất bại, toàn bộ sẽ được rollback.
+- **Xóa POI Cascade thủ công:** Để tránh lỗi khóa ngoại (do một số bảng không được thiết lập OnDelete(Cascade)), `AuthService` phải chủ động quét `poiIds` và `foodIds` của user để dọn dẹp các bảng phụ trước khi xóa dòng trong bảng `Pois`.
+- **An toàn UI:** Modal cảnh báo người dùng xóa tài khoản là thao tác không thể hoàn tác, tác động đến toàn bộ dữ liệu của quán ăn liên kết.
+
+---
+
 ## 5. Sơ đồ Activity & State
 
 ### 5.1. ACT-01 – Hành trình du khách end-to-end trên Mobile App

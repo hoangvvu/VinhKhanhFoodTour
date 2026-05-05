@@ -225,4 +225,67 @@ public class AuthService
         user.UpdatedAt = DateTime.Now;
         await _db.SaveChangesAsync();
     }
+
+    /// <summary>Xóa vĩnh viễn user và tất cả POI kèm theo (narrations, QR, images cascade).</summary>
+    public async Task DeleteUserAsync(int userId)
+    {
+        using var transaction = await _db.Database.BeginTransactionAsync();
+        try
+        {
+            var poiIds = await _db.Pois.Where(p => p.OwnerId == userId).Select(p => p.PoiId).ToListAsync();
+            if (poiIds.Any())
+            {
+                var narrations = await _db.Narrations.Where(n => poiIds.Contains(n.PoiId)).ToListAsync();
+                if (narrations.Any()) _db.Narrations.RemoveRange(narrations);
+
+                var qrCodes = await _db.QrCodes.Where(q => poiIds.Contains(q.PoiId)).ToListAsync();
+                if (qrCodes.Any()) _db.QrCodes.RemoveRange(qrCodes);
+
+                var foodIds = await _db.Foods.Where(f => poiIds.Contains(f.PoiId)).Select(f => f.FoodId).ToListAsync();
+                if (foodIds.Any())
+                {
+                    var foodTranslations = await _db.FoodTranslations.Where(ft => foodIds.Contains(ft.FoodId)).ToListAsync();
+                    if (foodTranslations.Any()) _db.FoodTranslations.RemoveRange(foodTranslations);
+
+                    var foodImages = await _db.Images.Where(i => i.FoodId != null && foodIds.Contains(i.FoodId!.Value)).ToListAsync();
+                    if (foodImages.Any()) _db.Images.RemoveRange(foodImages);
+
+                    var foods = await _db.Foods.Where(f => poiIds.Contains(f.PoiId)).ToListAsync();
+                    _db.Foods.RemoveRange(foods);
+                }
+
+                var poiImages = await _db.Images.Where(i => poiIds.Contains(i.PoiId)).ToListAsync();
+                if (poiImages.Any()) _db.Images.RemoveRange(poiImages);
+
+                var menuItems = await _db.MenuItems.Where(m => poiIds.Contains(m.PoiId)).ToListAsync();
+                if (menuItems.Any()) _db.MenuItems.RemoveRange(menuItems);
+
+                var reviews = await _db.Reviews.Where(r => poiIds.Contains(r.PoiId)).ToListAsync();
+                if (reviews.Any()) _db.Reviews.RemoveRange(reviews);
+
+                var trackingLogs = await _db.TrackingLogs.Where(t => poiIds.Contains(t.PoiId)).ToListAsync();
+                if (trackingLogs.Any()) _db.TrackingLogs.RemoveRange(trackingLogs);
+
+                var pois = await _db.Pois.Where(p => poiIds.Contains(p.PoiId)).ToListAsync();
+                _db.Pois.RemoveRange(pois);
+                
+                await _db.SaveChangesAsync();
+            }
+
+            // Xóa user
+            var user = await _db.Users.FirstOrDefaultAsync(u => u.UserId == userId);
+            if (user is not null)
+            {
+                _db.Users.Remove(user);
+                await _db.SaveChangesAsync();
+            }
+
+            await transaction.CommitAsync();
+        }
+        catch (Exception)
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
+    }
 }

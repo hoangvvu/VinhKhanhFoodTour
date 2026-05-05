@@ -583,19 +583,32 @@ Trang chỉ điều hướng về Home Dashboard tổng hợp (đã merge số l
 
 ---
 
+### 4.12. SEQ-12 – Admin xóa vĩnh viễn tài khoản người dùng (cascade)
+
+**Mô tả:** Thao tác xóa một người dùng (Vendor hoặc Admin) khỏi hệ thống thông qua `NguoiDung.razor`. Khi Admin bấm "Xóa vĩnh viễn", một transaction được mở ra để xóa toàn bộ các POI thuộc sở hữu của người dùng đó. Thao tác xóa các POI này cũng phải dọn dẹp các dữ liệu phụ thuộc như `Foods`, `Reviews`, `MenuItems`, `TrackingLogs` bằng tay trước (do EF Core thiếu cascade ở tầng DB cho các bảng này), sau đó xóa các POI. Cuối cùng, bản ghi `User` mới được xóa, đảm bảo không vi phạm ràng buộc khóa ngoại và bảo toàn dữ liệu.
+
+![diagram](./PRD.Rendered-18.svg)
+
+**Điểm kỹ thuật chính:**
+- **Transaction bao trùm:** Xóa user bao hàm việc xóa nhiều POI, mỗi POI lại có nhiều bảng con. `BeginTransactionAsync` đảm bảo nếu bất kỳ thao tác xóa nào thất bại, toàn bộ sẽ được rollback.
+- **Xóa POI Cascade thủ công:** Để tránh lỗi khóa ngoại (do một số bảng không được thiết lập OnDelete(Cascade)), `AuthService` phải chủ động quét `poiIds` và `foodIds` của user để dọn dẹp các bảng phụ trước khi xóa dòng trong bảng `Pois`.
+- **An toàn UI:** Modal cảnh báo người dùng xóa tài khoản là thao tác không thể hoàn tác, tác động đến toàn bộ dữ liệu của quán ăn liên kết.
+
+---
+
 ## 5. Sơ đồ Activity & State
 
 ### 5.1. ACT-01 – Hành trình du khách end-to-end trên Mobile App
 
 **Mô tả:** Toàn bộ luồng của Mobile App từ khi mở app (WelcomePage) đến khi kết thúc tour.
 
-![diagram](./PRD.Rendered-18.svg)
+![diagram](./PRD.Rendered-19.svg)
 
 ---
 
 ### 5.2. ACT-02 – Duyệt POI của Admin trong `PoiList.razor`
 
-![diagram](./PRD.Rendered-19.svg)
+![diagram](./PRD.Rendered-20.svg)
 
 ---
 
@@ -603,13 +616,13 @@ Trang chỉ điều hướng về Home Dashboard tổng hợp (đã merge số l
 
 **Mô tả:** Vendor dùng chung Blazor app, chỉ thấy các trang `/vendor/*` theo role.
 
-![diagram](./PRD.Rendered-20.svg)
+![diagram](./PRD.Rendered-21.svg)
 
 ---
 
 ### 5.4. ACT-04 – Dịch & sinh audio thuyết minh trong `ThuyetMinh.razor`
 
-![diagram](./PRD.Rendered-21.svg)
+![diagram](./PRD.Rendered-22.svg)
 
 ---
 
@@ -617,7 +630,7 @@ Trang chỉ điều hướng về Home Dashboard tổng hợp (đã merge số l
 
 **Mô tả:** Logic thật của `HandlePoiEnteredAsync(poiId)` trong `AudioQueueService.cs` khi nhận sự kiện `PoiEntered` từ `GeofenceMonitorService`. Quyết định cắt/chèn dựa trên so sánh **`TierValue`** giữa POI mới và POI đang phát (Diamond=4 > Gold=3 > Silver=2 > Standard=1).
 
-![diagram](./PRD.Rendered-22.svg)
+![diagram](./PRD.Rendered-23.svg)
 
 **Các hằng số tham chiếu trong code:**
 - `GeofenceMonitorService.DwellThresholdSec = 8` – phải ở trong zone 8 giây mới trigger `PoiEntered`.
@@ -633,7 +646,7 @@ Trang chỉ điều hướng về Home Dashboard tổng hợp (đã merge số l
 
 **Mô tả:** Sơ đồ state diagram thể hiện các trạng thái và chuyển đổi của một POI từ lúc Vendor tạo đến khi xuất hiện trên Mobile App.
 
-![diagram](./PRD.Rendered-23.svg)
+![diagram](./PRD.Rendered-24.svg)
 
 **Ràng buộc chuyển trạng thái:**
 - Mọi thay đổi nội dung quan trọng của Vendor đều **reset về `Pending`** để Admin xem lại.
