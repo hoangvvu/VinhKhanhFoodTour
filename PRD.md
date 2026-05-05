@@ -394,43 +394,84 @@ Trang chỉ điều hướng về Home Dashboard tổng hợp (đã merge số l
 
 ### 4.1. SEQ-01 – Du khách quét QR và bắt đầu tour
 
-**Mô tả:** Mô tả luồng từ khi du khách quét QR tại cổng phố ẩm thực đến khi audio intro được phát. Đây là luồng "onboarding" quan trọng nhất quyết định trải nghiệm đầu tiên.
+**Mô tả:** Luồng "onboarding" quan trọng nhất – từ khi du khách quét QR tại cổng phố ẩm thực đến khi audio intro được phát và `GeofenceMonitorService` bắt đầu theo dõi GPS. Sequence chỉ tên class/method **đúng** trong codebase (`QrController.cs`, `TourController.cs`, `QrScanViewModel.cs`, `TourPlayerViewModel.cs`, `DataService.cs`, `TourService.cs`, `AudioQueueService.cs`, `AudioPlaybackService.cs`).
 
 ```mermaid
 sequenceDiagram
     autonumber
     actor U as Du khách
-    participant App as Mobile App
-    participant Qr as QrController
-    participant Tour as TourController
-    participant DB as SQL (EF Core)
-    participant FS as /uploads (audio)
+    participant Set as SettingsService<br/>(Mobile)
+    participant Scan as QrScanViewModel
+    participant Data as DataService
+    participant QrApi as QrController<br/>(API)
+    participant Player as TourPlayerViewModel
+    participant TourSvc as TourService
+    participant TourApi as TourController<br/>(API)
+    participant DB as ApplicationDbContext<br/>(EF Core)
+    participant Queue as AudioQueueService
+    participant Audio as AudioPlaybackService
+    participant Geo as GeofenceMonitorService
 
-    U->>App: Mở app, chọn ngôn ngữ (vd: EN)
-    App->>App: SettingsService lưu language
-    U->>App: QrScanPage - quét QR đầu phố (ZXing)
-    App->>Qr: GET /api/Qr/resolve/{token}
-    Qr->>DB: Tra cứu QR -> loại (tour/POI)
-    DB-->>Qr: { type: tour, tourId }
-    Qr-->>App: QrResolveDto
-    App->>Tour: POST /api/Tour/start { tourId, language }
-    Tour->>DB: Lưu session, log qr_scan
-    Tour-->>App: { tourId, intro, sessionId }
-    App->>Tour: GET /api/Tour/audio-queue?tourId&lang
-    Tour->>DB: Lấy audio intro + các POI đã có audio
-    DB-->>Tour: Danh sách audio
-    Tour-->>App: Audio queue (url /uploads/...)
-    App->>FS: Stream audio intro
-    FS-->>App: Bytes audio
-    App->>U: Phát intro (AudioPlaybackService)
-    App->>Tour: POST /api/Tour/track-listen { intro, start }
-    App->>App: GeofenceMonitorService bắt đầu theo dõi GPS
+    U->>Set: Chọn ngôn ngữ (vd EN)
+    Set->>Set: SaveLanguage("en")<br/>Preferences.Set
+    U->>Scan: QrScanPage quét QR (ZXing)<br/>→ HandleScanPayloadAsync(raw)
+    Scan->>Scan: Debounce 2s + _scanGate.WaitAsync(0)
+    Scan->>Data: ResolveQrAsync(payload, lang)
+    Data->>QrApi: GET /api/Qr/resolve/{token}?lang={lang}
+    QrApi->>QrApi: NormalizeToken(raw)<br/>(strip vkfoodtour:// & data=...)
+    QrApi->>DB: QrCodes.Where(QrToken==token && IsActive)
+    DB-->>QrApi: QrCode (PoiId)
+    QrApi->>DB: Pois.Where(PoiId && IsActive && OwnerId!=null)
+    DB-->>QrApi: Poi
+    QrApi->>DB: Narrations.Include(Language)<br/>.Where(PoiId && IsActive)
+    DB-->>QrApi: List<Narration>
+    QrApi->>QrApi: Pick narration: lang khớp →<br/>AudioUrlAuto → vi → bất kỳ
+    QrApi-->>Data: QrResolveDto<br/>(IsTour = token == "VINH-KHANH-TOUR")
+    Data-->>Scan: QrResolveDto
+
+    alt IsTour == true (QR cổng phố)
+        Scan->>Player: Shell.GoToAsync<br/>("//tour?qrToken={payload}")
+        Player->>Player: HandleScanPayloadAsync(qrToken)<br/>(OnQrTokenChanged)
+        Player->>Player: GetCurrentLocationAsync()<br/>→ Geolocation.GetLocationAsync
+        Player->>TourSvc: StartTourAsync(qrToken, lat, lng, lang)
+        TourSvc->>TourApi: POST /api/Tour/start<br/>{ QrToken, Latitude, Longitude,<br/>LanguageCode, DeviceId }
+
+        TourApi->>DB: Languages.FirstOrDefault(Code==lang)
+        DB-->>TourApi: languageId (fallback=1/vi)
+        TourApi->>DB: QrCodes.FirstOrDefault(QrToken==token)<br/>→ priorityPoiId
+        TourApi->>DB: Pois.Include(Narrations[lang])<br/>.Where(IsActive && Approved && có audio)
+        DB-->>TourApi: List<Poi>
+        TourApi->>DB: Users.Where(ownerIds)<br/>→ MembershipTier dict
+        TourApi->>TourApi: Build AudioQueueItemDto<br/>(CalculateDistanceMeters,<br/>EstimateAudioDuration,<br/>TierSortOrder, TierBonus)
+        TourApi->>TourApi: Sort: PriorityPoi → Tier →<br/>Distance → Name
+        TourApi->>DB: TrackingLogs.Add(qr_scan) +<br/>SaveChangesAsync
+        TourApi->>DB: TourSettings.Where(intro_audio_{lang})
+        DB-->>TourApi: IntroAudioUrl
+        TourApi-->>TourSvc: StartTourResponseDto<br/>(AudioQueue, IntroAudioUrl,<br/>TourSessionId)
+        TourSvc-->>Player: response
+
+        Player->>Queue: InitializeQueueAsync(AudioQueue)
+        Player->>Audio: PlayIntroThenStartQueueAsync(introUrl)<br/>→ PlayAsync(introUrl)
+        Audio->>Audio: Stream /uploads/intro/intro_{lang}.mp3<br/>(MediaElement / Plugin.Maui.Audio)
+        Audio-->>U: Phát intro
+        Player->>Player: Poll IsPlaying (500ms,<br/>timeout 120s) → Stop
+        Player->>Queue: StartAsync()<br/>(kích hoạt phát theo geofence)
+        Queue->>Geo: StartMonitoringAsync(pois)
+        Geo-->>Player: Monitoring 3s/lần
+    else IsTour == false (QR quán lẻ)
+        Scan->>Scan: PendingAudioUrl = resolved.AudioUrl
+        Scan->>Player: Shell.GoToAsync<br/>("stalldetail?poiId={id}&fromQr=true")
+        Note over Player: StallDetailPage tự phát audio<br/>(không vào tour queue)
+    end
 ```
 
 **Điểm quan trọng:**
-- QR token luôn đi qua `Qr/resolve` để tránh lộ dữ liệu POI.
-- Audio url là đường dẫn tĩnh `/uploads/...` (ASP.NET `UseStaticFiles`).
-- `Tour/track-listen` ghi lại việc bắt đầu phát intro.
+- **`QrController.Resolve`** chỉ trả `QrResolveDto` (metadata + 1 audio đã chọn), KHÔNG trả `tourId/sessionId` — phân biệt tour/quán-lẻ chỉ qua `IsTour = (token == "VINH-KHANH-TOUR")`.
+- **Audio queue** được build trong **một call `POST /api/Tour/start`** (kèm GPS) — không cần gọi thêm `GET /audio-queue` ngay; endpoint đó chỉ dùng để refresh khi user di chuyển.
+- **Track `qr_scan`** được ghi server-side trong `TourController.StartTour` (không phải client gọi `track-listen` riêng). `track-listen` chỉ ghi `listen_start` / `listen_end` trong lúc phát.
+- **Mobile flow 2 ViewModel:** `QrScanViewModel` chỉ resolve token rồi điều hướng; toàn bộ logic tour nằm trong `TourPlayerViewModel.HandleScanPayloadAsync` (gọi `TourService.StartTourAsync`).
+- **Audio url**: server gọi `NormalizeAudioUrl(url, apiBaseUrl)` ép thành URL tuyệt đối (`https://host/uploads/...`) để mobile stream trực tiếp qua `UseStaticFiles`.
+- **Debounce 2s** + `SemaphoreSlim _scanGate(1,1)` ngăn double-scan trong cả `QrScanViewModel` lẫn `TourPlayerViewModel`.
 
 ---
 

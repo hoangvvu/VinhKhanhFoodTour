@@ -299,14 +299,17 @@ Trang chỉ điều hướng về Home Dashboard tổng hợp (đã merge số l
 
 ### 4.1. SEQ-01 – Du khách quét QR và bắt đầu tour
 
-**Mô tả:** Mô tả luồng từ khi du khách quét QR tại cổng phố ẩm thực đến khi audio intro được phát. Đây là luồng "onboarding" quan trọng nhất quyết định trải nghiệm đầu tiên.
+**Mô tả:** Luồng "onboarding" quan trọng nhất – từ khi du khách quét QR tại cổng phố ẩm thực đến khi audio intro được phát và `GeofenceMonitorService` bắt đầu theo dõi GPS. Sequence chỉ tên class/method **đúng** trong codebase (`QrController.cs`, `TourController.cs`, `QrScanViewModel.cs`, `TourPlayerViewModel.cs`, `DataService.cs`, `TourService.cs`, `AudioQueueService.cs`, `AudioPlaybackService.cs`).
 
 ![diagram](./PRD.Rendered-3.svg)
 
 **Điểm quan trọng:**
-- QR token luôn đi qua `Qr/resolve` để tránh lộ dữ liệu POI.
-- Audio url là đường dẫn tĩnh `/uploads/...` (ASP.NET `UseStaticFiles`).
-- `Tour/track-listen` ghi lại việc bắt đầu phát intro.
+- **`QrController.Resolve`** chỉ trả `QrResolveDto` (metadata + 1 audio đã chọn), KHÔNG trả `tourId/sessionId` — phân biệt tour/quán-lẻ chỉ qua `IsTour = (token == "VINH-KHANH-TOUR")`.
+- **Audio queue** được build trong **một call `POST /api/Tour/start`** (kèm GPS) — không cần gọi thêm `GET /audio-queue` ngay; endpoint đó chỉ dùng để refresh khi user di chuyển.
+- **Track `qr_scan`** được ghi server-side trong `TourController.StartTour` (không phải client gọi `track-listen` riêng). `track-listen` chỉ ghi `listen_start` / `listen_end` trong lúc phát.
+- **Mobile flow 2 ViewModel:** `QrScanViewModel` chỉ resolve token rồi điều hướng; toàn bộ logic tour nằm trong `TourPlayerViewModel.HandleScanPayloadAsync` (gọi `TourService.StartTourAsync`).
+- **Audio url**: server gọi `NormalizeAudioUrl(url, apiBaseUrl)` ép thành URL tuyệt đối (`https://host/uploads/...`) để mobile stream trực tiếp qua `UseStaticFiles`.
+- **Debounce 2s** + `SemaphoreSlim _scanGate(1,1)` ngăn double-scan trong cả `QrScanViewModel` lẫn `TourPlayerViewModel`.
 
 ---
 
