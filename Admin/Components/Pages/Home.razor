@@ -176,7 +176,7 @@
 
 
     // ── Admin stats – hệ thống ───────────────
-    private int totalPois, activePois, totalNarrations;
+    private int totalPois, activePois;
     private int todayQrScans, totalUsers, totalVendors;
 
     // ── Vendor stats ─────────────────────────
@@ -224,7 +224,6 @@
 
         totalPois     = await Db.Pois.CountAsync();
         activePois    = await Db.Pois.CountAsync(p => p.IsActive);
-        totalNarrations = await Db.Narrations.CountAsync();
         totalUsers = await Db.Users.CountAsync();
         totalVendors  = await Db.Users.CountAsync(u => u.Role == "Vendor");
         todayQrScans  = await Db.TrackingLogs
@@ -273,7 +272,6 @@
     private string GetAdminCardValue(AdminStatCardConfig card) => card.Key switch
     {
         "totalPois" => totalPois.ToString(),
-        "totalNarrations" => totalNarrations.ToString(),
         "totalUsers" => totalUsers.ToString(),
         "todayQrScans" => todayQrScans.ToString(),
         _ => "0"
@@ -286,7 +284,6 @@
 
         return card.BadgeTemplate
             .Replace("{activePois}", activePois.ToString())
-            .Replace("{totalNarrations}", totalNarrations.ToString())
             .Replace("{totalVendors}", totalVendors.ToString());
     }
 
