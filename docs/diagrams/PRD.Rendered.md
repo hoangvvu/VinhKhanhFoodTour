@@ -596,19 +596,87 @@ Trang chỉ điều hướng về Home Dashboard tổng hợp (đã merge số l
 
 ---
 
+### 4.13. SEQ-13 – Mobile đăng nhập / đăng ký / khách vãng lai
+
+**Mô tả:** Luồng xác thực trên Mobile App — du khách có 3 lựa chọn: đăng nhập bằng email, đăng ký tài khoản mới, hoặc tiếp tục như khách vãng lai (anonymous). File: `Views/LoginPage.xaml.cs`, `Services/DataService.cs`, `Services/AuthSessionService.cs`.
+
+![diagram](./PRD.Rendered-19.svg)
+
+---
+
+### 4.14. SEQ-14 – Mobile Onboarding + chọn ngôn ngữ
+
+**Mô tả:** Luồng khởi động app lần đầu — từ `WelcomePage` qua `LanguagePickerPage` rồi vào `AppShell`. File: `Views/WelcomePage.xaml.cs`, `Views/LanguagePickerPage.xaml.cs`, `Services/SettingsService.cs`, `Services/LocalizationService.cs`.
+
+![diagram](./PRD.Rendered-20.svg)
+
+---
+
+### 4.15. SEQ-15 – Đăng nhập Web Admin/Vendor (cookie + Google OAuth)
+
+**Mô tả:** Hai luồng đăng nhập trên Web Admin: (1) form email/password truyền thống và (2) Google OAuth. Cả hai đều tạo cookie `VK_Admin_Auth` với Claims chứa role `Admin`/`Vendor`. File: `Pages/Login.razor`, `Admin/Program.cs` (Google callback), `Services/AuthService.cs`.
+
+![diagram](./PRD.Rendered-21.svg)
+
+---
+
+### 4.16. SEQ-16 – Admin tạo Audio Intro Phố
+
+**Mô tả:** Admin soạn nội dung giới thiệu phố ẩm thực, dịch sang ngôn ngữ đích, sinh audio bằng Edge TTS và lưu vào `TourSettings`. Audio này phát khi du khách quét QR bắt đầu tour. File: `Pages/Admin/IntroAudio.razor`, `Services/TtsService.cs`, `Services/GoogleTranslateService.cs`.
+
+![diagram](./PRD.Rendered-22.svg)
+
+---
+
+### 4.17. SEQ-17 – Admin quản lý QR (tạo master, tái tạo, bật/tắt)
+
+**Mô tả:** Trên trang `MaQR.razor`, Admin quản lý toàn bộ mã QR hệ thống: tạo QR master tour duy nhất cho phố, bật/tắt từng QR, tái tạo QR theo mô tả quán (đồng bộ thuyết minh), xoá hàng loạt. File: `Pages/Admin/MaQR.razor`, `Services/PoiService.cs`.
+
+![diagram](./PRD.Rendered-23.svg)
+
+---
+
+### 4.18. SEQ-18 – Mobile ghi tracking log + offline queue + flush
+
+**Mô tả:** Khi du khách di chuyển, quét QR, vào/ra geofence, nghe audio — app gọi `TrackEventAsync` để ghi log. Nếu API lỗi, event được lưu vào SQLite (`ILocalStore`) và flush lại khi mạng khôi phục. File: `Services/DataService.cs`, `Services/Offline/ILocalStore.cs`.
+
+![diagram](./PRD.Rendered-24.svg)
+
+**Điểm kỹ thuật chính:**
+- **`_flushLock`** (`SemaphoreSlim(1,1)`) đảm bảo chỉ 1 flush chạy tại một thời điểm.
+- **Max 8 attempts**: event pending thất bại quá 8 lần sẽ bị xoá để tránh tích tụ dữ liệu rác.
+- **Flush trigger**: mỗi khi 1 event ghi thành công hoặc khi `GetPoisAsync` thành công (dấu hiệu mạng OK).
+- **`NormalizeLanguageCode`** bỏ prefix legacy `anon:`, lower-case — đảm bảo dashboard thống kê đúng.
+
+---
+
+### 4.19. SEQ-19 – Mobile đồng bộ offline (SyncService + MediaCacheService)
+
+**Mô tả:** Khi app resume hoặc lần đầu chạy, `SyncService` gọi `GET /api/Sync/bootstrap` để tải snapshot dữ liệu (ngôn ngữ, POI, audio URL) về SQLite local. Hỗ trợ delta sync qua tham số `since`. File: `Services/Offline/SyncService.cs`, `Services/Offline/ILocalStore.cs`.
+
+![diagram](./PRD.Rendered-25.svg)
+
+**Điểm kỹ thuật chính:**
+- **`_gate` SemaphoreSlim(1,1)**: chặn nhiều sync chạy đồng thời (vd. app resume liên tục).
+- **Delta sync**: gửi `since` để chỉ nhận POI thay đổi sau lần sync trước — giảm băng thông.
+- **`RemovedPoiIds`**: server trả danh sách POI đã bị xoá/ẩn để client dọn cache local.
+- **Fallback**: nếu sync fail, `DataService.GetPoisAsync()` tự đọc từ `ILocalStore` (`GetCachedPoisOrDemoAsync`).
+
+---
+
 ## 5. Sơ đồ Activity & State
 
 ### 5.1. ACT-01 – Hành trình du khách end-to-end trên Mobile App
 
 **Mô tả:** Toàn bộ luồng của Mobile App từ khi mở app (WelcomePage) đến khi kết thúc tour.
 
-![diagram](./PRD.Rendered-19.svg)
+![diagram](./PRD.Rendered-26.svg)
 
 ---
 
 ### 5.2. ACT-02 – Duyệt POI của Admin trong `PoiList.razor`
 
-![diagram](./PRD.Rendered-20.svg)
+![diagram](./PRD.Rendered-27.svg)
 
 ---
 
@@ -616,13 +684,13 @@ Trang chỉ điều hướng về Home Dashboard tổng hợp (đã merge số l
 
 **Mô tả:** Vendor dùng chung Blazor app, chỉ thấy các trang `/vendor/*` theo role.
 
-![diagram](./PRD.Rendered-21.svg)
+![diagram](./PRD.Rendered-28.svg)
 
 ---
 
 ### 5.4. ACT-04 – Dịch & sinh audio thuyết minh trong `ThuyetMinh.razor`
 
-![diagram](./PRD.Rendered-22.svg)
+![diagram](./PRD.Rendered-29.svg)
 
 ---
 
@@ -630,7 +698,7 @@ Trang chỉ điều hướng về Home Dashboard tổng hợp (đã merge số l
 
 **Mô tả:** Logic thật của `HandlePoiEnteredAsync(poiId)` trong `AudioQueueService.cs` khi nhận sự kiện `PoiEntered` từ `GeofenceMonitorService`. Quyết định cắt/chèn dựa trên so sánh **`TierValue`** giữa POI mới và POI đang phát (Diamond=4 > Gold=3 > Silver=2 > Standard=1).
 
-![diagram](./PRD.Rendered-23.svg)
+![diagram](./PRD.Rendered-30.svg)
 
 **Các hằng số tham chiếu trong code:**
 - `GeofenceMonitorService.DwellThresholdSec = 8` – phải ở trong zone 8 giây mới trigger `PoiEntered`.
@@ -646,7 +714,7 @@ Trang chỉ điều hướng về Home Dashboard tổng hợp (đã merge số l
 
 **Mô tả:** Sơ đồ state diagram thể hiện các trạng thái và chuyển đổi của một POI từ lúc Vendor tạo đến khi xuất hiện trên Mobile App.
 
-![diagram](./PRD.Rendered-24.svg)
+![diagram](./PRD.Rendered-31.svg)
 
 **Ràng buộc chuyển trạng thái:**
 - Mọi thay đổi nội dung quan trọng của Vendor đều **reset về `Pending`** để Admin xem lại.

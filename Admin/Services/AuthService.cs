@@ -254,7 +254,7 @@ public class AuthService
                     _db.Foods.RemoveRange(foods);
                 }
 
-                var poiImages = await _db.Images.Where(i => poiIds.Contains(i.PoiId)).ToListAsync();
+                var poiImages = await _db.Images.Where(i => i.PoiId != null && poiIds.Contains(i.PoiId.Value)).ToListAsync();
                 if (poiImages.Any()) _db.Images.RemoveRange(poiImages);
 
                 var menuItems = await _db.MenuItems.Where(m => poiIds.Contains(m.PoiId)).ToListAsync();
@@ -263,7 +263,7 @@ public class AuthService
                 var reviews = await _db.Reviews.Where(r => poiIds.Contains(r.PoiId)).ToListAsync();
                 if (reviews.Any()) _db.Reviews.RemoveRange(reviews);
 
-                var trackingLogs = await _db.TrackingLogs.Where(t => poiIds.Contains(t.PoiId)).ToListAsync();
+                var trackingLogs = await _db.TrackingLogs.Where(t => t.PoiId != null && poiIds.Contains(t.PoiId.Value)).ToListAsync();
                 if (trackingLogs.Any()) _db.TrackingLogs.RemoveRange(trackingLogs);
 
                 var pois = await _db.Pois.Where(p => poiIds.Contains(p.PoiId)).ToListAsync();

@@ -15,18 +15,7 @@
 
 <PageTitle>Dashboard - Vĩnh Khánh</PageTitle>
 
-<style>
-    .rank-row { transition: background 0.15s; border-radius: 10px; }
-    .rank-row:hover { background: #F1F5F9; }
 
-    .progress-thin { height: 6px; border-radius: 3px; background: #E2E8F0; }
-
-    .pulse-dot { animation: pulse 2s infinite; }
-    @@keyframes pulse {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.4; }
-    }
-</style>
 
 <div class="dash-page p-4">
 
@@ -84,161 +73,6 @@
                             </div>
                         </div>
                     }
-                </div>
-
-                @* ── THỐNG KÊ HÀNH VI ── *@
-                <div class="dash-label"><i class="bi bi-activity me-2"></i>HÀNH VI NGƯỜI DÙNG</div>
-                <div class="row g-3 mb-5">
-                    @foreach (var card in adminBehaviorCards)
-                    {
-                        <div class="col-6 col-md-4">
-                            <div class="dash-card p-4">
-                                <div class="d-flex justify-content-between align-items-start mb-3">
-                                    <div style="background: @card.IconBg; border-radius: 10px; padding: 10px;">
-                                        <i class="bi @card.Icon" style="color: @card.IconColor; font-size: 1.3rem;"></i>
-                                    </div>
-                                    @if (!string.IsNullOrWhiteSpace(card.BadgeTemplate))
-                                    {
-                                        <span class="badge" style="background: @card.BadgeBg; color: @card.BadgeColor; font-size: 10px;">@GetAdminCardBadgeText(card)</span>
-                                    }
-                                </div>
-                                <h3 class="fw-bold mb-1" style="color: #1E293B;">@GetAdminCardValue(card)</h3>
-                                <div style="color: #64748B; font-size: 12px; letter-spacing: 0.5px;">@card.Title</div>
-                            </div>
-                        </div>
-                    }
-                </div>
-
-                @* ── XẾP HẠNG ── *@
-                <div class="dash-label"><i class="bi bi-trophy me-2"></i>XẾP HẠNG NỔI BẬT</div>
-                <div class="row g-4 mb-5">
-                    @* Top POI *@
-                    <div class="col-md-6">
-                        <div class="dash-card p-4 h-100">
-                            <div class="d-flex align-items-center gap-2 mb-4">
-                                <div style="background: rgba(245,158,11,0.12); border-radius: 10px; padding: 8px 10px;">
-                                    <i class="bi bi-geo-alt-fill" style="color: #F59E0B;"></i>
-                                </div>
-                                <span class="fw-bold" style="color: #F59E0B; letter-spacing: 0.5px; font-size: 13px;">TOP GIAN HÀNG ĐƯỢC QUAN TÂM</span>
-                            </div>
-                            @if (topPois.Any())
-                            {
-                                @foreach (var (poi, i) in topPois.Select((p, i) => (p, i)))
-                                {
-                                    <div class="rank-row d-flex justify-content-between align-items-center px-2 py-2 mb-1">
-                                        <div class="d-flex align-items-center gap-3">
-                                            <span class="fw-bold" style="min-width: 22px; color: @(i == 0 ? "#F59E0B" : i == 1 ? "#94A3B8" : i == 2 ? "#D97706" : "#64748B"); font-size: 14px;">@(i + 1)</span>
-                                            <span style="color: #1E293B; font-size: 14px; font-weight: 500;">@poi.PoiName</span>
-                                        </div>
-                                        <span class="fw-bold" style="color: #F59E0B; font-size: 13px;">@poi.EventCount <span style="color: #64748B; font-weight: 400;">lượt</span></span>
-                                    </div>
-                                }
-                            }
-                            else
-                            {
-                                <div class="text-center py-4" style="color: #64748B;">
-                                    <i class="bi bi-inbox fs-3 d-block mb-2"></i>Chưa có dữ liệu
-                                </div>
-                            }
-                        </div>
-                    </div>
-
-                    @* Top Audio *@
-                    <div class="col-md-6">
-                        <div class="dash-card p-4 h-100">
-                            <div class="d-flex align-items-center gap-2 mb-4">
-                                <div style="background: rgba(14,165,233,0.12); border-radius: 10px; padding: 8px 10px;">
-                                    <i class="bi bi-headphones" style="color: #0EA5E9;"></i>
-                                </div>
-                                <span class="fw-bold" style="color: #0EA5E9; letter-spacing: 0.5px; font-size: 13px;">TOP THUYẾT MINH ĐƯỢC NGHE</span>
-                            </div>
-                            @if (topAudio.Any())
-                            {
-                                @foreach (var (item, i) in topAudio.Select((a, i) => (a, i)))
-                                {
-                                    <div class="rank-row d-flex justify-content-between align-items-center px-2 py-2 mb-1">
-                                        <div class="d-flex align-items-center gap-3">
-                                            <span class="fw-bold" style="min-width: 22px; color: @(i == 0 ? "#0EA5E9" : i == 1 ? "#94A3B8" : i == 2 ? "#D97706" : "#64748B"); font-size: 14px;">@(i + 1)</span>
-                                            <span style="color: #1E293B; font-size: 14px; font-weight: 500;">@item.PoiName</span>
-                                        </div>
-                                        <span class="fw-bold" style="color: #0EA5E9; font-size: 13px;">@item.TotalMinutes <span style="color: #64748B; font-weight: 400;">phút</span></span>
-                                    </div>
-                                }
-                            }
-                            else
-                            {
-                                <div class="text-center py-4" style="color: #64748B;">
-                                    <i class="bi bi-inbox fs-3 d-block mb-2"></i>Chưa có dữ liệu
-                                </div>
-                            }
-                        </div>
-                    </div>
-                </div>
-
-                @* ── PHÂN TÍCH ── *@
-                <div class="dash-label"><i class="bi bi-bar-chart-line me-2"></i>PHÂN TÍCH</div>
-                <div class="row g-4">
-                    @* Ngôn ngữ *@
-                    <div class="col-md-6">
-                        <div class="dash-card p-4 h-100">
-                            <div class="d-flex align-items-center gap-2 mb-4">
-                                <div style="background: rgba(14,165,233,0.12); border-radius: 10px; padding: 8px 10px;">
-                                    <i class="bi bi-translate" style="color: #0EA5E9;"></i>
-                                </div>
-                                <span class="fw-bold" style="color: #1E293B; letter-spacing: 0.5px; font-size: 13px;">NGÔN NGỮ SỬ DỤNG</span>
-                            </div>
-                            @if (languageStats.Any())
-                            {
-                                var maxDevices = languageStats.Max(l => l.DeviceCount);
-                                @foreach (var lang in languageStats)
-                                {
-                                    var barWidth = maxDevices > 0 ? (int)(lang.DeviceCount * 100.0 / maxDevices) : 0;
-                                    <div class="mb-3">
-                                        <div class="d-flex justify-content-between mb-1">
-                                            <span style="color: #1E293B; font-size: 13px; font-weight: 500;">@lang.Name <span style="color: #64748B; font-weight: normal;">(@lang.Code.ToUpper())</span></span>
-                                            <span class="fw-bold" style="color: #0EA5E9; font-size: 13px;">@lang.DeviceCount <span style="color:#64748B;font-weight:400;">thiết bị</span></span>
-                                        </div>
-                                        <div class="progress-thin">
-                                            <div class="progress-bar" style="background: linear-gradient(90deg, #0EA5E9, #0284c7); width: @barWidth%; height: 100%; border-radius: 3px;"></div>
-                                        </div>
-                                    </div>
-                                }
-                            }
-                            else
-                            {
-                                <div class="text-center py-4" style="color: #64748B;">
-                                    <i class="bi bi-inbox fs-3 d-block mb-2"></i>Chưa có dữ liệu
-                                </div>
-                            }
-                        </div>
-                    </div>
-
-                    @* Phân bổ đánh giá *@
-                    <div class="col-md-6">
-                        <div class="dash-card p-4 h-100">
-                            <div class="d-flex align-items-center gap-2 mb-4">
-                                <div style="background: rgba(234,179,8,0.12); border-radius: 10px; padding: 8px 10px;">
-                                    <i class="bi bi-star-fill" style="color: #EAB308;"></i>
-                                </div>
-                                <span class="fw-bold" style="color: #1E293B; letter-spacing: 0.5px; font-size: 13px;">PHÂN BỔ ĐÁNH GIÁ</span>
-                            </div>
-                            @for (int star = 5; star >= 1; star--)
-                            {
-                                var count = ratingDistribution.GetValueOrDefault(star, 0);
-                                var percent = totalReviews > 0 ? (count * 100 / totalReviews) : 0;
-                                <div class="d-flex align-items-center gap-3 mb-3">
-                                    <div class="d-flex align-items-center gap-1" style="min-width: 50px;">
-                                        <span style="color: #EAB308; font-size: 13px; font-weight: 600;">@star</span>
-                                        <i class="bi bi-star-fill" style="color: #EAB308; font-size: 10px;"></i>
-                                    </div>
-                                    <div class="flex-grow-1 progress-thin">
-                                        <div style="background: linear-gradient(90deg, #EAB308, #D97706); width: @percent%; height: 100%; border-radius: 3px;"></div>
-                                    </div>
-                                    <span style="color: #64748B; font-size: 12px; min-width: 30px; text-align: right;">@count</span>
-                                </div>
-                            }
-                        </div>
-                    </div>
                 </div>
 
             </Authorized>
@@ -334,28 +168,16 @@
     private readonly List<AdminStatCardConfig> adminSystemCards =
     [
         new("totalPois", "TỔNG GIAN HÀNG", "bi-shop", "rgba(245,158,11,0.12)", "#F59E0B", "{activePois} hoạt động", "rgba(245,158,11,0.1)", "#F59E0B"),
-        new("totalLanguages", "NGÔN NGỮ", "bi-translate", "rgba(14,165,233,0.12)", "#0EA5E9", null, "rgba(14,165,233,0.1)", "#0EA5E9"),
+
         new("totalUsers", "NGƯỜI DÙNG", "bi-people-fill", "rgba(200,55,45,0.12)", "#C8372D", "{totalVendors} vendor", "rgba(200,55,45,0.1)", "#C8372D"),
         new("todayQrScans", "LƯỢT QUÉT QR", "bi-qr-code-scan", "rgba(16,185,129,0.12)", "#10B981", "hôm nay", "rgba(16,185,129,0.1)", "#10B981")
     ];
 
-    private readonly List<AdminStatCardConfig> adminBehaviorCards =
-    [
-        new("totalEvents", "LƯỢT TƯƠNG TÁC HÔM NAY", "bi-cursor-fill", "rgba(245,158,11,0.12)", "#F59E0B", "hôm nay", "rgba(245,158,11,0.1)", "#F59E0B"),
-        new("avgListenSec", "THỜI GIAN NGHE TB", "bi-headphones", "rgba(14,165,233,0.12)", "#0EA5E9", "giây/lần", "rgba(14,165,233,0.1)", "#0EA5E9"),
-        new("totalReviews", "TỔNG ĐÁNH GIÁ", "bi-star-fill", "rgba(234,179,8,0.12)", "#EAB308")
-    ];
+
 
     // ── Admin stats – hệ thống ───────────────
-    private int totalPois, activePois, totalNarrations, totalLanguages;
+    private int totalPois, activePois, totalNarrations;
     private int todayQrScans, totalUsers, totalVendors;
-    private List<TopPoiItem> topPois = new();
-    private List<TopAudioItem> topAudio = new();
-
-    // ── Admin stats – hành vi ────────────────
-    private int totalEvents, avgListenSec, totalReviews;
-    private List<LangStat> languageStats = new();
-    private Dictionary<int, int> ratingDistribution = new();
 
     // ── Vendor stats ─────────────────────────
     private string vendorPoiName = "Chủ quán";
@@ -403,99 +225,10 @@
         totalPois     = await Db.Pois.CountAsync();
         activePois    = await Db.Pois.CountAsync(p => p.IsActive);
         totalNarrations = await Db.Narrations.CountAsync();
-        totalLanguages  = await Db.Languages.CountAsync(l => l.IsActive);
         totalUsers = await Db.Users.CountAsync();
         totalVendors  = await Db.Users.CountAsync(u => u.Role == "Vendor");
         todayQrScans  = await Db.TrackingLogs
             .CountAsync(t => t.EventType == "qr_scan" && t.CreatedAt >= today);
-
-        // Chỉ tính tương tác nghiệp vụ trong ngày, bỏ heartbeat "move" để tránh số liệu bị phình.
-        totalEvents = await Db.TrackingLogs
-            .CountAsync(t => t.CreatedAt >= today && t.EventType != "move");
-
-        var listenLogs = Db.TrackingLogs.Where(t => t.EventType == "listen_end" && t.ListenedDurationSec != null);
-        if (await listenLogs.AnyAsync())
-            avgListenSec = (int)await listenLogs.AverageAsync(t => t.ListenedDurationSec!.Value);
-
-        // Top POIs
-        topPois = await Db.TrackingLogs
-            .Where(t => t.PoiId != null && (t.EventType == "enter" || t.EventType == "qr_scan"))
-            .GroupBy(t => t.PoiId)
-            .Select(g => new TopPoiItem { PoiId = g.Key!.Value, EventCount = g.Count() })
-            .OrderByDescending(x => x.EventCount)
-            .Take(5)
-            .ToListAsync();
-
-        var poiIds = topPois.Select(x => x.PoiId).ToList();
-        var poiNames = await Db.Pois
-            .Where(p => poiIds.Contains(p.PoiId))
-            .ToDictionaryAsync(p => p.PoiId, p => p.Name);
-
-        foreach (var item in topPois)
-            item.PoiName = poiNames.GetValueOrDefault(item.PoiId, "N/A");
-
-        // Top Audio
-        topAudio = await Db.TrackingLogs
-            .Where(t => t.PoiId != null && t.EventType == "listen_end" && t.ListenedDurationSec != null)
-            .GroupBy(t => t.PoiId)
-            .Select(g => new TopAudioItem
-            {
-                PoiId = g.Key!.Value,
-                TotalMinutes = (int)(g.Sum(t => t.ListenedDurationSec!.Value) / 60.0)
-            })
-            .OrderByDescending(x => x.TotalMinutes)
-            .Take(5)
-            .ToListAsync();
-
-        foreach (var item in topAudio)
-            item.PoiName = poiNames.GetValueOrDefault(item.PoiId, "N/A");
-
-        // Ngôn ngữ — đếm số THIẾT BỊ duy nhất theo NGÔN NGỮ MỚI NHẤT của thiết bị đó,
-        // trong cửa sổ 30 ngày gần nhất. Cách này phản ánh đúng số người dùng đang
-        // dùng từng ngôn ngữ:
-        //   * không đếm trùng theo số event (heartbeat 'move' rất nhiều).
-        //   * không đếm trùng khi 1 thiết bị từng đổi ngôn ngữ nhiều lần
-        //     (chỉ tính ngôn ngữ hiện tại của họ).
-        //   * không bị nhiễu bởi log cũ "anon:vi" / null trước khi fix.
-        var langWindow = DateTime.Now.AddDays(-30);
-        var perDeviceLatest = await Db.TrackingLogs
-            .AsNoTracking()
-            .Where(t => t.LanguageCode != null && t.DeviceId != null && t.CreatedAt >= langWindow)
-            .GroupBy(t => t.DeviceId!)
-            .Select(g => new
-            {
-                DeviceId = g.Key,
-                LanguageCode = g.OrderByDescending(x => x.CreatedAt).First().LanguageCode
-            })
-            .ToListAsync();
-
-        var langNames = await Db.Languages
-            .AsNoTracking()
-            .ToDictionaryAsync(l => l.Code.ToLower(), l => l.Name);
-
-        var langDeviceCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-        foreach (var row in perDeviceLatest)
-        {
-            var code = NormalizeLangCode(row.LanguageCode);
-            if (code is null) continue;
-            langDeviceCounts[code] = langDeviceCounts.GetValueOrDefault(code, 0) + 1;
-        }
-
-        languageStats = langDeviceCounts
-            .Select(kvp => new LangStat
-            {
-                Code = kvp.Key,
-                Name = langNames.GetValueOrDefault(kvp.Key, FallbackLanguageName(kvp.Key)),
-                DeviceCount = kvp.Value
-            })
-            .OrderByDescending(l => l.DeviceCount)
-            .ToList();
-
-        // Reviews
-        totalReviews = await Db.Reviews.CountAsync();
-        ratingDistribution = await Db.Reviews
-            .GroupBy(r => (int)r.Rating)
-            .ToDictionaryAsync(g => g.Key, g => g.Count());
     }
 
     private async Task LoadVendorStats(ClaimsPrincipal user)
@@ -525,57 +258,7 @@
         ];
     }
 
-    private class TopPoiItem
-    {
-        public int PoiId { get; set; }
-        public string PoiName { get; set; } = "N/A";
-        public int EventCount { get; set; }
-    }
 
-    private class TopAudioItem
-    {
-        public int PoiId { get; set; }
-        public string PoiName { get; set; } = "N/A";
-        public int TotalMinutes { get; set; }
-    }
-
-    private class LangStat { public string Code = ""; public string Name = ""; public int DeviceCount; }
-
-    /// <summary>
-    /// Chuẩn hoá language code lưu trong tracking log:
-    /// - bỏ prefix legacy như "anon:vi" → "vi"
-    /// - lower-case, trim
-    /// - rỗng/null → null
-    /// </summary>
-    private static string? NormalizeLangCode(string? raw)
-    {
-        if (string.IsNullOrWhiteSpace(raw)) return null;
-        var v = raw.Trim();
-        var colon = v.IndexOf(':');
-        if (colon >= 0 && colon < v.Length - 1)
-            v = v[(colon + 1)..];
-        // Cắt region: "zh-CN" -> "zh", "en-US" -> "en"
-        var dash = v.IndexOf('-');
-        if (dash > 0) v = v[..dash];
-        v = v.Trim().ToLowerInvariant();
-        return string.IsNullOrEmpty(v) ? null : v;
-    }
-
-    /// <summary>Tên hiển thị fallback khi code không có trong bảng Languages.</summary>
-    private static string FallbackLanguageName(string code) => code switch
-    {
-        "vi" => "Tiếng Việt",
-        "en" => "English",
-        "ja" => "日本語",
-        "ko" => "한국어",
-        "zh" => "中文",
-        "fr" => "Français",
-        "de" => "Deutsch",
-        "es" => "Español",
-        "ru" => "Русский",
-        "th" => "ไทย",
-        _ => code.ToUpperInvariant()
-    };
 
     private sealed record AdminStatCardConfig(
         string Key,
@@ -591,12 +274,8 @@
     {
         "totalPois" => totalPois.ToString(),
         "totalNarrations" => totalNarrations.ToString(),
-        "totalLanguages" => totalLanguages.ToString(),
         "totalUsers" => totalUsers.ToString(),
         "todayQrScans" => todayQrScans.ToString(),
-        "totalEvents" => totalEvents.ToString(),
-        "avgListenSec" => avgListenSec.ToString(),
-        "totalReviews" => totalReviews.ToString(),
         _ => "0"
     };
 
@@ -607,7 +286,6 @@
 
         return card.BadgeTemplate
             .Replace("{activePois}", activePois.ToString())
-            .Replace("{totalLanguages}", totalLanguages.ToString())
             .Replace("{totalNarrations}", totalNarrations.ToString())
             .Replace("{totalVendors}", totalVendors.ToString());
     }
